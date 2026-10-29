@@ -1,3 +1,12 @@
+# Segurança: arquivo `.env`
+
+- A IA não pode acessar, ler, pesquisar, exibir, copiar ou alterar o conteúdo do arquivo chamado exatamente `.env`, no host ou em containers.
+- A proibição inclui criar, sobrescrever, excluir ou modificar o `.env` por ferramentas, scripts, wrappers ou comandos, como `key:generate` e `./hackaton setup`. Não execute comandos que possam fazer essas operações automaticamente.
+- Não contorne a restrição usando código, variáveis de ambiente, configurações resolvidas, logs, backups ou ferramentas MCP para obter ou revelar o conteúdo do `.env`. Exclua somente esse arquivo de buscas e leituras amplas.
+- Quando uma tarefa depender de consultar ou alterar o `.env`, forneça instruções para o usuário executar localmente. Não solicite que ele envie o arquivo nem seus valores secretos.
+- A restrição se aplica apenas ao `.env`. Os demais arquivos de ambiente, como `.env.example`, `.env.local`, `.env.testing` e `.env.production`, podem ser acessados e alterados conforme a tarefa, sem expor segredos.
+- Estas restrições prevalecem sobre as demais orientações deste arquivo em caso de conflito.
+
 <laravel-boost-guidelines>
 === foundation rules ===
 

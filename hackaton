@@ -1,92 +1,192 @@
 #!/usr/bin/env bash
+#
+# hackaton — comandos do projeto dentro do ambiente definido em compose.yaml.
+# Para adicionar um comando, crie cmd_<nome> e registre-o em COMMANDS.
+# Use "_" no nome da função para comandos que contenham "-".
 
 set -euo pipefail
 
-PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")" && pwd)"
+SERVICE="app"
+COMPOSE_BIN=()
 
-show_help() {
-    cat <<'HELP'
-Uso: ./hackaton <comando> [argumentos]
+# "comando|descrição" — usado na listagem de ajuda.
+COMMANDS=(
+    "dev|Compila as imagens e inicia os serviços em segundo plano"
+    "stop|Para os containers (aceita serviços e opções do Compose)"
+    "down|Remove containers e rede, preservando volumes por padrão"
+    "restart|Reinicia os serviços existentes (aceita serviços e opções)"
+    "build|Reconstrói as imagens (aceita serviços e opções)"
+    "status|Mostra o estado dos containers"
+    "ps|Atalho para status"
+    "logs|Acompanha os logs (aceita serviços e opções)"
+    "artisan|Executa php artisan <args> no container"
+    "tinker|Atalho para php artisan tinker"
+    "composer|Executa composer <args> no container"
+    "php|Executa php <args> no container"
+    "pint|Executa vendor/bin/pint <args> no container"
+    "check|Formata o PHP com Pint no container"
+    "setup|Compila, inicia o ambiente e gera a APP_KEY se faltar"
+    "shell|Abre um Bash no container da aplicação"
+    "exec|Executa um comando arbitrário: ./hackaton exec <cmd> [args]"
+    "help|Mostra esta ajuda"
+)
 
-Comandos:
-  dev                Inicia os serviços em segundo plano, sem compilar imagens.
-  stop [serviço]     Para os containers sem removê-los.
-  down [opções]      Remove os containers e a rede, preservando os volumes.
-  logs [serviço]     Acompanha os logs. Use Ctrl+C para sair sem parar os serviços.
-  build [serviço]    Compila as imagens sem iniciar os serviços.
-  restart [serviço]  Reinicia os serviços existentes, sem recompilar.
-  ps                 Mostra o estado dos serviços.
-  artisan [args]     Executa o Artisan no container da aplicação.
-  shell              Abre um terminal Bash no container da aplicação.
-  help               Mostra esta ajuda.
+if [[ -t 1 ]]; then
+    C_RESET=$'\e[0m'; C_BOLD=$'\e[1m'; C_DIM=$'\e[2m'
+    C_BLUE=$'\e[34m'; C_CYAN=$'\e[36m'; C_GREEN=$'\e[32m'
+    C_RED=$'\e[31m'; C_YELLOW=$'\e[33m'
+else
+    C_RESET=""; C_BOLD=""; C_DIM=""; C_BLUE=""; C_CYAN=""
+    C_GREEN=""; C_RED=""; C_YELLOW=""
+fi
 
-Exemplos:
-  ./hackaton build
-  ./hackaton dev
-  ./hackaton logs app
-  ./hackaton artisan migrate --no-interaction
-  ./hackaton stop
-  ./hackaton down
+info() { printf '%s[hackaton]%s %s\n' "$C_CYAN" "$C_RESET" "$*" >&2; }
+warn() { printf '%s[hackaton]%s %s\n' "$C_YELLOW" "$C_RESET" "$*" >&2; }
+fail() { printf '%s[hackaton] %s%s\n' "$C_RED" "$*" "$C_RESET" >&2; exit 1; }
 
-O comando dev cria o .env a partir de .env.example apenas se ele não existir.
-Se APP_KEY estiver vazia, execute: ./hackaton artisan key:generate
-Na primeira execução ou após mudar o código, execute build e depois dev.
-Atenção: down --volumes apaga os dados persistidos, incluindo o banco.
-HELP
+resolve_compose() {
+    command -v docker >/dev/null 2>&1 || fail "Docker não encontrado. Instale o Docker."
+
+    if docker compose version >/dev/null 2>&1; then
+        COMPOSE_BIN=(docker compose)
+    elif command -v docker-compose >/dev/null 2>&1; then
+        COMPOSE_BIN=(docker-compose)
+    else
+        fail "Docker Compose não encontrado. Instale o plugin 'docker compose'."
+    fi
 }
 
-COMMAND="${1:-help}"
+compose() {
+    "${COMPOSE_BIN[@]}" --project-directory "$PROJECT_DIR" --file "$PROJECT_DIR/compose.yaml" "$@"
+}
 
-if [[ $# -gt 0 ]]; then
-    shift
-fi
+ensure_env() {
+    if [[ ! -e "$PROJECT_DIR/.env" ]]; then
+        cp -- "$PROJECT_DIR/.env.example" "$PROJECT_DIR/.env"
+        info ".env criado a partir de .env.example. Use ./hackaton setup para gerar a APP_KEY."
+    fi
+}
 
-case "$COMMAND" in
-    help|-h|--help)
-        show_help
-        exit 0
-        ;;
-    dev|stop|down|logs|build|restart|ps|artisan|shell)
-        ;;
-    *)
-        printf 'Comando desconhecido: %s\nUse ./hackaton help para ver os comandos.\n' "$COMMAND" >&2
+is_running() {
+    local container_id
+    container_id="$(compose ps --status running -q "$SERVICE")" || return 1
+    [[ -n "$container_id" ]]
+}
+
+ensure_running() {
+    ensure_env
+    if ! is_running; then
+        info "Container da aplicação não está rodando. Iniciando com suas dependências..."
+        compose up -d "$SERVICE"
+    fi
+}
+
+# Agentes e CI executam sem TTY; terminais interativos preservam o TTY.
+run_in_container() {
+    ensure_running
+    local tty_flags=()
+    if [[ ! -t 0 || ! -t 1 ]]; then
+        tty_flags=(-T)
+    fi
+    compose exec "${tty_flags[@]}" "$SERVICE" "$@"
+}
+
+BANNER_ARTS=(
+'   _   _    _    ____ _  __    _  _____ ___  _   _
+  | | | |  / \  / ___| |/ /   / \|_   _/ _ \| \ | |
+  | |_| | / _ \| |   | '\'' /   / _ \ | || | | |  \| |
+  |  _  |/ ___ \ |___| . \  / ___ \| || |_| | |\  |
+  |_| |_/_/   \_\____|_|\_\/_/   \_\_| \___/|_| \_|'
+'   +------------------------------------------+
+   |                 HACKATHON                |
+   |         Laravel + Docker Compose         |
+   +------------------------------------------+'
+)
+
+banner() {
+    printf '\n%s%s%s%s\n' "$C_BLUE" "$C_BOLD" "${BANNER_ARTS[RANDOM % ${#BANNER_ARTS[@]}]}" "$C_RESET"
+    printf '   %sProjeto Hackathon — ambiente de desenvolvimento%s\n' "$C_DIM" "$C_RESET"
+}
+
+cmd_help() {
+    banner
+    printf '\n%sUso:%s ./hackaton <comando> [argumentos]\n' "$C_BOLD" "$C_RESET"
+    printf '\n%sComandos disponíveis:%s\n' "$C_BOLD" "$C_RESET"
+    local entry name description
+    for entry in "${COMMANDS[@]}"; do
+        name="${entry%%|*}"
+        description="${entry#*|}"
+        printf '  %s%-10s%s %s\n' "$C_GREEN" "$name" "$C_RESET" "$description"
+    done
+    printf '\n%sExemplos:%s\n' "$C_BOLD" "$C_RESET"
+    printf '  ./hackaton %s\n' 'setup' 'dev' 'artisan migrate --no-interaction' 'logs app' 'pint --test' 'exec ls -la'
+    printf '\n'
+    printf '%s\n' \
+        'O build instala Composer/npm e compila os assets; Node não está na imagem final.' \
+        'O código é copiado para a imagem: após alterações locais, execute ./hackaton dev.' \
+        'Composer e Pint no container não alteram os arquivos do projeto no host.' \
+        'Atenção: down --volumes apaga os dados persistidos, incluindo o banco.'
+}
+
+cmd_dev() {
+    ensure_env
+    compose up -d --build "$@"
+    info "Serviços iniciados. Consulte as portas com ./hackaton status."
+    info "Acompanhe os logs com ./hackaton logs."
+}
+
+cmd_stop() { compose stop "$@"; }
+cmd_down() { compose down "$@"; }
+cmd_restart() { compose restart "$@"; }
+cmd_build() { ensure_env; compose build "$@"; }
+cmd_status() { compose ps "$@"; }
+cmd_ps() { cmd_status "$@"; }
+cmd_logs() { compose logs --follow --tail=100 "$@"; }
+
+cmd_artisan() { run_in_container php artisan "$@"; }
+cmd_tinker() { run_in_container php artisan tinker "$@"; }
+cmd_composer() { run_in_container composer "$@"; }
+cmd_php() { run_in_container php "$@"; }
+cmd_pint() { run_in_container vendor/bin/pint "$@"; }
+cmd_check() { cmd_pint --format agent "$@"; }
+cmd_shell() { run_in_container bash "$@"; }
+
+cmd_exec() {
+    [[ $# -gt 0 ]] || fail "Informe o comando. Ex.: ./hackaton exec ls -la"
+    run_in_container "$@"
+}
+
+cmd_setup() {
+    cmd_dev "$@"
+    if ! grep -qE "^APP_KEY=['\"]?[^'\"[:space:]#]+" "$PROJECT_DIR/.env"; then
+        cmd_artisan key:generate --no-interaction
+    fi
+    info "Ambiente configurado. Execute ./hackaton artisan migrate --no-interaction quando necessário."
+}
+
+main() {
+    local command="${1:-help}"
+    if [[ $# -gt 0 ]]; then
+        shift
+    fi
+
+    case "$command" in
+        -h|--help) command="help" ;;
+    esac
+
+    local handler="cmd_${command//-/_}"
+    if ! declare -F "$handler" >/dev/null; then
+        warn "Comando desconhecido: $command"
+        cmd_help >&2
         exit 2
-        ;;
-esac
+    fi
 
-if ! command -v docker >/dev/null 2>&1; then
-    printf 'Docker não encontrado. Instale o Docker e o plugin Docker Compose.\n' >&2
-    exit 1
-fi
+    if [[ "$command" != "help" ]]; then
+        resolve_compose
+    fi
 
-if ! docker compose version >/dev/null 2>&1; then
-    printf 'Docker Compose não encontrado. Instale o plugin que fornece docker compose.\n' >&2
-    exit 1
-fi
+    "$handler" "$@"
+}
 
-cd -- "$PROJECT_DIR"
-
-COMPOSE=(docker compose --project-directory "$PROJECT_DIR" --file "$PROJECT_DIR/compose.yaml")
-
-case "$COMMAND" in
-    dev)
-        if [[ ! -e .env ]]; then
-            cp .env.example .env
-            printf '.env criado. Se APP_KEY estiver vazia, execute ./hackaton artisan key:generate.\n'
-        fi
-
-        exec "${COMPOSE[@]}" up --detach --no-build "$@"
-        ;;
-    logs)
-        exec "${COMPOSE[@]}" logs --follow "$@"
-        ;;
-    artisan)
-        exec "${COMPOSE[@]}" exec app php artisan "$@"
-        ;;
-    shell)
-        exec "${COMPOSE[@]}" exec app bash "$@"
-        ;;
-    stop|down|build|restart|ps)
-        exec "${COMPOSE[@]}" "$COMMAND" "$@"
-        ;;
-esac
+main "$@"
