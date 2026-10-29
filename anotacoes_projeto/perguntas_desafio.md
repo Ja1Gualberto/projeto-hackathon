@@ -1,27 +1,27 @@
-## Perguntas iniciais
+## Oque foi constatado a partir da reuniao
 
-Recebe por PDF de varios jeitos(zap email cee)
-Nao tomam notas das entrevista de jeito centralizado 
-Comparam Hard Skill e Softskills de acordo com a vaga
+- Recebe por PDF de varios jeitos(zap email cee)
+- Nao conseguem organizar anotacoes sobre entrevistas de jeito centralizado e que consiga ser acessado posteriormente
+- Tem necessidade de no cadastro das vagas estipular "valor" ou "peso" de uma competencia sento ela uma Hard Skill ou Softskills de acordo com a vaga
+- O pesso das competencia e de cada vaga e definido de acordo com a demanda 
 
-Dependendo da vaga o peso alterna 
+- Comentou sobre ser interssante um feedback via email para os canditos aprovados ou nao
 
-pensar num feedback via email para os canditos
+- periodo de tempo pra desconsiderar um curriculo  (Dois anos para desativar curriculo). Nao e relevante pro mvp no momento 
 
-periodo de tempo pra desconsiderar um curriculo  (Dois anos para desativar curriculo)
+- Leva em consideracao as competencias do cadidato pra destinalo a uma vaga 
 
-Leve em consideracao "TAGs" de curriculo de candidato
+- No contexto da setic quando e pra area de tecnologia a entrevista acontece sem dizer pra qual area o candidato vai
 
-entrevista acontece sem dizer pra qual area o candidato vai
+- Salvar os curriculos pra acesso posterior porem abstraindo-se dele e salvando no banco relacionando ao cadidato as sequintes coisas:
+    1. Competencias
+    2. Se tem ou nao experiencia
+    3. Se tem projetos relacionados
 
-So manda um curriculo  
 
+- DEU COMO ENFASE PRINCIPAL JUNTAR OS CURRICULOS NUM BANCO SENDO POSSIVEL ACESSAR E FILTRAR POR CADIDATO E POR COMPETENCIA
 
-PRINCIPAL E JUNTAR OS CURRICULOS NUM BANCO SENDO POSSIVEL ACESSAR E FILTRAR 
-
-como cruzar skills com experiencias do candidato?
-
-diferenciar quem tem experiencia na area e quem nao tem 
+---
 
 ### Recebimento e atualização dos currículos
 
