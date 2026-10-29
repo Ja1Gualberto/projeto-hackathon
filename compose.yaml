@@ -1,0 +1,60 @@
+# Ambiente de desenvolvimento local. Não use as senhas padrão em produção.
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "127.0.0.1:${DOCKER_APP_PORT:-8000}:80"
+    environment:
+      DB_CONNECTION: mysql
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_DATABASE: ${DOCKER_DB_DATABASE:-hackathon}
+      DB_USERNAME: ${DOCKER_DB_USERNAME:-hackathon}
+      DB_PASSWORD: ${DOCKER_DB_PASSWORD:-secret}
+      DB_URL: ""
+      DB_SOCKET: ""
+    volumes:
+      - type: bind
+        source: ./.env
+        target: /var/www/html/.env
+        bind:
+          create_host_path: false
+      - app-storage:/var/www/html/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.4
+    ports:
+      - "127.0.0.1:${DOCKER_MYSQL_PORT:-3307}:3306"
+    environment:
+      MYSQL_DATABASE: ${DOCKER_DB_DATABASE:-hackathon}
+      MYSQL_USER: ${DOCKER_DB_USERNAME:-hackathon}
+      MYSQL_PASSWORD: ${DOCKER_DB_PASSWORD:-secret}
+      MYSQL_ROOT_PASSWORD: ${DOCKER_DB_ROOT_PASSWORD:-rootsecret}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping --host=127.0.0.1 --user=root --password=\"$${MYSQL_ROOT_PASSWORD}\" --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 3m
+
+  phpmyadmin:
+    image: phpmyadmin:5.2-apache
+    ports:
+      - "127.0.0.1:${DOCKER_PHPMYADMIN_PORT:-8080}:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+volumes:
+  app-storage:
+  mysql-data:

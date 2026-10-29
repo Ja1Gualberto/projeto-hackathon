@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+PROJECT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+
+show_help() {
+    cat <<'HELP'
+Uso: ./hackaton <comando> [argumentos]
+
+Comandos:
+  dev                Inicia os serviços em segundo plano, sem compilar imagens.
+  stop [serviço]     Para os containers sem removê-los.
+  down [opções]      Remove os containers e a rede, preservando os volumes.
+  logs [serviço]     Acompanha os logs. Use Ctrl+C para sair sem parar os serviços.
+  build [serviço]    Compila as imagens sem iniciar os serviços.
+  restart [serviço]  Reinicia os serviços existentes, sem recompilar.
+  ps                 Mostra o estado dos serviços.
+  artisan [args]     Executa o Artisan no container da aplicação.
+  shell              Abre um terminal Bash no container da aplicação.
+  help               Mostra esta ajuda.
+
+Exemplos:
+  ./hackaton build
+  ./hackaton dev
+  ./hackaton logs app
+  ./hackaton artisan migrate --no-interaction
+  ./hackaton stop
+  ./hackaton down
+
+O comando dev cria o .env a partir de .env.example apenas se ele não existir.
+Se APP_KEY estiver vazia, execute: ./hackaton artisan key:generate
+Na primeira execução ou após mudar o código, execute build e depois dev.
+Atenção: down --volumes apaga os dados persistidos, incluindo o banco.
+HELP
+}
+
+COMMAND="${1:-help}"
+
+if [[ $# -gt 0 ]]; then
+    shift
+fi
+
+case "$COMMAND" in
+    help|-h|--help)
+        show_help
+        exit 0
+        ;;
+    dev|stop|down|logs|build|restart|ps|artisan|shell)
+        ;;
+    *)
+        printf 'Comando desconhecido: %s\nUse ./hackaton help para ver os comandos.\n' "$COMMAND" >&2
+        exit 2
+        ;;
+esac
+
+if ! command -v docker >/dev/null 2>&1; then
+    printf 'Docker não encontrado. Instale o Docker e o plugin Docker Compose.\n' >&2
+    exit 1
+fi
+
+if ! docker compose version >/dev/null 2>&1; then
+    printf 'Docker Compose não encontrado. Instale o plugin que fornece docker compose.\n' >&2
+    exit 1
+fi
+
+cd -- "$PROJECT_DIR"
+
+COMPOSE=(docker compose --project-directory "$PROJECT_DIR" --file "$PROJECT_DIR/compose.yaml")
+
+case "$COMMAND" in
+    dev)
+        if [[ ! -e .env ]]; then
+            cp .env.example .env
+            printf '.env criado. Se APP_KEY estiver vazia, execute ./hackaton artisan key:generate.\n'
+        fi
+
+        exec "${COMPOSE[@]}" up --detach --no-build "$@"
+        ;;
+    logs)
+        exec "${COMPOSE[@]}" logs --follow "$@"
+        ;;
+    artisan)
+        exec "${COMPOSE[@]}" exec app php artisan "$@"
+        ;;
+    shell)
+        exec "${COMPOSE[@]}" exec app bash "$@"
+        ;;
+    stop|down|build|restart|ps)
+        exec "${COMPOSE[@]}" "$COMMAND" "$@"
+        ;;
+esac
