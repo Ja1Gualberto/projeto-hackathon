@@ -29,6 +29,14 @@ As pastas de Services e Repositories estão vazias, prontas para novos módulos.
 
 ## Requisitos
 
+### Com Docker (Linux e Windows)
+
+- Linux: Docker Engine e Docker Compose.
+- Windows 10/11: Docker Desktop com backend WSL 2, usando **containers Linux**, e PowerShell 5.1 ou superior (recomendado: PowerShell 7).
+- Git para clonar o projeto. PHP, Composer e Node.js são instalados na imagem; não precisam estar no host.
+
+### Sem Docker
+
 - PHP 8.5 e Composer 2 para reproduzir o ambiente desta instalação.
 - Extensões PHP exigidas pelo Laravel e **pdo_sqlite** para o banco padrão.
 - Node.js/npm para trabalhar com os assets Vite/Tailwind.
@@ -50,7 +58,56 @@ extension=sqlite3
 
 Confirme com `php -m`. Reinicie servidores PHP persistentes após alterar as extensões.
 
-## Executar localmente
+## Executar com Docker
+
+### Windows (PowerShell)
+
+Inicie o Docker Desktop e, no PowerShell aberto na pasta do projeto, execute:
+
+```powershell
+.\hackaton.ps1 setup
+.\hackaton.ps1 artisan migrate --no-interaction
+.\hackaton.ps1 status
+```
+
+Se o PowerShell bloquear a execução de scripts, libere apenas a sessão atual e tente novamente:
+
+```powershell
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+```
+
+O `setup` cria o `.env` a partir de `.env.example` somente se ele não existir, compila os assets, inicia os serviços e gera a chave da aplicação somente se estiver ausente. Execute esses comandos localmente; não compartilhe seu `.env` nem seus segredos.
+
+Outros comandos disponíveis:
+
+```powershell
+.\hackaton.ps1 help
+.\hackaton.ps1 dev
+.\hackaton.ps1 logs app
+.\hackaton.ps1 artisan migrate:status
+.\hackaton.ps1 stop
+.\hackaton.ps1 down
+```
+
+O script funciona sem Git Bash e localiza o `compose.yaml` pela pasta do próprio script, mesmo quando chamado de outro diretório ou quando o caminho contém espaços.
+
+### Linux (Bash)
+
+```bash
+./hackaton setup
+./hackaton artisan migrate --no-interaction
+./hackaton status
+```
+
+### Comportamento do ambiente Docker
+
+- Portas padrão: aplicação **8000**, phpMyAdmin **8080** e MySQL **3307**, disponíveis apenas na máquina local. `status` mostra as portas efetivas.
+- O código é copiado para a imagem, não sincronizado com o host. Após alterações, execute `dev` para reconstruir e reiniciar a aplicação.
+- Composer e Pint executados no container não alteram os arquivos do projeto no host.
+- `stop` para os serviços; `down` remove os containers, mas preserva os volumes. **Não use `down --volumes` se quiser manter os dados do banco e do storage.**
+- Se alguma porta estiver ocupada, configure `DOCKER_APP_PORT`, `DOCKER_PHPMYADMIN_PORT` ou `DOCKER_MYSQL_PORT` localmente antes de iniciar o ambiente.
+
+## Executar sem Docker
 
 As dependências, o `.env`, a chave e o arquivo SQLite já foram criados. Depois de habilitar o driver:
 
@@ -69,6 +126,8 @@ php -r "file_exists('database/database.sqlite') || touch('database/database.sqli
 php artisan migrate
 php artisan serve
 ```
+
+No PowerShell, substitua `cp .env.example .env` por `Copy-Item .env.example .env`. Execute `npm install --ignore-scripts` e `npm run build` para gerar os assets antes de abrir a aplicação; durante o desenvolvimento, use `npm run dev` em outro terminal.
 
 Não versione o `.env`, credenciais ou o banco local.
 
