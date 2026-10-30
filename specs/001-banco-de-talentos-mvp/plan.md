@@ -31,9 +31,9 @@ implementação nula padrão, e recebe apenas texto anonimizado. A demonstraçã
 ES modules (Vite 8); Tailwind CSS v4.
 
 **Primary Dependencies**: já instaladas — `laravel/framework`, `laravel-vite-plugin`,
-`@tailwindcss/vite`. **Novas, sujeitas à aprovação** (ver *Complexity Tracking*):
-`smalot/pdfparser` (leitura de PDF), `anthropic-ai/sdk` (História 7) e `phpunit/phpunit` (dev,
-gates de teste).
+`@tailwindcss/vite`. **Novas, aprovadas em 2026-10-30** (ver *Complexity Tracking*):
+`smalot/pdfparser` (leitura de PDF) e `phpunit/phpunit` (dev, gates de teste).
+O SDK `anthropic-ai/sdk` foi recusado; a História 7 usará o cliente HTTP nativo do Laravel.
 
 **Storage**: SQLite (local e testes, em memória) / MySQL 8.4 (Docker); PDFs no disco privado
 `curriculos` (`storage/app/private/curriculos`, volume `app-storage` no Docker); sessão
@@ -69,7 +69,7 @@ Nenhum item ficou como NEEDS CLARIFICATION. As decisões estão em [research.md]
 | Princípio / Restrição | Avaliação | Como o plano atende |
 |---|---|---|
 | **I. Demo-First** | ✅ Passa | Histórias = fatias verticais na ordem do roteiro; seeders deixam cada história demonstrável sozinha; comando único `demo` (R15); ensaio cronometrado no quickstart |
-| **II. Simplicidade Radical** | ⚠️ Passa com justificativas | Etapas fixas, pesos 1–3, catálogo fechado, enums em vez de tabelas configuráveis (R19), sem SPA, Alpine ou bibliotecas de UI. Três dependências novas, regra de níveis de idioma e pastas padrão do Laravel justificadas em *Complexity Tracking* |
+| **II. Simplicidade Radical** | ⚠️ Passa com justificativas | Etapas fixas, pesos 1–3, catálogo fechado, enums em vez de tabelas configuráveis (R19), sem SPA, Alpine ou bibliotecas de UI. Duas dependências novas, regra de níveis de idioma e pastas padrão do Laravel justificadas em *Complexity Tracking* |
 | **III. Design Apresentável** | ✅ Passa | Tokens Tailwind + componentes Blade (R16); servidor/estagiário com cor **e** texto; `barra-score`; estados vazio/carregando/erro em todas as telas; fonte base maior para projetor |
 | **IV. LGPD e Triagem Anônima** (inegociável) | ✅ Passa | DTO por contexto, rotas por código, PDF 403 na triagem, identidade revelada por vaga (R8–R10, [visibilidade](./contracts/visibilidade-por-contexto.md)); consentimento obrigatório; correção, desativação, exclusão definitiva com registro mínimo; retenção visível (R14); disco privado (R20); só dados fictícios. Limitação de perfil único documentada e aceita pela spec |
 | **V. IA como Diferencial** | ✅ Passa | Ranking 100% determinístico; extração sem IA; `AnalisadorEnergia` com implementação nula por padrão; falha → "análise indisponível"; sugestões editáveis; entrada anonimizada (R13) |
@@ -224,7 +224,7 @@ demonstrável e passa pelos gates (testes, Pint, fluxo manual, revisão visual).
 | 4 | **US4 — Kanban e triagem anônima (P2)** | Quadro de 3 colunas; `PerfilNaVaga`; rotas por código; PDF 403; movimentação com histórico; vaga encerrada; drag-and-drop (polimento) | Cenário D; `TriagemAnonimaTest`, `CurriculoProtegidoTest`, `MovimentacaoEtapaTest` |
 | 5 | **US5 — Anotações (P3)** | Anotações com vaga opcional e competências observadas; histórico | Cenário E; `AnotacaoEntrevistaTest` |
 | 6 | **US6 — LGPD (P3)** | Consentimento e retenção no perfil; filtro de retenção; desativar e reativar; exclusão definitiva com registro | Cenário F; `LgpdTest` |
-| 7 | **US7 — Energia (P4)** | Eixos na vaga; `AnalisadorEnergia` + SDK; ajuste manual; proximidade; comando `energia:analisar` | Cenário G; `PerfilEnergiaTest`, `ProximidadeEnergiaTest` |
+| 7 | **US7 — Energia (P4)** | Eixos na vaga; `AnalisadorEnergia` + cliente HTTP do Laravel; ajuste manual; proximidade; comando `energia:analisar` | Cenário G; `PerfilEnergiaTest`, `ProximidadeEnergiaTest` |
 | 8 | **Polimento e ensaio** | Revisão visual em projetor, microinterações, estados de carregamento, ensaio cronometrado online e offline | SC-005 cumprido em ≤ 5 min |
 
 **Cronograma sugerido até a apresentação (ter 03/11/2026)**:
@@ -255,11 +255,18 @@ puras e podem ser desenvolvidos e testados em paralelo desde o primeiro dia.
 
 > Desvios do princípio II (Simplicidade) que precisam de justificativa.
 
+**Decisão do responsável — 2026-10-30 (T001):** aprovadas a instalação de
+`phpunit/phpunit` como dependência de desenvolvimento e de `smalot/pdfparser` em runtime.
+Recusada a instalação de `anthropic-ai/sdk`: a US7 (T135, integração com Claude) usará o
+plano B com `Illuminate\Support\Facades\Http`, sem alterar o contrato `AnalisadorEnergia`.
+Esta decisão substitui a escolha do SDK em research R13 e no contrato de análise de energia;
+a integração será implementada somente na Phase 9.
+
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |---|---|---|
 | Dependência nova `phpunit/phpunit` (dev) | Os gates da constituição exigem testes de feature para aderência, anonimato e bloqueio do PDF; o projeto não tem runner de testes | Não testar viola o gate; Pest traz mais pacotes sem ganho para o MVP |
 | Dependência nova `smalot/pdfparser` | FR-008/FR-009 exigem ler o texto do PDF; o PHP não tem parser nativo | `pdftotext`/poppler exige binário no Docker **e** no Windows; IA para leitura viola o funcionamento offline e envia dados pessoais |
-| Dependência nova `anthropic-ai/sdk` | História 7 (diferencial do pitch) com saída estruturada e tratamento de erros tipado, isolada atrás de `AnalisadorEnergia` e desligada por padrão | Chamada HTTP manual com o `Http` do Laravel é viável e fica como plano B se a dependência não for aprovada, mas exige manter à mão o formato da API |
+| Integração de IA sem `anthropic-ai/sdk` (recusada em 2026-10-30) | História 7 isolada atrás de `AnalisadorEnergia` e desligada por padrão; cliente HTTP do Laravel já disponível | Plano B aprovado: `Illuminate\Support\Facades\Http`, mantendo manualmente o formato da API e sem nova dependência |
 | Colunas `grupo`/`nivel` em `competencias` e regra "nível ≥" para idiomas | O exemplo do desafio pede "inglês básico/intermediário"; sem a regra, quem é fluente apareceria como "falta inglês básico", o que desmoraliza a explicação no pitch | Idioma sem nível perde a informação pedida pelo desafio; níveis para todas as competências seriam generalização desnecessária |
 | Pastas novas: `app/Enums`, `app/Console/Commands`, `lang/`, `tests/`, `database/seeders/Support`, `database/seeders/curriculos` | Convenções padrão do Laravel (`make:enum`, `make:command`, `lang:publish`, `make:test`) e local natural dos dados de demonstração | Colocar enums, comandos e traduções em pastas existentes quebraria as convenções do framework e dificultaria a manutenção |
 | Escritor mínimo de PDF próprio (`GeradorPdfCurriculo`) | 24 candidatos semeados precisam de PDF (FR-002) e os testes precisam de PDFs com texto conhecido | `dompdf` seria mais uma dependência; versionar dezenas de PDFs binários exige refazê-los a cada mudança nos dados |

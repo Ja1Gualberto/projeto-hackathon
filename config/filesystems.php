@@ -30,6 +30,14 @@ return [
 
     'disks' => [
 
+        'curriculos' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/curriculos'),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => false,
+        ],
+
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),

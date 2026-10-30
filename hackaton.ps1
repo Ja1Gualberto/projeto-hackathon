@@ -25,6 +25,7 @@ $Commands = [ordered]@{
     pint = 'Executa vendor/bin/pint <args> no container'
     check = 'Formata o PHP com Pint no container'
     setup = 'Compila, inicia o ambiente e gera a APP_KEY se faltar'
+    demo = 'Prepara o ambiente de demonstracao do zero (setup + migrate:fresh --seed)'
     shell = 'Abre um Bash no container da aplicacao'
     exec = 'Executa um comando arbitrario no container'
     help = 'Mostra esta ajuda'
@@ -113,6 +114,26 @@ function Invoke-InContainer {
     Invoke-Compose (@('exec') + $ttyArguments + @($Service) + $ContainerArguments)
 }
 
+function Invoke-Setup {
+    param([string[]]$CommandArguments)
+
+    Invoke-Development $CommandArguments
+
+    if (-not (Select-String -LiteralPath (Join-Path $ProjectDirectory '.env') -Pattern '^APP_KEY=[''"]?[^''"\s#]+' -Quiet)) {
+        Invoke-InContainer @('php', 'artisan', 'key:generate', '--no-interaction')
+    }
+
+    Write-Info 'Ambiente configurado. Execute .\hackaton.ps1 artisan migrate --no-interaction quando necessario.'
+}
+
+function Invoke-Demo {
+    param([string[]]$CommandArguments)
+
+    Invoke-Setup $CommandArguments
+    Invoke-InContainer @('php', 'artisan', 'migrate:fresh', '--seed', '--force', '--no-interaction')
+    Write-Info 'Demonstracao pronta. Acesse com recrutador@setic.demo / demo1234.'
+}
+
 function Show-Help {
     Write-Output ''
     Write-Output 'Projeto Hackathon - Laravel + Docker Compose'
@@ -186,15 +207,8 @@ try {
 
             Invoke-InContainer $commandArguments
         }
-        'setup' {
-            Invoke-Development $commandArguments
-
-            if (-not (Select-String -LiteralPath (Join-Path $ProjectDirectory '.env') -Pattern '^APP_KEY=[''"]?[^''"\s#]+' -Quiet)) {
-                Invoke-InContainer @('php', 'artisan', 'key:generate', '--no-interaction')
-            }
-
-            Write-Info 'Ambiente configurado. Execute .\hackaton.ps1 artisan migrate --no-interaction quando necessario.'
-        }
+        'setup' { Invoke-Setup $commandArguments }
+        'demo' { Invoke-Demo $commandArguments }
     }
 } catch {
     Write-Info $_.Exception.Message

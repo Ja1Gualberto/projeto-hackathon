@@ -3,6 +3,11 @@
 .env
 .env.backup
 .env.production
+.env.*
+!.env.example
+!.env.testing
+*.tmp
+*.swp
 .phpactor.json
 .phpunit.result.cache
 /.codex
@@ -14,6 +19,9 @@
 /.zed
 /auth.json
 /node_modules
+/dist
+/build
+/coverage
 /public/build
 /public/fonts-manifest.dev.json
 /public/hot

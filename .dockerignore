@@ -5,10 +5,16 @@
 .env
 .env.*
 !.env.example
+!.env.testing
+Dockerfile*
+.dockerignore
 .mcp.json
 opencode.json
 auth.json
 node_modules
+coverage
+dist
+build
 vendor
 public/build
 public/hot
@@ -24,5 +30,9 @@ storage/framework/testing/*
 storage/app/**
 database/*.sqlite*
 *.log
+*.tmp
+*.swp
+.DS_Store
+Thumbs.db
 .phpunit.result.cache
 .phpunit.cache

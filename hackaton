@@ -27,6 +27,7 @@ COMMANDS=(
     "pint|Executa vendor/bin/pint <args> no container"
     "check|Formata o PHP com Pint no container"
     "setup|Compila, inicia o ambiente e gera a APP_KEY se faltar"
+    "demo|Prepara o ambiente de demonstração do zero (setup + migrate:fresh --seed)"
     "shell|Abre um Bash no container da aplicação"
     "exec|Executa um comando arbitrário: ./hackaton exec <cmd> [args]"
     "help|Mostra esta ajuda"
@@ -163,6 +164,12 @@ cmd_setup() {
         cmd_artisan key:generate --no-interaction
     fi
     info "Ambiente configurado. Execute ./hackaton artisan migrate --no-interaction quando necessário."
+}
+
+cmd_demo() {
+    cmd_setup "$@"
+    cmd_artisan migrate:fresh --seed --force --no-interaction
+    info "Demonstração pronta. Acesse com recrutador@setic.demo / demo1234."
 }
 
 main() {
