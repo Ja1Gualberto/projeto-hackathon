@@ -11,14 +11,14 @@ formato **Decisão / Racional / Alternativas consideradas**. Nenhum item permane
 ## R1. Arquitetura da interface
 
 - **Decisão**: aplicação monolítica Laravel renderizada no servidor com Blade + Tailwind CSS v4
-  (Vite), formulários HTML tradicionais e um `resources/js/app.js` pequeno, em JavaScript puro,
-  para melhorias progressivas (autoenvio de filtros, filtro de chips, arrastar e soltar no kanban,
-  `<dialog>` de confirmação).
+  (Vite), formulários HTML funcionais sem JavaScript e módulos em JavaScript puro. Conforme
+  solicitação de 2026-10-31, AJAX via `fetch` passa a ser uma melhoria progressiva obrigatória
+  nas interações de FR-038–FR-042, entregue em cada fase, não apenas no polimento (ver R21).
 - **Racional**: é o stack já instalado e exigido pela constituição; não adiciona dependências;
   funciona offline; cada tela é testável com testes de feature HTTP.
 - **Alternativas consideradas**: Livewire/Inertia/Vue (novas dependências e curva de
   aprendizado no prazo de hackathon); Alpine.js (conveniente, mas é dependência nova para ganho
-  pequeno — `<dialog>` nativo e ~150 linhas de JS cobrem o necessário).
+  pequeno). A estimativa inicial de ~150 linhas de JS não limita o novo escopo AJAX.
 
 ## R2. Framework de testes
 
@@ -50,7 +50,7 @@ formato **Decisão / Racional / Alternativas consideradas**. Nenhum item permane
 
 ## R4. Extração estruturada (regras + catálogo)
 
-- **Decisão**: `ExtratorCurriculo::extrair(string $texto): DadosExtraidos`, determinístico, em
+- **Decisão**: `ExtratorCurriculo::extrair(string $texto): DadosExtraidosDTO`, determinístico, em
   etapas:
   1. **Normalização**: cópia em minúsculas e sem acentos (`Str::ascii`) para casamento; o texto
      original é mantido para exibição.
@@ -108,7 +108,7 @@ formato **Decisão / Racional / Alternativas consideradas**. Nenhum item permane
 ## R7. Cálculo de aderência, desempate e níveis de idioma
 
 - **Decisão**: `CalculadoraAderencia` (classe pura, sem banco) recebe os requisitos da vaga
-  (competência + peso) e o conjunto de competências do candidato e devolve `ResultadoAderencia`
+  (competência + peso) e o conjunto de competências do candidato e devolve `ResultadoAderenciaDTO`
   com `percentual`, `pesoAtendido`, `pesoTotal`, `pesoEssencialAtendido`, `atendidas[]` (com
   origem) e `naoIdentificadas[]` (com peso).
   - Fórmula (FR-017): `round(Σ pesos atendidos ÷ Σ pesos da vaga × 100)`, arredondamento
@@ -150,7 +150,7 @@ formato **Decisão / Racional / Alternativas consideradas**. Nenhum item permane
 - **Decisão**:
   - O contexto da vaga usa rotas pelo **código** (`/vagas/{vaga}/candidatos/{candidato:codigo}`),
     nunca pelo id; as telas de triagem não contêm links para `/candidatos/{id}`.
-  - `VisibilidadeCandidatoService::perfilNaVaga(Vaga, Candidato): PerfilNaVaga` monta um DTO
+  - `VisibilidadeCandidatoService::perfilNaVaga(Vaga, Candidato): PerfilNaVagaDTO` monta um DTO
     somente leitura. Em `triagem`, os campos de identidade, contato, idade, links, PDF e
     anotações ficam **nulos** — a view não recebe o dado, então não há como "vazar" por descuido
     de template. A matriz completa está em [contracts/visibilidade-por-contexto.md](./contracts/visibilidade-por-contexto.md).
@@ -193,9 +193,9 @@ formato **Decisão / Racional / Alternativas consideradas**. Nenhum item permane
 ## R12. Kanban
 
 - **Decisão**: três colunas fixas; a movimentação principal é por **botão** em cada card
-  (formulário `PATCH …/etapa`), que funciona sem JavaScript e é testável. Arrastar e soltar com
-  HTML5 Drag and Drop em JS puro, enviando o mesmo formulário, é melhoria progressiva de
-  polimento.
+  (formulário `PATCH …/etapa`), que funciona sem JavaScript e é testável. Com JavaScript,
+  o botão envia via AJAX e substitui o quadro ou o perfil pelo HTML autorizado retornado pelo
+  servidor. Arrastar e soltar usa o mesmo caminho de envio e permanece polimento opcional.
 - **Racional**: a reunião deixou em aberto se arrastar e soltar é necessário; o botão garante a
   demonstração e o drag-and-drop dá o efeito visual se houver tempo.
 - **Alternativas consideradas**: biblioteca de kanban (dependência para algo simples).
@@ -204,7 +204,7 @@ formato **Decisão / Racional / Alternativas consideradas**. Nenhum item permane
 
 - **Decisão**:
   - Contrato `App\Services\Energia\AnalisadorEnergia` com
-    `analisar(string $textoAnonimizado): ?SugestaoEnergia` (retorna `null` quando indisponível).
+    `analisar(string $textoAnonimizado): ?SugestaoEnergiaDTO` (retorna `null` quando indisponível).
   - Implementações: `ClaudeAnalisadorEnergia`, usando o **SDK oficial `anthropic-ai/sdk`** e a
     Messages API com saída estruturada (`outputConfig` com `json_schema`), e
     `AnalisadorEnergiaIndisponivel`, usada quando a IA está desligada ou sem chave. O vínculo fica
@@ -342,3 +342,42 @@ formato **Decisão / Racional / Alternativas consideradas**. Nenhum item permane
   contexto (R9) fica em um só lugar. No Docker, o volume `app-storage` já persiste o diretório.
 - **Alternativas consideradas**: disco `public` (exporia currículos); disco `local` padrão com
   `serve => true` (expõe rota de arquivos que não precisamos).
+
+## R21. AJAX progressivo por fase (decisão de 2026-10-31)
+
+- **Decisão**: usar `fetch`, `FormData`, `URLSearchParams`, `AbortController` e History API,
+  sem dependências novas, SPA, polling ou WebSockets. `resources/js/modulos/ajax.js` concentra
+  transporte e tratamento de respostas; `formularios.js` integra formulários marcados;
+  `busca.js` trata consulta/histórico; `kanban.js` reutiliza o transporte nas movimentações.
+  Eventos são delegados para continuar funcionando após substituir HTML.
+  - As mesmas rotas web autenticadas negociam HTML completo (navegação tradicional) ou JSON
+    interno com `Accept: application/json`. O JSON de sucesso contém `message`, `fragments`
+    (mapa de regiões conhecidas para HTML Blade) e `redirect` opcional para a próxima tela.
+    Não serializar models nem aceitar nomes de views/seletores arbitrários do cliente.
+  - Form Requests continuam validando; falha retorna 422 com `message` e `errors`. Sessão
+    expirada retorna 401, proteção de requisição 419/403, indisponibilidade de IA 503.
+    O navegador mantém os dados, apresenta erro acessível e nunca insere uma página de login
+    ou erro como se fosse fragmento. O contrato detalhado está em `contracts/rotas-web.md`.
+  - Filtros têm debounce de 400 ms, cancelamento da leitura anterior e controle de sequência
+    desde a alteração do filtro, para descartar respostas obsoletas mesmo durante o debounce.
+    URL e resultados só são confirmados juntos; `popstate` restaura filtros e consulta.
+  - Escritas bloqueiam envio duplicado na região afetada; não há atualização otimista nem
+    repetição automática após falha de rede. Reconciliar por GET antes de tentar novamente.
+    Alterações de etapa substituem também identidade, ações e histórico no perfil aberto,
+    evitando manter dados revelados no DOM após retorno à triagem.
+  - Importação, confirmação, criação/edição e exclusão podem navegar após sucesso por um
+    `redirect` de mesma origem gerado pelo servidor. Incluir competência durante a revisão
+    atualiza apenas o catálogo e preserva os dados ainda não salvos e as seleções.
+  - Sem JavaScript, manter PRG, `@csrf`, method spoofing, botões e links reais. Offline
+    significa sem internet, mantendo o servidor local acessível; AJAX não exige serviço externo.
+- **Racional**: reduz interrupções na busca e nas ações repetidas do pitch, reaproveita Blade,
+  Services e Repositories, e mantém validação e anonimização no servidor. Não altera entidades,
+  migrations ou regras de negócio. A entrega começa pelo complemento das Phases 2 e 3.
+- **Alternativas consideradas**: recarregar todas as telas (perde foco/contexto); JSON com
+  entidades e templates duplicados no navegador (aumenta manutenção e risco de vazamento);
+  framework reativo ou cliente HTTP adicional (dependência desnecessária); converter toda a
+  navegação em SPA ou adicionar atualização automática em segundo plano (fora do escopo).
+- **Verificação técnica**: documentação do Laravel 13 sobre respostas JSON, validação 422 e
+  proteção CSRF consultada; versão instalada confirmada como 13.39.0 nos metadados do Composer
+  (`composer` indisponível no host). Testes HTTP validam o contrato; testes Node e cenários
+  manuais validam ordenação de respostas, foco, histórico, falhas e funcionamento sem JavaScript.

@@ -390,6 +390,28 @@ justificativa curta; desligar a IA e verificar que o restante do sistema continu
   (servidores e estagiários de áreas variadas), 3 vagas de áreas distintas e PDFs de exemplo
   para o envio ao vivo.
 
+### Usabilidade transversal — atualização solicitada em 2026-10-31
+
+Estes requisitos refinam a interação das histórias existentes, sem criar novos casos de uso:
+
+- **FR-038**: Com JavaScript disponível, busca, filtros, remoção de filtros e paginação do banco
+  MUST atualizar resultados e contagem sem recarregar a página, preservando foco e digitação.
+  A URL MUST representar os filtros e a página; voltar, avançar e abrir o endereço diretamente
+  MUST reproduzir a busca. Somente a resposta da consulta mais recente pode ser aplicada.
+- **FR-039**: Movimentações no kanban, registro de anotações, inclusão de competências durante
+  a revisão, alteração de status e análise/ajuste de energia MUST atualizar as regiões afetadas
+  sem recarregar a página. A interface MUST refletir apenas alterações confirmadas pelo servidor.
+- **FR-040**: Envio/revisão de currículo, cadastro/edição de vaga e correção de candidato MUST
+  apresentar erros de validação sem perder os dados preenchidos; com JavaScript, o envio ocorre
+  sem recarregamento em caso de erro. Sucesso pode navegar para a próxima tela do fluxo.
+- **FR-041**: Toda ação assíncrona MUST informar carregamento, sucesso ou erro em português,
+  impedir duplo envio enquanto pendente e preservar entradas em caso de falha. Falha de rede
+  após uma escrita MUST NOT provocar reenvio automático, pois a operação pode ter sido concluída.
+- **FR-042**: Sem JavaScript, formulários, filtros, paginação e botões de movimentação MUST
+  continuar funcionais por navegação tradicional. Respostas parciais MUST respeitar a mesma
+  autenticação, validação e visibilidade por contexto das páginas completas, inclusive ao
+  devolver um candidato à triagem. Exclusão definitiva continua exigindo confirmação explícita.
+
 ### Key Entities *(include if feature involves data)*
 
 - **Candidato**: pessoa no banco de talentos. Código anônimo estável, tipo (servidor/estagiário),
@@ -436,6 +458,12 @@ justificativa curta; desligar a IA e verificar que o restante do sistema continu
   3 cliques.
 - **SC-009**: Uma pessoa que nunca usou o sistema identifica corretamente, só olhando a tela, se
   um candidato é servidor ou estagiário e por que recebeu determinado percentual.
+- **SC-010**: No cenário A com JavaScript, alterar filtros, digitar a busca e paginar não gera
+  navegação de documento nem perda de foco; contagem, cards e URL correspondem à última consulta,
+  inclusive sob respostas fora de ordem e ao usar voltar/avançar.
+- **SC-011**: Nos cenários B–G com JavaScript, ações locais atualizam somente as regiões
+  previstas; erros preservam o preenchimento e apresentam feedback acessível. Com JavaScript
+  desativado, os mesmos fluxos continuam concluíveis pelos formulários e links tradicionais.
 
 ## Assumptions
 

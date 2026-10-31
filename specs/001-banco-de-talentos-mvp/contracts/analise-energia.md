@@ -5,11 +5,14 @@ Decisão em [research R13](../research.md#r13-padrão-de-energia-com-ia-históri
 
 ## Interface interna
 
+A interface fica em `app/Services/Energia/AnalisadorEnergia.php`; o DTO de retorno fica em
+`app/DTOs/SugestaoEnergiaDTO.php`.
+
 ```text
 interface AnalisadorEnergia
-    analisar(string $textoAnonimizado): ?SugestaoEnergia   // null = análise indisponível
+    analisar(string $textoAnonimizado): ?SugestaoEnergiaDTO   // null = análise indisponível
 
-final readonly class SugestaoEnergia
+final readonly class SugestaoEnergiaDTO
     int $dinamicoAnalitico       // 1 = dinâmico … 5 = analítico
     int $individualEquipe        // 1 = individual … 5 = equipe
     int $execucaoPlanejamento    // 1 = execução … 5 = planejamento

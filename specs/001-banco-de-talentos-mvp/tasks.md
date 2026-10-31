@@ -18,6 +18,12 @@ da história e confirme que ele falha.
 **Organization**: tarefas agrupadas por história de usuário, para que cada uma possa ser
 implementada, testada e demonstrada de forma independente.
 
+**Revisão AJAX — 2026-10-31**: T001–T148 e suas marcações foram preservadas. T149–T168
+acrescentam trabalho **pendente** nas Phases 2–10; os IDs novos seguem a ordem de execução,
+sem renumerar o histórico. As descrições anteriores de redirecionamento continuam válidas
+para o modo tradicional; as novas integrações acrescentam o modo JSON do contrato de rotas.
+Executar T149–T154 antes de avançar às histórias ainda não implementadas.
+
 ## Regras para quem for implementar (pessoa ou IA)
 
 - **Nunca** leia, crie, altere ou exclua o arquivo `.env`, nem rode comandos que façam isso
@@ -32,11 +38,15 @@ implementada, testada e demonstrada de forma independente.
   `app/Repositories/Interfaces/{Entidade}RepositoryInterface.php`, uma por repository;
   implementações em `app/Repositories/{Entidade}Repository.php`, sem `Eloquent`.
   Operações de candidato em `app/Services/CandidatoService.php`. DTOs em `app/DTOs/`, com
-  sufixo `DTO` (ex.: `FiltroCandidatosDTO`). Esta convenção substitui os caminhos/nomes antigos
-  nas descrições originais abaixo; não elimina a validação em Form Requests.
+  sufixo `DTO` (ex.: `FiltroCandidatosDTO`), inclusive nas próximas fases. As descrições abaixo
+  seguem esta convenção; a validação continua em Form Requests. Services dependem das interfaces,
+  não das implementações dos repositories.
 - PHP: chaves em todas as estruturas de controle, tipos de retorno explícitos, promoção de
   propriedades no construtor, chaves de enum em TitleCase, PHPDoc com *array shapes*.
 - Interface e mensagens em **português do Brasil**.
+- AJAX via `fetch` nativo, sem dependência nova, conforme FR-038–FR-042, research R21 e
+  `contracts/rotas-web.md`. Manter `web`/`auth`, CSRF, Form Requests, DTOs e fallback HTML.
+  Não marcar tarefa AJAX como pronta só porque o formulário tradicional funciona.
 - Ao terminar cada fase, rode `vendor/bin/pint --dirty --format agent` e `php artisan test`.
 - No Docker, o código é **copiado** para a imagem: Composer e Pint rodados no container não
   alteram os arquivos do host. Rode `composer require` no host (PHP 8.5 + Composer 2) ou com
@@ -72,10 +82,19 @@ inteira roda e as duas pessoas voltam a partir do `main` atualizado.
 | Rodada | Trilha A | Trilha B | Sincronização |
 |---|---|---|---|
 | **R0 — Fundação** | Esquema e backend base: T013–T034, T041, T043, T044 | Design system e telas base: T035–T040, T042 | **S0**: login, layout e `migrate:fresh --seed` funcionando |
-| **R1 — P1** | **US1** busca e painel: T045–T062. Fazer **primeiro** T048–T051 (repositories) e enviar ao `main` cedo | **US2** importação de PDF: T063–T079. Começar por T063–T066, T070–T072 e T076, que não dependem da trilha A; T067–T069 usam os repositories de T048/T050 | **S1**: cenários A e B do quickstart |
+| **R1 — P1** | **US1** busca e painel: T045–T062. Fazer **primeiro** T048–T052 (DTO, repositories e `CandidatoService`) e enviar ao `main` cedo | **US2** importação de PDF: T063–T079. Começar por T063–T066, T070–T072 e T076, que não dependem da trilha A; T067–T069 usam os repositories de T048/T050 e `CandidatoService` de T052 | **S1**: cenários A e B do quickstart |
 | **R2 — P2 + LGPD** | **US3** vagas e ranking: T080–T095 | **US6** LGPD: T122–T129. Preparação da US4: T099, T100 e os testes T096–T098, escritos contra os contratos e falhando até a trilha A implementar | **S2**: cenários C e F |
 | **R3 — P2 + P3** | **US4** kanban e triagem anônima: T101–T112, fazendo os testes T096–T098 passarem | **US5** pelo banco: T113–T117 e T120 (só a inclusão em `_secao-anotacoes`; os casos de T113 pelo contexto da vaga passam só depois da R4). **US7** sem tocar em ranking ou cards: T130–T139 e T141 | **S3**: cenários D e E (parte do banco) e G (parte do perfil) |
 | **R4 — Fechamento** | **US5** pela vaga: T118, T119 (só o bloco de `routes/vagas.php`), a inclusão dos *partials* de `anotacoes/` em `participacoes/show` (parte de T120) e T121; depois T146–T147 | **US7** no ranking: T140; depois T142–T145 | **S4**: T148 juntos (ensaio online e offline) |
+
+**Complemento AJAX às rodadas** (incluído nos mesmos checkpoints, não adiado para R4):
+
+| Rodada | Trilha A | Trilha B | Ordem / gate |
+|---|---|---|---|
+| Retomada de R0/R1 | US1: T152–T154 | Fundação: T149–T151; depois US2: T155–T156 | T149–T151 compartilhadas antes de qualquer integração; T149–T154 antes de avançar às fases seguintes |
+| R2 | US3: T157–T158 | US6: T163–T164 | Ambas reutilizam transporte pronto e validam contrato HTML/JSON |
+| R3 | US4: T159–T160 | US5 pelo banco: T161–T162 (parte do banco) | Alterações no perfil da vaga só depois de S3 |
+| R4 | US5 pela vaga: completar T161–T162; segurança: T167 | US7: T165–T166 depois de T140; validação: T168 | T167/T168 antes do ensaio T148; US7 pode ser cortada junto com sua integração |
 
 **Cronograma**: R0 no sábado 31/10 de manhã · R1 no sábado 31/10, tarde e noite · R2 no
 domingo 01/11 de manhã · R3 no domingo 01/11, tarde e noite · R4 na segunda 02/11 ·
@@ -89,11 +108,12 @@ Cada arquivo tem um dono. O outro só edita com combinação prévia, e de forma
 | Área | Trilha A | Trilha B |
 |---|---|---|
 | Banco e domínio | `app/Enums/*`, `database/migrations/*`, `app/Models/*`, `database/factories/*`, `database/seeders/*` (exceto `curriculos/`) | `database/seeders/curriculos/*` (T079) |
-| Repositories | `CandidatoRepository`, `CompetenciaRepository`, `VagaRepository`, `ParticipacaoRepository` | `AnotacaoRepository` |
-| Services | `Busca/`, `Painel/`, `Aderencia/`, `Selecao/SelecaoService`, `Selecao/VisibilidadeCandidatoService` | `Curriculo/`, `Lgpd/`, `Anotacoes/`, `Energia/`, `Selecao/LimpadorTexto`, `Selecao/PerfilNaVaga` |
+| Repositories (e suas interfaces em `Repositories/Interfaces/`) | `CandidatoRepository`, `CompetenciaRepository`, `PainelRepository`, `VagaRepository`, `ParticipacaoRepository` | `AnotacaoRepository` |
+| DTOs (`app/DTOs/`) | `FiltroCandidatosDTO`, `ResultadoAderenciaDTO`, `ItemRankingDTO` | `ResultadoLeituraDTO`, `DadosExtraidosDTO`, `PerfilNaVagaDTO`, `SugestaoEnergiaDTO` |
+| Services | `CandidatoService`, `PainelService`, `Aderencia/`, `Selecao/SelecaoService`, `Selecao/VisibilidadeCandidatoService` | `Curriculo/`, `Lgpd/`, `Anotacoes/`, `Energia/`, `Selecao/LimpadorTexto` |
 | Controllers e requests | Painel, Candidato (`index`/`show`), Curriculo, Vaga, VagaStatus, Participacao* (exceto Anotacao) e os requests deles | Importacao, ConfirmacaoImportacao, Competencia, Anotacao, ParticipacaoAnotacao, CandidatoStatus, PerfilEnergia, `CandidatoController@edit/update/destroy` (US6) e os requests deles |
 | Views | `painel/`, `candidatos/index`, `candidatos/show`, `candidatos/partials/_card`, `vagas/*` (exceto `_selo-energia` e o bloco de energia de `_formulario`), `participacoes/show` | `layouts/`, `components/*`, `auth/`, `errors/`, `importacoes/*`, `candidatos/partials/_formulario`, `candidatos/edit`, `candidatos/partials/_secao-*`, `anotacoes/*`, `vagas/partials/_selo-energia` |
-| Front-end | `resources/js/modulos/kanban.js` | `resources/css/app.css`, `resources/js/app.js`, `resources/js/modulos/formularios.js`, `resources/js/modulos/chips.js` |
+| Front-end | `resources/js/modulos/kanban.js`, `resources/js/modulos/busca.js`, `tests/js/busca.test.js` | `resources/css/app.css`, `resources/js/app.js`, `resources/js/modulos/ajax.js`, `resources/js/modulos/formularios.js`, `resources/js/modulos/chips.js`, `tests/js/ajax.test.js` |
 | Rotas | `routes/web.php`; em `routes/candidatos.php` e `routes/vagas.php`, os blocos `// US1`, `// US3` e `// US4` | Nos mesmos arquivos, os blocos `// US2`, `// US5`, `// US6` e `// US7` |
 | Testes | testes de US1, US3 e US4 (exceto T096–T098) | testes de US2, US5, US6 e US7 e T096–T098 |
 
@@ -105,16 +125,26 @@ Cada arquivo tem um dono. O outro só edita com combinação prévia, e de forma
 **Edições cruzadas já previstas** (feitas pela trilha indicada, depois do *sync* anterior,
 quando o dono já terminou aquele arquivo):
 
-- T129 (B) mexe em `EloquentCandidatoRepository`, `PainelService`, `candidatos/index` e `_card`, da US1 (A).
-- T139 (B) mexe em `SalvarVagaRequest`, `EloquentVagaRepository` e no bloco de energia de `vagas/partials/_formulario`, da US3 (A).
+- T129 (B) mexe em `CandidatoRepositoryInterface`, `CandidatoRepository`, `CandidatoService`, `PainelService`, `candidatos/index` e `_card`, da US1 (A).
+- T139 (B) mexe em `SalvarVagaRequest`, `VagaRepository` e no bloco de energia de `vagas/partials/_formulario`, da US3 (A).
 - T140 (B) mexe em `RankingVagaService`, da US3 (A), e só pode começar depois de S3.
+- T150 (B) registra previamente o módulo `busca.js` em `app.js`; T154 (A) preenche esse módulo
+  após o sync da fundação. APIs de `ajax.js`/`formularios.js` ficam estáveis para as duas trilhas.
+- T162 (B) extrai `candidatos/partials/_competencias.blade.php` e inclui no perfil do banco
+  após T061; a parte em `participacoes/show` e `participacoes/partials/_perfil` ocorre após S3.
+- T164 (B) ajusta a região de situação no perfil do banco após T061, preservando os includes
+  de anotações/energia. T166 (B) não altera o perfil da vaga antes de S3 e não usa endpoints
+  do banco para carregar identidade no contexto de triagem.
+- T167 (A) usa `tests/Feature/AjaxSegurancaTest.php`; T168 (B) usa os testes JS existentes e
+  o quickstart após estabilizar os módulos. Mudanças em arquivos da outra trilha são combinadas.
 
 ### Combinados para não travar um ao outro
 
-1. **Contrato antes de código**: quem é dono de uma interface usada pela outra trilha
-   (repositories em T048/T050, `PerfilNaVaga` em T100, `LimpadorTexto` em T099) cria a
-   interface com as assinaturas desta lista e envia ao `main` **logo no começo** da rodada; a
-   implementação vem depois. Enquanto isso, a outra trilha programa contra a interface.
+1. **Contrato antes de código**: quem é dono de um componente usado pela outra trilha
+   (repositories em T048/T050, `CandidatoService` em T052, `PerfilNaVagaDTO` em T100,
+   `LimpadorTexto` em T099) compartilha o contrato com as assinaturas desta lista **logo no
+   começo** da rodada. Para repositories, cria a interface em `Repositories/Interfaces/` e
+   envia ao `main` antes da implementação; para DTOs, compartilha a classe em `app/DTOs/`.
 2. **Sem novas migrations depois da R0**: todo o esquema está em T015–T023. Se faltar uma
    coluna, a trilha A cria a migration e avisa antes.
 3. **Links para rotas que ainda não existem**: no layout e nas telas, use
@@ -136,6 +166,10 @@ specs/001-banco-de-talentos-mvp/tasks.md. Siga a tabela "Dono de cada arquivo": 
 arquivos da Trilha B. Comece por T048–T051. Pare ao fim da rodada e não marque tarefas de
 outras rodadas.
 ```
+
+**Ao usar os exemplos acima após a revisão:** acrescente explicitamente as tarefas AJAX da
+rodada (US1: T152–T154; US2: T155–T156), após T149–T151. Os intervalos antigos sozinhos não
+entregam o novo checkpoint de usabilidade.
 
 ```text
 /speckit-implement Implemente SOMENTE as tarefas T063–T079 (Trilha B, Rodada R1) de
@@ -230,8 +264,18 @@ migration entre histórias.
 - [X] T043 Criar `routes/candidatos.php` e `routes/vagas.php` (só com `<?php` e `use Illuminate\Support\Facades\Route;`) e reescrever `routes/web.php`, incluindo os dois arquivos com `require` **dentro** do grupo `auth`. Cada história adiciona suas rotas no arquivo do módulo, em um bloco com comentário próprio (`// USn — ...`), para as trilhas não editarem as mesmas linhas. Em `routes/web.php`: grupo `guest` com `GET /login` (`login`) e `POST /login` (`login.store`, middleware `throttle:5,1`); grupo `auth` com `POST /logout` (`logout`) e `GET /` (`painel`, temporariamente `Route::view('/', 'painel.index')` com `resources/views/painel/index.blade.php` provisória, substituída em T057). Remover a rota `welcome`
 - [X] T044 Criar `tests/Feature/AutenticacaoTest.php`: visitante em `/` é redirecionado para `/login`; login válido do usuário da factory redireciona para `painel`; login inválido volta com erro e continua visitante; logout encerra a sessão
 
+### Complemento pendente — fundação AJAX (FR-041/FR-042)
+
+- [ ] T149 Criar `tests/js/ajax.test.js` com o runner nativo do Node e mocks de `fetch`/DOM mínimos, sem dependências: resposta JSON válida, 422 com erros por campo, 401/419/403/404/413/503, rede e HTML inesperado; nenhuma repetição automática de escrita; controles liberados após falha; bloqueio de envio duplicado; recusa de `redirect` de outra origem. Escrever antes de T150 e executar com `node --test tests/js/ajax.test.js`
+- [ ] T150 Criar `resources/js/modulos/ajax.js` para `fetch` de mesma origem e contrato de `contracts/rotas-web.md`; integrar em `resources/js/modulos/formularios.js` por `data-ajax`, com delegação de eventos, serialização antes de bloquear controles, `_token`/`_method`, erros locais, confirmação, loading e proteção contra duplo envio. Não reenviar escritas automaticamente nem aplicar atualização otimista. Preservar submit tradicional nos formulários não marcados/sem suporte; impedir que `data-autosubmit` dispare um segundo envio. Em `resources/js/app.js`, registrar também `./modulos/busca.js`, criado como placeholder para T154. Depende de T149
+- [ ] T151 Ajustar `bootstrap/app.php` para erros JSON controlados quando `Accept: application/json` (401, 403, 404, 419, 413 e 503), sem alterar o comportamento HTML já implementado, inclusive a página 413; manter o 422 padrão de Form Requests e não desabilitar proteção CSRF. Em `resources/views/layouts/app.blade.php` e `resources/views/components/campo.blade.php`, preparar região persistente de anúncios `aria-live`, resumo e erros por campo, `aria-invalid`/`aria-describedby` e foco no primeiro erro. Definir em `ajax.js` o mapa fechado de regiões do contrato; validar o envelope inteiro antes de aplicar fragmentos. Depende de T150; os testes HTTP serão acrescentados em T152 e nas histórias seguintes
+
 **Checkpoint**: `php artisan migrate:fresh --seed` roda sem erros; o login funciona e mostra o
 layout; `php artisan test` passa.
+
+**Gate adicional da revisão AJAX**: T149–T151 pendentes; concluir e compartilhar o transporte
+antes das integrações. Não refazer o esquema nem considerar as verificações históricas abaixo
+como evidência de AJAX implementado.
 
 **Notas da implementação da Phase 2 (2026-10-31):** as duas trilhas (A e B) foram feitas por uma
 pessoa só. O relatório completo está em
@@ -294,23 +338,32 @@ candidatos com todos os critérios, a contagem correta e os cards (quickstart, c
   - S12 (desenvolvimento): C#, .NET, SQL, Git, Inglês intermediário
 
   `experiencia_na_area = true` em cerca de metade (E1, E4, E7 e a maioria dos servidores). Três servidores (S6, S10, S11) com `dados_atualizados_em` há 2 anos e 2 meses (retenção pendente). `created_at` crescente na ordem da lista (desempate estável). E3 usa o e-mail `ana.lima@exemplo.com.br`, reutilizado no PDF de duplicidade (T079)
-- [X] T048 [P] [US1] Criar `app/Repositories/Contracts/CompetenciaRepository.php` e `app/Repositories/Eloquent/EloquentCompetenciaRepository.php` com: `todasAgrupadasPorCategoria(): array` (`['hard' => Collection, 'soft' => Collection]`, ordenadas por nome); `idsQueAtendem(int $competenciaId): array<int>` (o próprio id + ids do mesmo `grupo` com `nivel` ≥, para idiomas); `buscarPorIds(array $ids): Collection`
-- [X] T049 [P] [US1] Criar `app/Services/Busca/FiltroCandidatos.php` (classe `final readonly`: `array $competencias` (ids), `?TipoCandidato $tipo`, `?Area $area`, `bool $somenteComExperiencia`, `?string $busca`, `string $situacao` (`ativos` por padrão), com o construtor estático `fromArray(array $validados)`)
-- [X] T050 [US1] Criar `app/Repositories/Contracts/CandidatoRepository.php` e `app/Repositories/Eloquent/EloquentCandidatoRepository.php` com: `buscar(FiltroCandidatos $filtro, int $porPagina = 12): LengthAwarePaginator` (um `whereHas('competencias', fn ($q) => $q->whereIn('competencias.id', $idsQueAtendem))` **por** competência escolhida = semântica E; `tipo`, `area` e `experiencia_na_area`; `busca` com `like` em `nome` ou `email`; situação `ativos` → `status = ativo`; eager load de `competencias`; `orderBy('nome')`; `withQueryString()`); `contarAtivosPorTipo(): array`; `topCompetencias(int $limite = 8): Collection` (nome + total entre ativos); `encontrarPorEmailOuCpf(?string $email, ?string $cpf): ?Candidato`
-- [X] T051 [US1] Registrar `CandidatoRepository` → `EloquentCandidatoRepository` e `CompetenciaRepository` → `EloquentCompetenciaRepository` em `app/Providers/RepositoryServiceProvider.php`
-- [X] T052 [US1] Criar `app/Services/Busca/BuscaCandidatosService.php` com `buscar(FiltroCandidatos $filtro): LengthAwarePaginator`, que resolve os ids equivalentes de cada competência via `CompetenciaRepository::idsQueAtendem` e delega ao `CandidatoRepository`
-- [X] T053 [P] [US1] Criar `app/Services/Painel/PainelService.php` com `resumo(): array{totalTalentos:int, servidores:int, estagiarios:int, vagasAbertas:int, topCompetencias:Collection, retencaoPendente:int}` (`retencaoPendente` fica 0 até a US6)
-- [X] T054 [US1] Criar `app/Http/Requests/BuscarCandidatosRequest.php`: `competencias` nullable|array, `competencias.*` integer|exists:competencias,id, `tipo` nullable `Rule::enum(TipoCandidato::class)`, `area` nullable `Rule::enum(Area::class)`, `experiencia` nullable|boolean, `busca` nullable|string|max:100, `situacao` nullable|in:ativos,desativados,retencao; método `filtro(): FiltroCandidatos`
+- [X] T048 [P] [US1] Criar `app/Repositories/Interfaces/CompetenciaRepositoryInterface.php` e `app/Repositories/CompetenciaRepository.php` com: `todasAgrupadasPorCategoria(): array` (`['hard' => Collection, 'soft' => Collection]`, ordenadas por nome); `idsQueAtendem(int $competenciaId): array<int>` (o próprio id + ids do mesmo `grupo` com `nivel` ≥, para idiomas); `buscarPorIds(array $ids): Collection`
+- [X] T049 [P] [US1] Criar `app/DTOs/FiltroCandidatosDTO.php` (classe `final readonly`: `array $competencias` (ids), `?TipoCandidato $tipo`, `?Area $area`, `bool $somenteComExperiencia`, `?string $busca`, `string $situacao` (`ativos` por padrão), com o construtor estático `fromArray(array $validados)` e `comCompetenciasEquivalentes(array $equivalencias): self`)
+- [X] T050 [US1] Criar `app/Repositories/Interfaces/CandidatoRepositoryInterface.php` e `app/Repositories/CandidatoRepository.php` com: `buscar(FiltroCandidatosDTO $filtro, int $porPagina = 12): LengthAwarePaginator` (um `whereHas('competencias', fn ($q) => $q->whereIn('competencias.id', $idsQueAtendem))` **por** competência escolhida = semântica E; `tipo`, `area` e `experiencia_na_area`; `busca` com `like` em `nome` ou `email`; situação `ativos` → `status = ativo`; eager load de `competencias`; `orderBy('nome')`; `withQueryString()`); `detalhar(Candidato $candidato): Candidato`; `contarAtivosPorTipo(): array`; `topCompetencias(int $limite = 8): Collection` (nome + total entre ativos); `encontrarPorEmailOuCpf(?string $email, ?string $cpf): ?Candidato`
+- [X] T051 [US1] Registrar `CandidatoRepositoryInterface` → `CandidatoRepository` e `CompetenciaRepositoryInterface` → `CompetenciaRepository` em `app/Providers/RepositoryServiceProvider.php`
+- [X] T052 [US1] Criar `app/Services/CandidatoService.php`, dependendo de `CandidatoRepositoryInterface` e `CompetenciaRepositoryInterface`: `buscar(FiltroCandidatosDTO $filtro): LengthAwarePaginator` resolve os ids equivalentes via `CompetenciaRepositoryInterface::idsQueAtendem` e delega ao repository de candidatos; centralizar também catálogo da busca, detalhamento, consulta de currículo, contagens e consulta de duplicidade
+- [X] T053 [P] [US1] Criar `app/Services/PainelService.php` com `resumo(): array{totalTalentos:int, servidores:int, estagiarios:int, vagasAbertas:int, topCompetencias:Collection, retencaoPendente:int}` (`retencaoPendente` fica 0 até a US6), consultando candidatos via `CandidatoService` e vagas abertas via `PainelRepositoryInterface`; criar `app/Repositories/Interfaces/PainelRepositoryInterface.php` e `app/Repositories/PainelRepository.php` para essa contagem e registrar o vínculo interface → implementação no `RepositoryServiceProvider`
+- [X] T054 [US1] Criar `app/Http/Requests/BuscarCandidatosRequest.php`: `competencias` nullable|array, `competencias.*` integer|exists:competencias,id, `tipo` nullable `Rule::enum(TipoCandidato::class)`, `area` nullable `Rule::enum(Area::class)`, `experiencia` nullable|boolean, `busca` nullable|string|max:100, `situacao` nullable|in:ativos,desativados,retencao; método `filtro(): FiltroCandidatosDTO`, criado somente a partir dos dados validados
 - [X] T055 [US1] Criar `app/Http/Controllers/PainelController.php` (invokable, usa `PainelService`) e `resources/views/painel/index.blade.php` definitiva: 4 `x-cartao-estatistica` (Talentos, Servidores, Estagiários, Vagas abertas), lista "Competências mais frequentes" em barras horizontais só com CSS e atalhos para Importar currículo e Nova vaga
-- [X] T056 [US1] Criar `app/Http/Controllers/CandidatoController.php` com `index(BuscarCandidatosRequest)` (filtros, resultado paginado, catálogo agrupado para o formulário de filtros) e `show(Candidato $candidato)` (eager load de competências, anotações com autor e vaga e perfil de energia)
-- [X] T057 [US1] Criar `app/Http/Controllers/CurriculoController.php` com `show(Candidato $candidato)`: 404 se `curriculo_arquivo` for nulo ou o arquivo não existir; senão `Storage::disk('curriculos')->response($candidato->curriculo_arquivo, $candidato->curriculo_nome_original, ['Content-Type' => 'application/pdf', 'Cache-Control' => 'private, no-store'], 'inline')`
+- [X] T056 [US1] Criar `app/Http/Controllers/CandidatoController.php` com `index(BuscarCandidatosRequest)` (filtros, resultado paginado, catálogo agrupado para o formulário de filtros) e `show(Candidato $candidato)`; delegar busca, catálogo e detalhamento a `CandidatoService`, que usa o repository para o eager load de competências, anotações com autor e vaga e perfil de energia
+- [X] T057 [US1] Criar `app/Http/Controllers/CurriculoController.php` com `show(Candidato $candidato)`: consultar `CandidatoService::obterCurriculo`, que retorna `null` se `curriculo_arquivo` for nulo ou o arquivo não existir (resposta 404); senão devolver a resposta HTTP do PDF com `Content-Type: application/pdf`, `Cache-Control: private, no-store` e disposição `inline`
 - [X] T058 [US1] Em `routes/web.php`, trocar a rota provisória `/` por `PainelController` (`painel`); em `routes/candidatos.php`, no bloco `// US1 — gestão do banco`, adicionar `GET /candidatos` (`candidatos.index`), `GET /candidatos/{candidato}` (`candidatos.show`) e `GET /candidatos/{candidato}/curriculo` (`candidatos.curriculo`), conforme `contracts/rotas-web.md`. Restringir **sempre** `{candidato}` com `->whereNumber('candidato')`, para que a ordem das rotas da US2 (`/candidatos/importar`) não importe
 - [X] T059 [P] [US1] Criar `resources/views/candidatos/partials/_card.blade.php`: nome, `x-badge-tipo`, área, "Experiência na área: sim" ou "Experiência na área: não informado" (FR-007), até 5 `x-tag-competencia` e "+N"; o card inteiro leva a `candidatos.show`; **sem** o código `CAND-`
 - [X] T060 [US1] Criar `resources/views/candidatos/index.blade.php`: `x-cabecalho-pagina` com o botão "Importar currículo"; formulário GET com `data-autosubmit` contendo campo de busca por nome, selects de tipo e área, *checkbox* de experiência e a lista de competências em dois grupos (Técnicas / Comportamentais) como *chips* de *checkbox*, com um campo "filtrar competências"; título "N talentos encontrados"; grade responsiva de `_card`; paginação; `x-estado-vazio` com link "Remover filtros" para `candidatos.index`
 - [X] T061 [US1] Criar `resources/views/candidatos/show.blade.php`: cabeçalho (nome, `x-badge-tipo`, área, idade se houver, e-mail, telefone, CPF mascarado `***.***.***-NN`); seções Formação, Experiências, Competências (separadas em hard e soft, cada `x-tag-competencia` com a origem), Projetos, Links e Currículo original (botão "Abrir PDF" para `candidatos.curriculo`); listas vazias mostram "Não informado no currículo" (nunca "não possui"); as seções de outras histórias entram por `@include` de três *partials* criados agora como placeholders ("Em breve"): `resources/views/candidatos/partials/_secao-anotacoes.blade.php` (US5), `_secao-lgpd.blade.php` (US6) e `_secao-energia.blade.php` (US7). As outras histórias editam só o *partial* delas, nunca o `show.blade.php`
 - [X] T062 [US1] Em `resources/js/modulos/chips.js`, implementar o filtro de *chips*: um input com `data-filtrar-chips="#alvo"` oculta os *chips* cujo texto (sem acento, minúsculo) não contém o termo digitado
 
+### Complemento pendente — AJAX da US1
+
+- [ ] T152 [US1] Ampliar `tests/Feature/BuscaCandidatosTest.php` antes de T153: mesmos filtros/contagens/paginação em HTML e JSON; JSON 200 com `resultados-candidatos` sem layout completo e sem códigos CAND; query de paginação preservada, estado vazio, 422 em filtro inválido e 401 para visitante em JSON (HTML continua redirecionando). Criar `tests/js/busca.test.js` para debounce de 400 ms, invalidar resposta desde a edição, cancelamento de GET, descarte de respostas fora de ordem, reset de `page`, URL só confirmada com resultado, `popstate` e preservação do campo/foco. Depende de T149–T151
+- [ ] T153 [US1] Extrair contagem/cards/paginação/vazio de `resources/views/candidatos/index.blade.php` para `resources/views/candidatos/partials/_resultados.blade.php`, com região `resultados-candidatos` fora do formulário. Em `app/Http/Controllers/CandidatoController.php`, negociar JSON 200 com HTML desse partial ou página completa, usando o mesmo `CandidatoService`, filtros validados e paginação; resposta privada sem cache. Depende de T152; preservar T045–T062
+- [ ] T154 [US1] Implementar `resources/js/modulos/busca.js` e marcar o formulário/links em `resources/views/candidatos/index.blade.php` e `resources/views/candidatos/partials/_resultados.blade.php`: atualizar via AJAX ao filtrar, limpar ou paginar; texto com 400 ms e selects/checkboxes imediatos; invalidar consulta anterior antes do debounce, usar `AbortController` e sequência; manter foco/cursor e resultado anterior em falha; sincronizar URL com `replaceState` nos filtros e `pushState` na paginação, restaurando formulário/resultados em `popstate`. Manter botão Aplicar/links reais sem JS; anúncios e `aria-busy`. Depende de T153; executar os testes de T152 e cenário A/H do quickstart
+
 **Checkpoint**: cenário A do quickstart funciona; `BuscaCandidatosTest` e `PainelTest` passam.
+
+**Gate AJAX pendente**: T152–T154, SC-010 e cenário H. A implementação registrada abaixo
+comprova a busca tradicional, não a atualização parcial solicitada posteriormente.
 
 **Implementação da Phase 3 (2026-10-31):** T045–T062 implementadas, sem avançar às fases
 seguintes. Interface de catálogo institucional com Instrument Sans, tokens e componentes da
@@ -363,10 +416,10 @@ US1 (quickstart, cenário B).
 
 ### Implementation for User Story 2
 
-- [ ] T065 [P] [US2] Criar `app/Services/Curriculo/ResultadoLeitura.php` (`final readonly`: `string $situacao` (`lido`, `sem_texto` ou `corrompido`), `?string $texto`) e `app/Services/Curriculo/LeitorPdf.php` com `extrairTexto(string $caminhoAbsoluto): ResultadoLeitura`, usando `Smalot\PdfParser\Parser`: captura `\Throwable` → `corrompido`; texto com menos de `config('banco_talentos.minimo_caracteres_texto')` caracteres não brancos → `sem_texto`
-- [ ] T066 [P] [US2] Criar `app/Services/Curriculo/DadosExtraidos.php` (`final readonly`) com os campos exatos de `contracts/extracao-curriculo.md` (`nome`, `email`, `telefone`, `cpf`, `data_nascimento`, `formacoes`, `experiencias`, `projetos`, `links`, `competencias`, `sugestoes_competencias`, `area_sugerida`, `experiencia_na_area`), PHPDoc com *array shapes*, `toArray()`, `fromArray()` e `vazio()`
-- [ ] T067 [US2] Criar `app/Services/Curriculo/ExtratorCurriculo.php` com `extrair(string $texto): DadosExtraidos`, seguindo as 6 etapas de `research.md` R4 e as regras de R5: normalização com `Str::ascii` + minúsculas; regex de e-mail, telefone BR, CPF (com validação dos dígitos verificadores), data de nascimento e links; nome pela heurística da primeira linha; divisão por cabeçalhos de seção; casamento de cada nome/sinônimo do catálogo (via `CompetenciaRepository`) com fronteiras `(?<![a-z0-9])…(?![a-z0-9])` e `preg_quote`, guardando o trecho; idiomas por nível na mesma linha ("inglês" sem nível → Inglês básico); termos da seção de competências fora do catálogo → `sugestoes_competencias`; área sugerida pela área mais frequente das hard skills encontradas; `experiencia_na_area` verdadeiro quando a seção de experiência contém competência da área sugerida
-- [ ] T068 [US2] Criar `app/Services/Curriculo/ImportacaoCurriculoService.php`: `importar(UploadedFile $arquivo, TipoCandidato $tipo): string` (grava em `curriculos/tmp/{uuid}.pdf` no disco `curriculos`, chama `LeitorPdf` e `ExtratorCurriculo` e guarda na sessão `importacoes.{uuid}` = `['arquivo', 'nome_original', 'tamanho', 'tipo', 'situacao', 'texto', 'dados' => DadosExtraidos::toArray()]`, devolvendo o uuid); `obter(string $uuid): ?array`; `duplicado(?string $email, ?string $cpf): ?Candidato` (via `CandidatoRepository::encontrarPorEmailOuCpf`); `descartar(string $uuid): void`
+- [ ] T065 [P] [US2] Criar `app/DTOs/ResultadoLeituraDTO.php` (`final readonly`: `string $situacao` (`lido`, `sem_texto` ou `corrompido`), `?string $texto`) e `app/Services/Curriculo/LeitorPdf.php` com `extrairTexto(string $caminhoAbsoluto): ResultadoLeituraDTO`, usando `Smalot\PdfParser\Parser`: captura `\Throwable` → `corrompido`; texto com menos de `config('banco_talentos.minimo_caracteres_texto')` caracteres não brancos → `sem_texto`
+- [ ] T066 [P] [US2] Criar `app/DTOs/DadosExtraidosDTO.php` (`final readonly`) com os campos exatos de `contracts/extracao-curriculo.md` (`nome`, `email`, `telefone`, `cpf`, `data_nascimento`, `formacoes`, `experiencias`, `projetos`, `links`, `competencias`, `sugestoes_competencias`, `area_sugerida`, `experiencia_na_area`), PHPDoc com *array shapes*, `toArray()`, `fromArray()` e `vazio()`
+- [ ] T067 [US2] Criar `app/Services/Curriculo/ExtratorCurriculo.php` com `extrair(string $texto): DadosExtraidosDTO`, seguindo as 6 etapas de `research.md` R4 e as regras de R5: normalização com `Str::ascii` + minúsculas; regex de e-mail, telefone BR, CPF (com validação dos dígitos verificadores), data de nascimento e links; nome pela heurística da primeira linha; divisão por cabeçalhos de seção; casamento de cada nome/sinônimo do catálogo (via `CompetenciaRepositoryInterface`) com fronteiras `(?<![a-z0-9])…(?![a-z0-9])` e `preg_quote`, guardando o trecho; idiomas por nível na mesma linha ("inglês" sem nível → Inglês básico); termos da seção de competências fora do catálogo → `sugestoes_competencias`; área sugerida pela área mais frequente das hard skills encontradas; `experiencia_na_area` verdadeiro quando a seção de experiência contém competência da área sugerida
+- [ ] T068 [US2] Criar `app/Services/Curriculo/ImportacaoCurriculoService.php`: `importar(UploadedFile $arquivo, TipoCandidato $tipo): string` (grava em `curriculos/tmp/{uuid}.pdf` no disco `curriculos`, chama `LeitorPdf` e `ExtratorCurriculo` e guarda na sessão `importacoes.{uuid}` = `['arquivo', 'nome_original', 'tamanho', 'tipo', 'situacao', 'texto', 'dados' => DadosExtraidosDTO::toArray()]`, devolvendo o uuid); `obter(string $uuid): ?array`; `duplicado(?string $email, ?string $cpf): ?Candidato` (via `CandidatoService::encontrarPorEmailOuCpf`); `descartar(string $uuid): void`
 - [ ] T069 [US2] Criar `app/Services/Curriculo/CadastroCandidatoService.php` com `confirmar(array $importacao, array $dadosRevisados, User $recrutador): Candidato`, em `DB::transaction`. Modo `novo`: cria o candidato, move o PDF de `tmp/` para `{uuid}.pdf`, grava `consentimento_registrado_por` e anexa as competências (origem `curriculo` se vieram da extração, `revisao` se acrescentadas na revisão). Modo `atualizar`: sobrescreve os campos revisados do candidato existente, troca o PDF (apaga o anterior **depois do commit** com `DB::afterCommit`), mescla as competências respeitando `OrigemCompetencia::prioridade()` (nunca rebaixa) e renova `dados_atualizados_em`, mantendo `codigo`, participações e anotações. Também `atualizar(Candidato $candidato, array $dados): Candidato` para a edição manual (usado na US6)
 - [ ] T070 [P] [US2] Criar `app/Http/Requests/ImportarCurriculoRequest.php`: `arquivo` required|file|mimes:pdf|max:10240; `tipo` required `Rule::enum(TipoCandidato::class)`; mensagem personalizada "Envie um arquivo PDF de até 10 MB."
 - [ ] T071 [P] [US2] Criar `app/Http/Requests/ConfirmarImportacaoRequest.php`. No `prepareForValidation`: remover não dígitos do `cpf` e transformar os *textareas* `formacoes`, `experiencias`, `projetos` e `links` (uma linha por item) em arrays sem linhas vazias. Regras de `data-model.md`: `nome` required|string|max:150; `email` nullable|email|max:150; `telefone` nullable|string|max:30; `cpf` nullable|digits:11; `data_nascimento` nullable|date|before:today; `tipo` required enum; `area` required enum; `experiencia_na_area` boolean; `formacoes.*`, `experiencias.*` e `projetos.*` string|max:300; `links.*` url|max:300; `competencias` array, `competencias.*` integer|exists:competencias,id; `consentimento_meio` required enum `MeioConsentimento`; `consentimento_em` required|date|before_or_equal:today; `modo` required|in:novo,atualizar; `candidato_existente_id` required_if:modo,atualizar|exists:candidatos,id. Mensagem de consentimento: "Registre como e quando o candidato consentiu com o uso dos dados."
@@ -381,6 +434,11 @@ US1 (quickstart, cenário B).
 
 **Checkpoint**: cenário B do quickstart funciona; `ExtratorCurriculoTest` e
 `ImportacaoCurriculoTest` passam; a US1 continua funcionando.
+
+### AJAX da US2 — incluir no checkpoint da fase
+
+- [ ] T155 [US2] Ampliar `tests/Feature/ImportacaoCurriculoTest.php` antes de T156: upload/confirmar com `Accept: application/json` devolvem `redirect` correto após persistência; erros 422 não criam candidato; importação expirada retorna 404; `competencias.store` devolve HTML só do catálogo, sem expor a revisão inteira; nome de competência com conteúdo HTML é escapado, duplicidade retorna 422; modo HTML mantém PRG. Depende de T151 e T064
+- [ ] T156 [US2] Integrar AJAX em `app/Http/Controllers/ImportacaoCurriculoController.php`, `ConfirmacaoImportacaoController.php`, `CompetenciaController.php`, `resources/views/importacoes/create.blade.php`, `resources/views/importacoes/show.blade.php` e `resources/views/candidatos/partials/_formulario.blade.php`: envio de PDF/confirmar com `FormData`, loading, erro local e navegação só no sucesso; competência adicionada retorna `catalogo-competencias`, atualizando opções sem perder dados editados ou seleções (mesclar apenas novas opções). Manter mini-formulários fora do formulário principal, sem aninhamento; não repetir upload/confirmação após falha de rede e não reenviar ao incluir competência. Depende de T155, T073–T078 e T150; validar B/H com e sem JS
 
 ---
 
@@ -401,11 +459,11 @@ um com a explicação (quickstart, cenário C).
 
 ### Implementation for User Story 3
 
-- [ ] T083 [P] [US3] Criar `app/Services/Aderencia/ResultadoAderencia.php` (`final readonly`: `int $percentual`, `int $pesoAtendido`, `int $pesoTotal`, `int $pesoEssencialAtendido`, `array $atendidas` (lista de `{nome, peso, origem: OrigemCompetencia}`), `array $naoIdentificadas` (lista de `{nome, peso}`), método `explicacao(): string`, conforme `research.md` R7)
-- [ ] T084 [US3] Criar `app/Services/Aderencia/CalculadoraAderencia.php`, classe pura sem acesso a banco, com `calcular(Collection $requisitos, Collection $competenciasDoCandidato): ResultadoAderencia`. `$requisitos`: Competencias com `pivot->peso`. `$competenciasDoCandidato`: Competencias com `pivot->origem`. Um requisito é atendido pelo mesmo id ou, se `ehIdioma()`, por competência do mesmo `grupo` com `nivel` ≥
-- [ ] T085 [P] [US3] Criar `app/Services/Aderencia/ItemRanking.php` (`final readonly`: `string $codigo`, `TipoCandidato $tipo`, `Area $area`, `bool $experienciaNaArea`, `ResultadoAderencia $resultado`, `EtapaSelecao $etapa`, `?string $nome` (nulo, exceto quando a identidade for revelada na US4), `?int $proximidadeEnergia` (preenchido na US7)). **Não** guarda o model `Candidato` nem o id
-- [ ] T086 [US3] Criar `app/Repositories/Contracts/VagaRepository.php` e `app/Repositories/Eloquent/EloquentVagaRepository.php` (`listar(): Collection` com contagem por etapa; `criar(array $dados, array $competenciasComPeso, User $criador): Vaga`; `atualizar(Vaga $vaga, array $dados, array $competenciasComPeso): Vaga` com `sync` dos pesos; `encerrar(Vaga $vaga): void`; `candidatosElegiveis(Vaga $vaga): Collection`, com escopo `elegiveisPara`, eager load de `competencias` e ordenação por `created_at` e `id`) e registrar o vínculo em `app/Providers/RepositoryServiceProvider.php`
-- [ ] T087 [US3] Criar `app/Services/Aderencia/RankingVagaService.php` com `ranquear(Vaga $vaga): Collection<ItemRanking>`: carrega os requisitos da vaga e os elegíveis, calcula cada `ResultadoAderencia`, ordena por percentual ↓, `pesoEssencialAtendido` ↓, `created_at` ↑ e `id` ↑ e monta `ItemRanking` com `etapa = Triagem` e `nome = null`
+- [ ] T083 [P] [US3] Criar `app/DTOs/ResultadoAderenciaDTO.php` (`final readonly`: `int $percentual`, `int $pesoAtendido`, `int $pesoTotal`, `int $pesoEssencialAtendido`, `array $atendidas` (lista de `{nome, peso, origem: OrigemCompetencia}`), `array $naoIdentificadas` (lista de `{nome, peso}`), método `explicacao(): string`, conforme `research.md` R7)
+- [ ] T084 [US3] Criar `app/Services/Aderencia/CalculadoraAderencia.php`, classe pura sem acesso a banco, com `calcular(Collection $requisitos, Collection $competenciasDoCandidato): ResultadoAderenciaDTO`. `$requisitos`: Competencias com `pivot->peso`. `$competenciasDoCandidato`: Competencias com `pivot->origem`. Um requisito é atendido pelo mesmo id ou, se `ehIdioma()`, por competência do mesmo `grupo` com `nivel` ≥
+- [ ] T085 [P] [US3] Criar `app/DTOs/ItemRankingDTO.php` (`final readonly`: `string $codigo`, `TipoCandidato $tipo`, `Area $area`, `bool $experienciaNaArea`, `ResultadoAderenciaDTO $resultado`, `EtapaSelecao $etapa`, `?string $nome` (nulo, exceto quando a identidade for revelada na US4), `?int $proximidadeEnergia` (preenchido na US7)). **Não** guarda o model `Candidato` nem o id
+- [ ] T086 [US3] Criar `app/Repositories/Interfaces/VagaRepositoryInterface.php` e `app/Repositories/VagaRepository.php` (`listar(): Collection` com contagem por etapa; `criar(array $dados, array $competenciasComPeso, User $criador): Vaga`; `atualizar(Vaga $vaga, array $dados, array $competenciasComPeso): Vaga` com `sync` dos pesos; `encerrar(Vaga $vaga): void`; `candidatosElegiveis(Vaga $vaga): Collection`, com escopo `elegiveisPara`, eager load de `competencias` e ordenação por `created_at` e `id`) e registrar `VagaRepositoryInterface` → `VagaRepository` em `app/Providers/RepositoryServiceProvider.php`
+- [ ] T087 [US3] Criar `app/Services/Aderencia/RankingVagaService.php` com `ranquear(Vaga $vaga): Collection<ItemRankingDTO>`: carrega os requisitos da vaga e os elegíveis via `VagaRepositoryInterface`, calcula cada `ResultadoAderenciaDTO`, ordena por percentual ↓, `pesoEssencialAtendido` ↓, `created_at` ↑ e `id` ↑ e monta `ItemRankingDTO` com `etapa = Triagem` e `nome = null`
 - [ ] T088 [US3] Criar `app/Http/Requests/SalvarVagaRequest.php`. No `prepareForValidation`, converter `competencias[ID] = peso` (selects com opção vazia "Não usar") em uma lista `[{id, peso}]` sem itens vazios. Regras: `titulo` required|string|max:120; `area` required enum; `tipo_candidato` required enum `TipoCandidatoVaga`; `descricao` nullable|string|max:1000; `competencias` required|array|min:1; `competencias.*.id` required|distinct|exists:competencias,id; `competencias.*.peso` required|in:1,2,3. Mensagem: "Selecione ao menos uma competência para a vaga."
 - [ ] T089 [US3] Criar `app/Http/Controllers/VagaController.php` com `index`, `create`, `store` (redireciona para `vagas.show` com "Vaga criada."), `show(Vaga $vaga)` (usa `RankingVagaService`), `edit` e `update`
 - [ ] T090 [US3] Criar `app/Http/Controllers/VagaStatusController.php` com `update(Vaga $vaga)`, que encerra a vaga e volta com "Vaga encerrada. O quadro fica disponível para consulta."
@@ -417,6 +475,11 @@ um com a explicação (quickstart, cenário C).
 
 **Checkpoint**: cenário C do quickstart funciona; `CalculadoraAderenciaTest`,
 `RankingVagaTest` e `VagaTest` passam.
+
+### AJAX da US3 — incluir no checkpoint da fase
+
+- [ ] T157 [US3] Ampliar `tests/Feature/VagaTest.php` e `tests/Feature/RankingVagaTest.php` antes de T158: criar/editar em JSON com `redirect`, 422 sem escrita inválida, GET do quadro com fragmento e mesma ordenação/explicação do HTML, encerramento em JSON reflete somente consulta e sem ações; ausência de identidade na triagem também no HTML decodificado do envelope. Depende de T151 e T080–T082
+- [ ] T158 [US3] Integrar modo JSON em `app/Http/Controllers/VagaController.php` e `VagaStatusController.php`; extrair `resources/views/vagas/partials/_quadro.blade.php` de `resources/views/vagas/show.blade.php`, englobando cabeçalho/status/ações/ranking. Marcar formulários em `resources/views/vagas/create.blade.php`, `resources/views/vagas/edit.blade.php` e ação Encerrar com `data-ajax`; criar ação explícita Atualizar quadro (link GET real interceptado), sem polling. Criar/editar navega após sucesso; atualizar/encerrar substitui `quadro-vaga` via transporte comum e preserva o fallback HTML. Depende de T157 e T089–T094; validar C/H
 
 ---
 
@@ -438,22 +501,27 @@ responde 403; ao mover três candidatos para Entrevista, os nomes aparecem só n
 ### Implementation for User Story 4
 
 - [ ] T099 [P] [US4] Criar `app/Services/Selecao/LimpadorTexto.php` com `limpar(string $texto, array $termosProibidos = []): string`, que remove e-mails, telefones, CPFs (com ou sem máscara), URLs e os termos informados (os nomes do candidato, sem diferenciar maiúsculas e acentos), trocando-os por "[oculto]"
-- [ ] T100 [P] [US4] Criar `app/Services/Selecao/PerfilNaVaga.php` (`final readonly`): `string $codigo`, `bool $identidadeRevelada`, `EtapaSelecao $etapa`, `TipoCandidato $tipo`, `Area $area`, `bool $experienciaNaArea`, `array $formacoes`, `array $experiencias`, `array $projetos`, `Collection $competencias`, `ResultadoAderencia $resultado`, `int $quantidadeLinks`, `Collection $movimentacoes`; e, **nulos** quando não revelado, `?string $nome`, `?string $email`, `?string $telefone`, `?int $idade`, `?array $links`, `?Collection $anotacoes`, `bool $temCurriculo`
-- [ ] T101 [US4] Criar `app/Repositories/Contracts/ParticipacaoRepository.php` e `app/Repositories/Eloquent/EloquentParticipacaoRepository.php` (`etapasPorCandidato(Vaga $vaga): array<int, EtapaSelecao>`; `encontrar(Vaga $vaga, Candidato $candidato): ?Participacao`; `moverPara(Vaga $vaga, Candidato $candidato, EtapaSelecao $etapa, User $usuario): Participacao`, com upsert + `MovimentacaoEtapa` em transação; `historico(Vaga $vaga, Candidato $candidato): Collection`) e registrar o vínculo no `RepositoryServiceProvider`
-- [ ] T102 [US4] Criar `app/Services/Selecao/VisibilidadeCandidatoService.php`: `etapaNaVaga(Vaga $vaga, Candidato $candidato): EtapaSelecao` (sem participação → Triagem); `podeRevelar(Vaga $vaga, Candidato $candidato): bool` (`etapa->revelaIdentidade()`); `perfilNaVaga(Vaga $vaga, Candidato $candidato): PerfilNaVaga`, preenchendo identidade, contatos, idade, links e anotações **somente** quando revelado e passando formação, experiências e projetos pelo `LimpadorTexto` quando não revelado (matriz de `contracts/visibilidade-por-contexto.md`)
-- [ ] T103 [US4] Criar `app/Services/Selecao/SelecaoService.php`: `quadro(Vaga $vaga): array{triagem: Collection<ItemRanking>, entrevista: Collection<ItemRanking>, aprovado: Collection<ItemRanking>}`, usando `RankingVagaService` + `ParticipacaoRepository::etapasPorCandidato` (Triagem = elegíveis sem participação ou em `triagem`; Entrevista e Aprovado incluem desativados com participação, marcados para exibição esmaecida; `nome` preenchido só nas etapas reveladas); `moverEtapa(Vaga $vaga, Candidato $candidato, EtapaSelecao $etapa, User $usuario): void`, que lança `ValidationException` com mensagem amigável se a vaga estiver encerrada, o candidato desativado ou não elegível
+- [ ] T100 [P] [US4] Criar `app/DTOs/PerfilNaVagaDTO.php` (`final readonly`): `string $codigo`, `bool $identidadeRevelada`, `EtapaSelecao $etapa`, `TipoCandidato $tipo`, `Area $area`, `bool $experienciaNaArea`, `array $formacoes`, `array $experiencias`, `array $projetos`, `Collection $competencias`, `ResultadoAderenciaDTO $resultado`, `int $quantidadeLinks`, `Collection $movimentacoes`; e, **nulos** quando não revelado, `?string $nome`, `?string $email`, `?string $telefone`, `?int $idade`, `?array $links`, `?Collection $anotacoes`, `bool $temCurriculo`
+- [ ] T101 [US4] Criar `app/Repositories/Interfaces/ParticipacaoRepositoryInterface.php` e `app/Repositories/ParticipacaoRepository.php` (`etapasPorCandidato(Vaga $vaga): array<int, EtapaSelecao>`; `encontrar(Vaga $vaga, Candidato $candidato): ?Participacao`; `moverPara(Vaga $vaga, Candidato $candidato, EtapaSelecao $etapa, User $usuario): Participacao`, com upsert + `MovimentacaoEtapa` em transação; `historico(Vaga $vaga, Candidato $candidato): Collection`) e registrar `ParticipacaoRepositoryInterface` → `ParticipacaoRepository` no `RepositoryServiceProvider`
+- [ ] T102 [US4] Criar `app/Services/Selecao/VisibilidadeCandidatoService.php`: `etapaNaVaga(Vaga $vaga, Candidato $candidato): EtapaSelecao` (sem participação → Triagem); `podeRevelar(Vaga $vaga, Candidato $candidato): bool` (`etapa->revelaIdentidade()`); `perfilNaVaga(Vaga $vaga, Candidato $candidato): PerfilNaVagaDTO`, preenchendo identidade, contatos, idade, links e anotações **somente** quando revelado e passando formação, experiências e projetos pelo `LimpadorTexto` quando não revelado (matriz de `contracts/visibilidade-por-contexto.md`)
+- [ ] T103 [US4] Criar `app/Services/Selecao/SelecaoService.php`: `quadro(Vaga $vaga): array{triagem: Collection<ItemRankingDTO>, entrevista: Collection<ItemRankingDTO>, aprovado: Collection<ItemRankingDTO>}`, usando `RankingVagaService` + `ParticipacaoRepositoryInterface::etapasPorCandidato` (Triagem = elegíveis sem participação ou em `triagem`; Entrevista e Aprovado incluem desativados com participação, marcados para exibição esmaecida; `nome` preenchido só nas etapas reveladas); `moverEtapa(Vaga $vaga, Candidato $candidato, EtapaSelecao $etapa, User $usuario): void`, que lança `ValidationException` com mensagem amigável se a vaga estiver encerrada, o candidato desativado ou não elegível
 - [ ] T104 [US4] Criar `app/Http/Requests/MoverEtapaRequest.php` (`etapa` required `Rule::enum(EtapaSelecao::class)`)
-- [ ] T105 [US4] Criar `app/Http/Controllers/ParticipacaoController.php` com `show(Vaga $vaga, Candidato $candidato)`, que renderiza `participacoes.show` **só** com o `PerfilNaVaga` (nunca passar o model `Candidato` à view)
+- [ ] T105 [US4] Criar `app/Http/Controllers/ParticipacaoController.php` com `show(Vaga $vaga, Candidato $candidato)`, que renderiza `participacoes.show` **só** com o `PerfilNaVagaDTO` (nunca passar o model `Candidato` à view)
 - [ ] T106 [US4] Criar `app/Http/Controllers/ParticipacaoEtapaController.php` com `update(MoverEtapaRequest, Vaga $vaga, Candidato $candidato)`: chama `SelecaoService::moverEtapa` e volta para `vagas.show` com "CAND-NNNN movido para Entrevista." (ou o nome, se a etapa revelar)
 - [ ] T107 [US4] Criar `app/Http/Controllers/ParticipacaoCurriculoController.php` com `show(Vaga $vaga, Candidato $candidato)`: `abort_unless($visibilidade->podeRevelar($vaga, $candidato), 403)`; depois, a mesma resposta `inline`/`no-store` de T057
 - [ ] T108 [US4] Em `routes/vagas.php`, no bloco `// US4 — seleção`, adicionar `GET /vagas/{vaga}/candidatos/{candidato:codigo}` (`vagas.candidatos.show`), `PATCH /vagas/{vaga}/candidatos/{candidato:codigo}/etapa` (`vagas.candidatos.etapa`) e `GET /vagas/{vaga}/candidatos/{candidato:codigo}/curriculo` (`vagas.candidatos.curriculo`), **todas** com `->withoutScopedBindings()` (research R9)
 - [ ] T109 [US4] Transformar `resources/views/vagas/show.blade.php` em quadro de 3 colunas (Triagem, Entrevista, Aprovado) usando o novo `resources/views/vagas/partials/_coluna.blade.php` (título, contagem e estado vazio por coluna). Atualizar `_card-ranking.blade.php`: mostrar o nome só quando `$item->nome` não for nulo (código como texto secundário); link do card para `vagas.candidatos.show` (pelo código); botões de movimentação (Triagem → "Mover para Entrevista"; Entrevista → "Aprovar" e "Voltar para Triagem"; Aprovado → "Voltar para Entrevista") com formulário `PATCH`; `draggable="true"` e `data-codigo`; selo "Desativado" esmaecido e sem ações; vaga encerrada sem botões e com o aviso "Vaga encerrada — somente consulta"
-- [ ] T110 [US4] Criar `resources/views/participacoes/show.blade.php` a partir do `PerfilNaVaga`: em triagem, cabeçalho com `x-icone cadeado` e "Identidade protegida na triagem anônima", código, tipo, área, aderência explicada, formação, experiências, projetos, competências e "N links — visíveis a partir da entrevista"; quando revelado, também nome, contatos, idade, links, botão "Abrir PDF" (`vagas.candidatos.curriculo`) e espaço reservado para as anotações (US5); sempre o histórico de movimentações da vaga ("Movido para Entrevista por {usuário} em dd/mm/aaaa hh:mm") e os botões de movimentação
-- [ ] T111 [US4] Em `resources/js/modulos/kanban.js`, implementar arrastar e soltar (HTML5 Drag and Drop) no quadro: soltar um card numa coluna `[data-etapa]` envia o mesmo formulário `PATCH` do card com o valor da etapa de destino; sem JavaScript, os botões continuam funcionando
-- [ ] T112 [US4] Em `database/seeders/VagaSeeder.php`, mover via `ParticipacaoRepository::moverPara` (usuário do `UsuarioSeeder`) S3 e S9 para Entrevista na vaga "Analista de Dados", para o quadro semeado já mostrar candidatos revelados
+- [ ] T110 [US4] Criar `resources/views/participacoes/show.blade.php` a partir do `PerfilNaVagaDTO`: em triagem, cabeçalho com `x-icone cadeado` e "Identidade protegida na triagem anônima", código, tipo, área, aderência explicada, formação, experiências, projetos, competências e "N links — visíveis a partir da entrevista"; quando revelado, também nome, contatos, idade, links, botão "Abrir PDF" (`vagas.candidatos.curriculo`) e espaço reservado para as anotações (US5); sempre o histórico de movimentações da vaga ("Movido para Entrevista por {usuário} em dd/mm/aaaa hh:mm") e os botões de movimentação
+- [ ] T111 [US4] Em `resources/js/modulos/kanban.js`, implementar arrastar e soltar (HTML5 Drag and Drop) no quadro: soltar um card numa coluna `[data-etapa]` envia o mesmo formulário `PATCH` do card com o valor da etapa de destino pelo transporte AJAX de T160; sem JavaScript, os botões continuam funcionando. Executar depois de T160; esta melhoria continua opcional e seu corte não adia o AJAX obrigatório por botão
+- [ ] T112 [US4] Em `database/seeders/VagaSeeder.php`, mover via `ParticipacaoRepositoryInterface::moverPara` (usuário do `UsuarioSeeder`) S3 e S9 para Entrevista na vaga "Analista de Dados", para o quadro semeado já mostrar candidatos revelados
 
 **Checkpoint**: cenário D do quickstart funciona; `TriagemAnonimaTest`,
 `CurriculoProtegidoTest` e `MovimentacaoEtapaTest` passam (gates da constituição).
+
+### AJAX da US4 — incluir no checkpoint da fase
+
+- [ ] T159 [US4] Ampliar `tests/Feature/MovimentacaoEtapaTest.php` e `tests/Feature/TriagemAnonimaTest.php` antes de T160: botão AJAX persiste uma movimentação e retorna quadro/perfil conforme `contexto`; 422 para etapa/contexto inválidos, vaga encerrada, candidato desativado/inelegível; JSON e fragmentos respeitam anonimato por vaga, inclusive mensagens e retorno à triagem; não aceitar seletor/view arbitrário do cliente. Testar o candidato afetado no envelope decodificado, sem confundir identidades de outros candidatos já revelados. Depende de T151, T098 e T158
+- [ ] T160 [US4] Em `app/Http/Requests/MoverEtapaRequest.php`, validar `contexto` opcional em `quadro,perfil`; em `app/Http/Controllers/ParticipacaoEtapaController.php`, devolver JSON com `quadro-vaga` ou `perfil-na-vaga` renderizado após persistência via Services/DTOs. Extrair `resources/views/participacoes/partials/_perfil.blade.php` e incluir em `resources/views/participacoes/show.blade.php`; ajustar `resources/views/vagas/partials/_quadro.blade.php`, `_coluna.blade.php` e `_card-ranking.blade.php` para botões AJAX, estado pendente e contagens. Em `resources/js/modulos/kanban.js`, usar o transporte comum e bloquear novas ações do quadro enquanto pendente; não mover/revelar otimisticamente, substituir toda a região afetada e restaurar foco. Retorno à triagem remove também identidade/anotações do perfil, sem HTML oculto residual. Depende de T159 e T101–T110; validar D/H
 
 ---
 
@@ -472,7 +540,7 @@ outra vaga em que ele esteja revelado (quickstart, cenário E).
 
 ### Implementation for User Story 5
 
-- [ ] T114 [P] [US5] Criar `app/Repositories/Contracts/AnotacaoRepository.php` e `app/Repositories/Eloquent/EloquentAnotacaoRepository.php` (`criar(Candidato $candidato, ?Vaga $vaga, User $autor, string $texto, array $competenciasObservadas): Anotacao`; `historico(Candidato $candidato): Collection`, com autor, vaga e competências e ordem decrescente) e registrar o vínculo no `RepositoryServiceProvider`
+- [ ] T114 [P] [US5] Criar `app/Repositories/Interfaces/AnotacaoRepositoryInterface.php` e `app/Repositories/AnotacaoRepository.php` (`criar(Candidato $candidato, ?Vaga $vaga, User $autor, string $texto, array $competenciasObservadas): Anotacao`; `historico(Candidato $candidato): Collection`, com autor, vaga e competências e ordem decrescente) e registrar `AnotacaoRepositoryInterface` → `AnotacaoRepository` no `RepositoryServiceProvider`
 - [ ] T115 [US5] Criar `app/Services/Anotacoes/AnotacaoService.php` com `registrar(Candidato $candidato, ?Vaga $vaga, User $autor, string $texto, array $competenciasObservadas): Anotacao` em `DB::transaction`: cria a anotação e o pivot `anotacao_competencia` e faz o upsert em `candidato_competencia` com origem `entrevista` (promove, nunca rebaixa, via `OrigemCompetencia::prioridade()`)
 - [ ] T116 [US5] Criar `app/Http/Requests/RegistrarAnotacaoRequest.php`: `texto` required|string|max:5000; `vaga_id` nullable|exists:vagas,id; `competencias_observadas` nullable|array; `competencias_observadas.*` integer|exists:competencias,id
 - [ ] T117 [US5] Criar `app/Http/Controllers/AnotacaoController.php` com `store(RegistrarAnotacaoRequest, Candidato $candidato)` (contexto do banco; vaga opcional vinda do request), que volta com "Anotação registrada."
@@ -482,6 +550,11 @@ outra vaga em que ele esteja revelado (quickstart, cenário E).
 - [ ] T121 [US5] Em `database/seeders/VagaSeeder.php`, registrar via `AnotacaoService` uma anotação para S3 e outra para S9 na vaga "Analista de Dados" (texto fictício sobre a entrevista, competência observada "Comunicação")
 
 **Checkpoint**: cenário E do quickstart funciona; `AnotacaoEntrevistaTest` passa.
+
+### AJAX da US5 — incluir no checkpoint da fase
+
+- [ ] T161 [US5] Ampliar `tests/Feature/AnotacaoEntrevistaTest.php` antes de T162: JSON válido retorna histórico e competências atualizados, persistindo autor/vaga/origem; texto inválido gera 422; triagem gera 403 mesmo com contexto/headers manipulados; texto livre é escapado no fragmento; formulário HTML segue funcionando. Parte do banco depende de T151/T113; parte da vaga depende também de T160
+- [ ] T162 [US5] Integrar JSON em `app/Http/Controllers/AnotacaoController.php` e `ParticipacaoAnotacaoController.php`; marcar `resources/views/anotacoes/_formulario.blade.php` e regiões em `_historico.blade.php`/`resources/views/candidatos/partials/_secao-anotacoes.blade.php`. Extrair `resources/views/candidatos/partials/_competencias.blade.php` do perfil e reutilizar no contexto da vaga só com os dados autorizados; atualizar includes em `resources/views/candidatos/show.blade.php` e `resources/views/participacoes/partials/_perfil.blade.php`. Retornar `historico-anotacoes` e `competencias-candidato`; limpar texto/seleções apenas após sucesso, não substituir formulários com rascunho em erro. Depende de T161 e T117–T120; parte da vaga somente após T160/S3; validar E/H
 
 ---
 
@@ -505,9 +578,14 @@ que ele sumiu de buscas, rankings e quadros e que o PDF não abre mais (quicksta
 - [ ] T126 [US6] Criar `app/Http/Requests/ExcluirCandidatoRequest.php` (`motivo` required enum `MotivoExclusao`; `confirmacao` accepted) e o método `destroy(ExcluirCandidatoRequest, Candidato $candidato)` em `CandidatoController`, que redireciona para `candidatos.index` com "Dados do candidato excluídos definitivamente."
 - [ ] T127 [US6] Em `routes/candidatos.php`, no bloco `// US6 — LGPD`, adicionar `GET /candidatos/{candidato}/editar` (`candidatos.edit`), `PUT /candidatos/{candidato}` (`candidatos.update`), `PATCH /candidatos/{candidato}/status` (`candidatos.status`) e `DELETE /candidatos/{candidato}` (`candidatos.destroy`)
 - [ ] T128 [US6] Em `resources/views/candidatos/partials/_secao-lgpd.blade.php`, preencher a seção "Consentimento e retenção" (meio, data, responsável, "Retenção até dd/mm/aaaa" e o selo "revisão de retenção pendente" quando vencida) e as ações Editar, Desativar/Reativar e "Excluir definitivamente" (`x-modal` explicando o que será apagado, select de motivo, *checkbox* de confirmação e botão `perigo`)
-- [ ] T129 [US6] Completar a US1 com a LGPD: em `EloquentCandidatoRepository::buscar`, tratar `situacao` `desativados` (`status = desativado`) e `retencao` (ativos com retenção vencida); adicionar `contarRetencaoVencida(): int` e usá-lo em `PainelService` (cartão "Retenção pendente" com link para `candidatos.index?situacao=retencao`); em `resources/views/candidatos/index.blade.php`, adicionar o seletor de situação; em `_card.blade.php`, adicionar o selo de retenção pendente
+- [ ] T129 [US6] Completar a US1 com a LGPD: em `CandidatoRepository::buscar`, tratar `situacao` `desativados` (`status = desativado`) e `retencao` (ativos com retenção vencida); adicionar `contarRetencaoVencida(): int` a `CandidatoRepositoryInterface`, implementar em `CandidatoRepository` e expor via `CandidatoService` para uso em `PainelService` (cartão "Retenção pendente" com link para `candidatos.index?situacao=retencao`); em `resources/views/candidatos/index.blade.php`, adicionar o seletor de situação; em `_card.blade.php`, adicionar o selo de retenção pendente
 
 **Checkpoint**: cenário F do quickstart funciona; `LgpdTest` passa.
+
+### AJAX da US6 — incluir no checkpoint da fase
+
+- [ ] T163 [US6] Ampliar `tests/Feature/LgpdTest.php` antes de T164: correção JSON retorna navegação ao perfil; status JSON persiste alteração e devolve regiões atualizadas; exclusão JSON exige motivo/confirmação e retorna navegação à lista apenas após excluir; consulta JSON com situação/retenção mantém filtros e ocultação dos desativados; mesmos resultados de persistência no modo HTML. Depende de T122, T151 e T153
+- [ ] T164 [US6] Integrar JSON em `app/Http/Controllers/CandidatoController.php` (`update`/`destroy`) e `CandidatoStatusController.php`; ajustar `resources/views/candidatos/edit.blade.php`, `resources/views/candidatos/show.blade.php` e `resources/views/candidatos/partials/_secao-lgpd.blade.php` para formulário AJAX, confirmação explícita da exclusão, regiões `situacao-candidato`/`secao-lgpd` e erros preservando campos. Correção/exclusão navega no sucesso; status atualiza regiões locais, sem promessa de sincronização entre abas. Em `resources/views/candidatos/index.blade.php`, incorporar situação/retenção ao fluxo de T154, sem listener ou busca duplicados. Sem retry automático, sobretudo na exclusão; validar F/H. Depende de T163, T123–T129 e T154
 
 ---
 
@@ -528,19 +606,24 @@ sem afetar o resto (quickstart, cenário G).
 
 ### Implementation for User Story 7
 
-- [ ] T132 [P] [US7] Criar `app/Services/Energia/SugestaoEnergia.php` (`final readonly`: `int $dinamicoAnalitico`, `int $individualEquipe`, `int $execucaoPlanejamento`, `string $justificativa`) e a interface `app/Services/Energia/AnalisadorEnergia.php` com `analisar(string $textoAnonimizado): ?SugestaoEnergia`, conforme `contracts/analise-energia.md`
+- [ ] T132 [P] [US7] Criar `app/DTOs/SugestaoEnergiaDTO.php` (`final readonly`: `int $dinamicoAnalitico`, `int $individualEquipe`, `int $execucaoPlanejamento`, `string $justificativa`) e a interface `app/Services/Energia/AnalisadorEnergia.php` com `analisar(string $textoAnonimizado): ?SugestaoEnergiaDTO`, conforme `contracts/analise-energia.md`
 - [ ] T133 [P] [US7] Criar `app/Services/Energia/AnalisadorEnergiaIndisponivel.php`, implementando `AnalisadorEnergia` e sempre devolvendo `null`
 - [ ] T134 [P] [US7] Criar `app/Services/Energia/ProximidadeEnergia.php` com `calcular(array $vaga, array $candidato): int` = `round((1 − Σ|Δ| ÷ 12) × 100)` (3 eixos de 1 a 5)
 - [ ] T135 [US7] Criar `app/Services/Energia/ClaudeAnalisadorEnergia.php`, implementando `AnalisadorEnergia` com o SDK oficial `anthropic-ai/sdk` (`Anthropic\Client`, chave de `config('services.anthropic.key')`, modelo de `config('services.anthropic.model')`), `messages->create` com o *system prompt* fixo em pt-BR descrito no contrato, `outputConfig` com `'format' => ['type' => 'json_schema', 'schema' => <esquema de contracts/analise-energia.md>]` e esforço baixo, e `maxTokens` 2000. Antes de escrever o código, confirmar na documentação do SDK PHP os nomes das opções de *timeout* (`config('banco_talentos.energia.timeout')`) e de novas tentativas (máximo 1). Ler o primeiro bloco `text`, fazer `json_decode`, validar os eixos entre 1 e 5 e truncar a justificativa em 500 caracteres. Devolver `null` em qualquer exceção do SDK (`Anthropic\Core\Exceptions\APIStatusException` e erros de conexão), em `stopReason === 'refusal'` ou em JSON inválido, registrando `Log::warning` **sem** o conteúdo do currículo. *Plano B (se T001 recusou o SDK)*: mesma classe usando `Http::withHeaders([...])->timeout(...)->post('https://api.anthropic.com/v1/messages', ...)`, com o mesmo contrato
 - [ ] T136 [US7] Criar `app/Services/Energia/PerfilEnergiaService.php`: `textoAnonimizado(Candidato $candidato): string` (formações, experiências, projetos e nomes das competências passados pelo `LimpadorTexto` com os termos do nome; **nunca** nome, contatos, nascimento, links ou PDF); `analisar(Candidato $candidato): ?PerfilEnergia` (chama o analisador e faz upsert com `origem = ia` e `analisado_em = now()`, ou devolve `null`); `ajustar(Candidato $candidato, array $eixos, ?string $justificativa, User $revisor): PerfilEnergia` (`origem = humano`)
 - [ ] T137 [US7] Em `app/Providers/AppServiceProvider.php` (`register`), vincular `AnalisadorEnergia` a `ClaudeAnalisadorEnergia` quando `config('banco_talentos.energia.habilitada')` for verdadeiro **e** `config('services.anthropic.key')` estiver preenchida; nos outros casos, a `AnalisadorEnergiaIndisponivel`
 - [ ] T138 [US7] Criar `app/Http/Requests/AjustarPerfilEnergiaRequest.php` (`dinamico_analitico`, `individual_equipe` e `execucao_planejamento` required|integer|between:1,5; `justificativa` nullable|string|max:500) e `app/Http/Controllers/PerfilEnergiaController.php` com `store(Candidato $candidato)` (analisar; falha → volta com "Análise indisponível no momento.") e `update(AjustarPerfilEnergiaRequest, Candidato $candidato)`; adicionar em `routes/candidatos.php` (bloco `// US7 — energia`) `POST /candidatos/{candidato}/energia` (`candidatos.energia.analisar`) e `PUT /candidatos/{candidato}/energia` (`candidatos.energia.update`)
-- [ ] T139 [US7] Em `app/Http/Requests/SalvarVagaRequest.php`, adicionar `energia.dinamico_analitico`, `energia.individual_equipe` e `energia.execucao_planejamento` nullable|integer|between:1,5 com `required_with` cruzado (todos ou nenhum) e persistir nas colunas `energia_*` em `EloquentVagaRepository`; em `resources/views/vagas/partials/_formulario.blade.php`, adicionar a seção opcional "Padrão de energia desejado" com três controles de 5 posições (Dinâmico ↔ Analítico, Individual ↔ Equipe, Execução ↔ Planejamento) e a opção "Não definir"
-- [ ] T140 [US7] Criar o componente `resources/views/components/eixos-energia.blade.php` (três réguas de 1 a 5 com o rótulo dos extremos, marcador do candidato e, opcionalmente, marcador da vaga); exibir em `candidatos/partials/_secao-energia.blade.php` e `participacoes/show.blade.php` (eixos, justificativa, origem, data, botões "Analisar com IA" e "Ajustar manualmente" com `x-modal`, estados "Não analisado" e "Análise indisponível"); em `RankingVagaService`, preencher `ItemRanking::proximidadeEnergia` com `ProximidadeEnergia` quando a vaga tiver padrão e o candidato tiver perfil (sem alterar a ordenação); em `vagas/partials/_selo-energia.blade.php`, mostrar o selo "Energia: N% de proximidade" separado da barra de aderência (o `_card-ranking` já inclui esse *partial* desde T094). Fazer **depois** da sincronização S3, quando a trilha A já terminou T109
+- [ ] T139 [US7] Em `app/Http/Requests/SalvarVagaRequest.php`, adicionar `energia.dinamico_analitico`, `energia.individual_equipe` e `energia.execucao_planejamento` nullable|integer|between:1,5 com `required_with` cruzado (todos ou nenhum) e persistir nas colunas `energia_*` em `VagaRepository`; em `resources/views/vagas/partials/_formulario.blade.php`, adicionar a seção opcional "Padrão de energia desejado" com três controles de 5 posições (Dinâmico ↔ Analítico, Individual ↔ Equipe, Execução ↔ Planejamento) e a opção "Não definir"
+- [ ] T140 [US7] Criar o componente `resources/views/components/eixos-energia.blade.php` (três réguas de 1 a 5 com o rótulo dos extremos, marcador do candidato e, opcionalmente, marcador da vaga); exibir em `candidatos/partials/_secao-energia.blade.php` e `participacoes/show.blade.php` (eixos, justificativa, origem, data, botões "Analisar com IA" e "Ajustar manualmente" com `x-modal`, estados "Não analisado" e "Análise indisponível"); em `RankingVagaService`, preencher `ItemRankingDTO::proximidadeEnergia` com `ProximidadeEnergia` quando a vaga tiver padrão e o candidato tiver perfil (sem alterar a ordenação); em `vagas/partials/_selo-energia.blade.php`, mostrar o selo "Energia: N% de proximidade" separado da barra de aderência (o `_card-ranking` já inclui esse *partial* desde T094). Fazer **depois** da sincronização S3, quando a trilha A já terminou T109
 - [ ] T141 [US7] Criar `app/Console/Commands/AnalisarEnergiaCommand.php` (`energia:analisar {--todos}`): sem `--todos`, analisa só candidatos ativos sem perfil; com `--todos`, reanalisa os de origem `ia` (nunca sobrescreve `humano`); barra de progresso e resumo "N analisados, M indisponíveis"; se a IA estiver desligada, avisar e encerrar com sucesso
 
 **Checkpoint**: cenário G do quickstart funciona com a IA ligada e desligada;
 `ProximidadeEnergiaTest` e `PerfilEnergiaTest` passam.
+
+### AJAX da US7 — incluir no checkpoint se a história for implementada
+
+- [ ] T165 [US7] Ampliar `tests/Feature/PerfilEnergiaTest.php` antes de T166: analisar/ajustar em JSON retorna `secao-energia` com origem/justificativa escapada; erro de eixos retorna 422; analisador indisponível retorna 503 sem apagar perfil anterior; nenhuma identidade/contato enviado à IA; ranking mantém fórmula e ordenação. Depende de T131/T151; usar analisador falso, sem API externa
+- [ ] T166 [US7] Integrar modo JSON em `app/Http/Controllers/PerfilEnergiaController.php` e `resources/views/candidatos/partials/_secao-energia.blade.php` no perfil do banco, com carregamento, bloqueio de duplo envio, feedback de indisponibilidade e ajuste manual; sucesso substitui `secao-energia`, 503 preserva o perfil anterior. Não criar worker, polling, dependência ou endpoint de identidade do banco no contexto de triagem; selos da vaga refletem mudanças na próxima atualização explícita do quadro. Ajustar `resources/js/modulos/ajax.js` somente se o transporte precisar de configuração de tempo limite maior que o orçamento total da chamada de IA (incluindo a tentativa já prevista), sem retry da escrita. Depende de T165/T138/T140 e S3; validar G/H
 
 ---
 
@@ -556,6 +639,11 @@ sem afetar o resto (quickstart, cenário G).
 - [ ] T147 Rodar `php artisan test` (suítes Unit e Feature) e garantir que todos os testes passam, em especial `CalculadoraAderenciaTest`, `RankingVagaTest`, `TriagemAnonimaTest` e `CurriculoProtegidoTest` (gates da constituição)
 - [ ] T148 Executar os cenários A a G de `specs/001-banco-de-talentos-mvp/quickstart.md` a partir de um ambiente limpo (`demo`) e fazer o ensaio cronometrado (≤ 5 min, SC-005) duas vezes: com internet e com o Wi-Fi desligado (SC-007). Registrar os problemas encontrados como novas tarefas neste arquivo
 
+### Validação transversal AJAX — antes do ensaio T148
+
+- [ ] T167 Criar `tests/Feature/AjaxSegurancaTest.php` para contrato transversal nas rotas já implementadas: 401 JSON versus redirect HTML, proteção contra requisição forjada efetivamente habilitada nos testes (não confiar no bypass padrão do ambiente de teste), 419/403 conforme origem/token, 404 JSON e respostas privadas sem cache; preservar validação/anonimização em fragmentos. Usar factories, sem alterar `.env` ou adicionar dependências. Executar também as suítes ampliadas T152/T155/T157/T159/T161/T163 e T165 se US7 incluída. Depende das integrações entregues e T151
+- [ ] T168 Completar `tests/js/ajax.test.js` e `tests/js/busca.test.js` com regressões das integrações (delegação após substituir HTML, falha ambígua sem replay, limpeza somente após sucesso e resposta obsoleta descartada); executar `node --test tests/js/*.test.js`. Validar e registrar o resultado do cenário H em `specs/001-banco-de-talentos-mvp/quickstart.md`: foco/teclado, histórico, rede lenta, erros, duplo clique, anonimato após retorno à triagem e fluxo sem JS, além de sem internet com servidor local acessível. Depende de T167 e das histórias incluídas; antes de T148; se não houver navegador disponível, registrar gate manual pendente, não declarar SC-010/SC-011 aprovados
+
 ---
 
 ## Dependencies & Execution Order
@@ -567,20 +655,28 @@ sem afetar o resto (quickstart, cenário G).
 - **Foundational (Phase 2)**: depende da Setup. **Bloqueia todas as histórias.** Ordem
   interna: enums (T013–T014) → migrations (T015–T023, nessa ordem) → models (T024–T029) →
   factories e seeders (T030–T033); T034–T043 em paralelo com os models quando possível; T038
-  depende de T036–T037; T044 por último.
+   depende de T036–T037; T044 por último.
+- **Complemento AJAX das fases concluídas**: T149 → T150 → T151 → T152 → T153 → T154.
+  Fazer antes de novas integrações, preservando tarefas já marcadas. IDs T149–T168 foram
+  adicionados por revisão, não significam uma Phase 11 nem execução só depois de T148.
 - **User Stories (Phases 3–9)**: todas dependem da Foundational. Ordem recomendada:
   P1 (US1 → US2) → P2 (US3 → US4) → P3 (US5, US6) → P4 (US7).
 - **Polish (Phase 10)**: depois das histórias desejadas.
+- **Integrações AJAX por história**: escrever o teste adicional antes da integração da mesma
+  fase: T155 → T156 (US2), T157 → T158 (US3), T159 → T160 (US4), T161 → T162 (US5),
+  T163 → T164 (US6), T165 → T166 (US7). Cada par exige T151 e as tarefas originais da
+  história indicadas na descrição; US4 também exige T158, US6 exige T154 e US5 pela vaga
+  exige T160. T167 → T168 → T148 fecham os gates transversais.
 
 ### User Story Dependencies
 
 | História | Depende de | Observação |
 |---|---|---|
 | US1 (P1) | Foundational | MVP; usa o catálogo e os candidatos semeados |
-| US2 (P1) | Foundational | Reaproveita `CandidatoRepository` (T050) e o catálogo agrupado (T048); se começar em paralelo à US1, fazer T048–T051 primeiro |
+| US2 (P1) | Foundational | Reaproveita `CandidatoRepositoryInterface` (T050), o catálogo agrupado (T048) e `CandidatoService` (T052); se começar em paralelo à US1, fazer T048–T052 primeiro |
 | US3 (P2) | Foundational + T048 (`idsQueAtendem`/catálogo) | Testável só com o seeder; não depende da US2 |
-| US4 (P2) | US3 (ranking, `ItemRanking`, quadro) | Transforma `vagas/show` no kanban |
-| US5 (P3) | US4 (contexto revelado, `PerfilNaVaga`) | A parte "pelo banco" (T117) só depende da US1 |
+| US4 (P2) | US3 (ranking, `ItemRankingDTO`, quadro) | Transforma `vagas/show` no kanban |
+| US5 (P3) | US4 (contexto revelado, `PerfilNaVagaDTO`) | A parte "pelo banco" (T117) só depende da US1 |
 | US6 (P3) | US1 (perfil e busca); T069 da US2 (`atualizar`) | Exclusão testável com factories |
 | US7 (P4) | US3 (ranking e formulário de vaga); T099 da US4 (`LimpadorTexto`) | Primeiro corte se faltar tempo |
 
@@ -604,6 +700,9 @@ sem afetar o resto (quickstart, cenário G).
 - US5 e US6 não disputam `candidatos/show.blade.php`: cada uma edita só o seu *partial*
   `_secao-*` (T061).
 - US7: T130–T134 em paralelo.
+- Após T151, testes adicionais de histórias distintas podem ser preparados em paralelo nos
+  arquivos de cada trilha, respeitando pré-requisitos. Integrações US2/US3 e US3/US6 podem
+  correr nas rodadas previstas; não editar `ajax.js`, `app.js` ou layout em paralelo sem sync.
 
 ---
 
@@ -615,9 +714,9 @@ Task: "T045 BuscaCandidatosTest em tests/Feature/BuscaCandidatosTest.php"
 Task: "T046 PainelTest em tests/Feature/PainelTest.php"
 
 # Peças independentes da US1 juntas:
-Task: "T048 CompetenciaRepository em app/Repositories/{Contracts,Eloquent}/"
-Task: "T049 FiltroCandidatos em app/Services/Busca/FiltroCandidatos.php"
-Task: "T053 PainelService em app/Services/Painel/PainelService.php"
+Task: "T048 CompetenciaRepositoryInterface em app/Repositories/Interfaces/CompetenciaRepositoryInterface.php e CompetenciaRepository em app/Repositories/CompetenciaRepository.php"
+Task: "T049 FiltroCandidatosDTO em app/DTOs/FiltroCandidatosDTO.php"
+Task: "T053 PainelService em app/Services/PainelService.php, PainelRepositoryInterface em app/Repositories/Interfaces/ e PainelRepository em app/Repositories/"
 Task: "T059 card do candidato em resources/views/candidatos/partials/_card.blade.php"
 ```
 
@@ -628,7 +727,7 @@ Task: "T096 TriagemAnonimaTest em tests/Feature/TriagemAnonimaTest.php"
 Task: "T097 CurriculoProtegidoTest em tests/Feature/CurriculoProtegidoTest.php"
 Task: "T098 MovimentacaoEtapaTest em tests/Feature/MovimentacaoEtapaTest.php"
 Task: "T099 LimpadorTexto em app/Services/Selecao/LimpadorTexto.php"
-Task: "T100 PerfilNaVaga em app/Services/Selecao/PerfilNaVaga.php"
+Task: "T100 PerfilNaVagaDTO em app/DTOs/PerfilNaVagaDTO.php"
 ```
 
 ---
@@ -638,7 +737,7 @@ Task: "T100 PerfilNaVaga em app/Services/Selecao/PerfilNaVaga.php"
 ### MVP First (User Story 1 Only)
 
 1. Fase 1 (Setup) → Fase 2 (Foundational).
-2. Fase 3 (US1): banco semeado, painel e busca com filtros.
+2. Fase 3 (US1): banco semeado, painel e busca com filtros; incluir T149–T154 para AJAX.
 3. **PARAR E VALIDAR**: cenário A do quickstart. Já demonstra "a parte mais importante" para a
    área cliente.
 
@@ -655,6 +754,11 @@ Task: "T100 PerfilNaVaga em app/Services/Selecao/PerfilNaVaga.php"
 **Cortes, se faltar tempo (nesta ordem)**: US7 inteira → T111 (arrastar e soltar) →
 T144/T145 → refinamentos visuais de T142. Nunca cortar testes de gate, anonimato ou
 consentimento.
+
+**Revisão de esforço AJAX**: antecipar T149–T154, depois integrar em cada fase, sem reservar
+tudo para o polimento. Adiar drag-and-drop e refinamentos visuais opcionais para acomodar a
+melhoria; não cortar AJAX por botão, validação acessível, fallback HTML, segurança ou testes.
+Se US7 for cortada, T165–T166 também saem do checkpoint, sem bloquear as Histórias 1–6.
 
 ### Parallel Team Strategy
 

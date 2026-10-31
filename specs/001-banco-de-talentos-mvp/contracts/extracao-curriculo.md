@@ -5,22 +5,25 @@
 
 ## Componentes
 
+Services ficam em `app/Services/Curriculo/`; os objetos de transferência de dados ficam em
+`app/DTOs/ResultadoLeituraDTO.php` e `app/DTOs/DadosExtraidosDTO.php`.
+
 ```text
-LeitorPdf::extrairTexto(string $caminhoAbsoluto): ResultadoLeitura
-ExtratorCurriculo::extrair(string $texto): DadosExtraidos
+LeitorPdf::extrairTexto(string $caminhoAbsoluto): ResultadoLeituraDTO
+ExtratorCurriculo::extrair(string $texto): DadosExtraidosDTO
 ImportacaoCurriculoService::importar(UploadedFile $arquivo, TipoCandidato $tipo): string   // UUID da importação
 ImportacaoCurriculoService::obter(string $uuid): ?Importacao
 CadastroCandidatoService::confirmar(Importacao $importacao, array $dadosRevisados, User $recrutador): Candidato
 ```
 
-## `ResultadoLeitura`
+## `ResultadoLeituraDTO`
 
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `situacao` | `lido` \| `sem_texto` \| `corrompido` | `sem_texto`: menos de 80 caracteres não brancos |
 | `texto` | `?string` | texto bruto quando `lido` |
 
-## `DadosExtraidos` (serializável em array para a sessão)
+## `DadosExtraidosDTO` (serializável em array para a sessão)
 
 | Campo | Tipo | Observação |
 |---|---|---|

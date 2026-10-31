@@ -1,8 +1,9 @@
 # Contrato: Rotas Web
 
 **Feature**: `001-banco-de-talentos-mvp` | Aplicação web renderizada no servidor (HTML).
-Todas as respostas são páginas Blade ou redirecionamentos com mensagem *flash*. Não há API JSON
-pública no MVP.
+Navegação tradicional recebe páginas Blade ou redirecionamentos com mensagem *flash*.
+Conforme revisão de 2026-10-31, as rotas indicadas abaixo também respondem JSON interno para
+AJAX progressivo, com HTML renderizado pelo Blade. Não há API JSON pública no MVP.
 
 ## Convenções
 
@@ -10,8 +11,84 @@ pública no MVP.
 - Formulários usam `@csrf` e *method spoofing* (`PUT`/`PATCH`/`DELETE`).
 - Validação em Form Requests. Em caso de erro, redireciona de volta com `errors` e `old()`.
 - Sucesso de escrita → redireciona com `session('status')` em português.
+- As duas convenções acima descrevem o modo tradicional; com `Accept: application/json`,
+  aplicar o contrato AJAX abaixo, sem redirecionar erros de validação.
 - Rotas do **contexto da vaga** recebem o candidato pelo `codigo` e usam
   `->withoutScopedBindings()` (ver [research R9](../research.md#r9-anonimização-por-contexto)).
+
+## Contrato AJAX progressivo (FR-038–FR-042)
+
+### Transporte, negociação e segurança
+
+- Reutilizar as rotas e os métodos desta documentação, sob `web` e `auth`; não criar rotas
+  paralelas de API. `fetch` usa credenciais de mesma origem e `Accept: application/json`.
+  Formulários enviam `FormData` com `_token` e `_method` quando aplicável; não definir
+  manualmente `Content-Type` multipart. GET usa parâmetros na query, sem corpo.
+- Sucesso retorna **200** com `{message: string|null, fragments: object, redirect: string|null}`.
+  `fragments` mapeia identificadores estáveis da tabela abaixo para HTML Blade autorizado;
+  objeto vazio quando houver apenas navegação. `redirect`, quando preenchido, é URL de mesma
+  origem gerada por rota nomeada; o cliente verifica a origem antes de navegar. Navegação
+  tradicional conserva os resultados e redirecionamentos descritos nas tabelas de rotas.
+- Fragmentos são definidos pelo servidor e mapeados no cliente para regiões conhecidas;
+  o request não pode escolher uma view, caminho ou seletor arbitrário. Texto do usuário continua
+  escapado pelo Blade; mensagens são inseridas como texto, sem executar scripts retornados.
+- JSON e páginas com dados pessoais usam `Cache-Control: private, no-store`; sem persistir
+  respostas em localStorage ou cache de aplicação. A escolha de formato não modifica autorização
+  nem regras de anonimização. Usar os mesmos DTOs de contexto das páginas completas.
+
+### Respostas de erro
+
+| Status AJAX | Significado e comportamento do cliente |
+|---|---|
+| 422 | `{message, errors: {campo: string[]}}`; exibir junto aos campos e resumo acessível; manter valores e focar o primeiro erro |
+| 401 | Sessão ausente/expirada; avisar e oferecer login, sem navegar automaticamente perdendo o formulário |
+| 419 | Token/sessão inválido; pedir atualização consciente da página; não reenviar a escrita |
+| 403 | Acesso negado ou origem recusada; mensagem amigável, sem dados protegidos |
+| 404 | Recurso inexistente/importação expirada; oferecer retorno ou novo envio, preservando o preenchimento quando possível |
+| 413 | PDF acima do limite de transporte; mensagem em português mesmo se a resposta não for JSON |
+| 503 | IA indisponível; `{message: "Análise indisponível no momento."}`; manter perfil anterior e permitir ajuste manual |
+| 5xx, rede ou resposta inesperada | Preservar formulário e estado confirmado, liberar controles e informar falha; nunca inserir HTML de erro/login como fragmento |
+
+Erros HTTP controlados retornam JSON com `message`, sem stack trace ou dados pessoais.
+Respostas fora do contrato são tratadas como falha, mesmo que o HTTP seja 200. Não repetir
+automaticamente POST/PUT/PATCH/DELETE: em falha ambígua, oferecer GET para conferir o estado
+antes de nova tentativa. Cancelamento de `fetch` não significa cancelamento da operação no servidor.
+
+### Operações e regiões por fase
+
+| Phase / história | Rotas em modo AJAX | Regiões de sucesso / navegação |
+|---|---|---|
+| 3 / US1 | `GET candidatos.index` com os mesmos filtros e `page` | `resultados-candidatos`: contagem, cards, paginação e vazio; formulário de filtros fica fora da região |
+| 4 / US2 | `POST importacoes.store`, `POST importacoes.confirmar` | `redirect` para revisão ou perfil; erro permanece na tela atual |
+| 4 / US2 | `POST competencias.store` | `catalogo-competencias`: incluir nova opção sem apagar campos ou seleções da revisão; sem formulário aninhado |
+| 5 / US3 | `POST vagas.store`, `PUT vagas.update` | `redirect` para `vagas.show`; validação permanece no formulário |
+| 5 / US3 | `GET vagas.show`, `PATCH vagas.status` | `quadro-vaga`: cabeçalho/status, ações e ranking; na Phase 6 inclui as três colunas e contagens; atualização por ação explícita, sem polling |
+| 6 / US4 | `PATCH vagas.candidatos.etapa` | `quadro-vaga` quando enviado pelo quadro; `perfil-na-vaga` quando enviado pelo perfil, incluindo identidade, ações e histórico |
+| 7 / US5 | `POST candidatos.anotacoes.store`, `POST vagas.candidatos.anotacoes.store` | `historico-anotacoes` e `competencias-candidato`; limpar o formulário só após sucesso, manter contexto autorizado |
+| 8 / US6 | `PUT candidatos.update`, `DELETE candidatos.destroy` | `redirect` para perfil ou listagem; exclusão exige motivo e confirmação; nunca repetir automaticamente |
+| 8 / US6 | `PATCH candidatos.status` | `situacao-candidato` e `secao-lgpd`; filtros de situação/retenção reutilizam `resultados-candidatos` |
+| 9 / US7 | `POST candidatos.energia.analisar`, `PUT candidatos.energia.update` | `secao-energia` no perfil do banco; os selos no quadro são atualizados na próxima leitura de `vagas.show` |
+
+Para a movimentação, o formulário inclui `contexto=quadro` ou `contexto=perfil`, validado por
+`MoverEtapaRequest`; o padrão sem JavaScript continua voltando para `vagas.show`. O parâmetro
+só seleciona uma das duas apresentações autorizadas **da mesma vaga**, nunca muda permissões.
+Botão e drag-and-drop usam o mesmo envio. Só aplicar o HTML após confirmação do servidor;
+ao voltar à triagem, não manter nome, contato, links ou anotações em DOM oculto ou mensagens.
+
+### Comportamento da interface
+
+- Busca: debounce de **400 ms** em texto; selects/checkboxes imediatos; remover `page` ao mudar
+  filtros. Invalidar a consulta anterior desde a edição, abortar GET anterior e ignorar respostas
+  obsoletas. Preservar foco, cursor e campos; atualizar somente `resultados-candidatos`.
+- Confirmar URL e resultado juntos. Alteração de filtros usa `replaceState`, paginação usa
+  `pushState`; `popstate` sincroniza formulário e resultados sem criar nova entrada. Abrir ou
+  recarregar a URL funciona pelo GET tradicional. Falha na busca mantém a última URL confirmada.
+- Usar `aria-busy` e uma região de anúncio `aria-live` fora dos fragmentos. Formulários pendentes
+  bloqueiam novas submissões e mostram “Processando…”, preservando os valores enviados (criar
+  `FormData` antes de desabilitar controles). Restaurar controles em sucesso ou erro.
+- Com AJAX indisponível antes de qualquer envio, manter links/formulários tradicionais. Falha
+  durante uma escrita não aciona fallback automático. Preservar diálogos de confirmação e
+  comportamentos de teclado, com delegação de eventos após atualizações parciais.
 
 ## Autenticação
 
@@ -73,7 +150,7 @@ selo de retenção) e estado vazio com "Remover filtros" quando não houver resu
 | GET | `/vagas/{vaga}/editar` | `vagas.edit` | `VagaController@edit` | — | Edição; o ranking é recalculado na próxima leitura (FR-020) |
 | PUT | `/vagas/{vaga}` | `vagas.update` | `VagaController@update` | `SalvarVagaRequest` | → `vagas.show` |
 | PATCH | `/vagas/{vaga}/status` | `vagas.status` | `VagaStatusController@update` | — | Encerra a vaga |
-| GET | `/vagas/{vaga}/candidatos/{candidato:codigo}` | `vagas.candidatos.show` | `ParticipacaoController@show` | — | Perfil no contexto da vaga (`PerfilNaVaga`); anônimo em triagem |
+| GET | `/vagas/{vaga}/candidatos/{candidato:codigo}` | `vagas.candidatos.show` | `ParticipacaoController@show` | — | Perfil no contexto da vaga (`PerfilNaVagaDTO`); anônimo em triagem |
 | PATCH | `/vagas/{vaga}/candidatos/{candidato:codigo}/etapa` | `vagas.candidatos.etapa` | `ParticipacaoEtapaController@update` | `MoverEtapaRequest` | Move e registra a movimentação; vaga encerrada / desativado / inelegível → volta com erro |
 | GET | `/vagas/{vaga}/candidatos/{candidato:codigo}/curriculo` | `vagas.candidatos.curriculo` | `ParticipacaoCurriculoController@show` | — | **403 em triagem**; PDF em entrevista/aprovado |
 | POST | `/vagas/{vaga}/candidatos/{candidato:codigo}/anotacoes` | `vagas.candidatos.anotacoes.store` | `ParticipacaoAnotacaoController@store` | `RegistrarAnotacaoRequest` | **403 em triagem**; vaga associada automaticamente |

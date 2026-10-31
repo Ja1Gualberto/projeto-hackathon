@@ -4,9 +4,13 @@
 a FR-025.
 
 Este contrato define **o que cada tela pode receber** do servidor. A garantia é estrutural: no
-contexto da vaga, as views recebem o DTO `PerfilNaVaga`, montado por
-`VisibilidadeCandidatoService`. Campos não permitidos chegam **nulos**, e não apenas
+contexto da vaga, as views recebem o DTO `PerfilNaVagaDTO` (`app/DTOs/PerfilNaVagaDTO.php`),
+montado por `VisibilidadeCandidatoService`. Campos não permitidos chegam **nulos**, e não apenas
 escondidos por CSS ou template.
+
+A mesma matriz vale para JSON interno, HTML em `fragments`, mensagens de sucesso/erro e
+atributos HTML usados por AJAX. O modo assíncrono não autoriza serializar `Candidato` nem
+buscar o perfil do banco para preencher uma tela da vaga. Respostas pessoais não são cacheadas.
 
 ## Contextos
 
@@ -54,6 +58,12 @@ escondidos por CSS ou template.
 7. O texto entregue ao `AnalisadorEnergia` não contém nome, e-mail, telefone, CPF nem URLs do
    candidato.
 8. Visitante não autenticado não acessa nenhuma rota de candidatos, vagas ou PDFs.
+9. Invariantes 1–8 valem também para requisições com `Accept: application/json`. Verificar o
+   conteúdo decodificado dos fragmentos e mensagens, não apenas o texto visível da página.
+10. Ao mover de volta à triagem via AJAX, a resposta usa o contexto posterior à movimentação:
+    não contém identidade, contato, links, anotações ou nome em mensagens do candidato afetado.
+    O cliente substitui
+    toda a região `perfil-na-vaga` ou `quadro-vaga`, sem reter o HTML revelado em elementos ocultos.
 
 ## Limitação conhecida
 

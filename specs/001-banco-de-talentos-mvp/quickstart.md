@@ -66,10 +66,15 @@ demonstração segue offline depois disso.
 ```bash
 php artisan test                         # ou: ./hackaton artisan test
 vendor/bin/pint --dirty --format agent   # ou: ./hackaton check
+node --test tests/js/*.test.js           # após implementar T149–T154; sem pacotes adicionais
 ```
 
 Esperado: todos os testes passando, em especial `CalculadoraAderenciaTest`,
 `RankingVagaTest`, `TriagemAnonimaTest` e `CurriculoProtegidoTest` (gates da constituição).
+
+Na revisão AJAX (2026-10-31), as suítes de cada história também verificam o modo JSON interno,
+422 de validação e HTML de fallback; `AjaxSegurancaTest` cobre as proteções transversais.
+Os critérios abaixo são **planejados**, não evidência de implementação já concluída.
 
 ## 4. Cenários de validação manual (roteiro do pitch)
 
@@ -87,7 +92,13 @@ Execute na ordem, com o banco recém-semeado. Cada bloco valida uma história de
    "não informado") e tags.
 5. Combine filtros sem resultado → estado vazio com "Remover filtros".
 6. Abra um card → perfil completo com formação, experiências, competências com origem,
-   links, PDF, consentimento, retenção e anotações.
+    links, PDF, consentimento, retenção e anotações.
+
+**Gate AJAX da Phase 3 (SC-010):** com JavaScript, etapas 2–5 e a paginação atualizam apenas
+contagem/cards/paginação, sem nova navegação de documento nem perda de foco/cursor. Digite
+um nome continuamente e confirme o debounce de 400 ms. A URL acompanha a consulta confirmada;
+voltar/avançar, abrir a URL diretamente e recarregar reproduzem filtros/página. Sem JS, o
+botão de aplicar filtros, remover filtros e os links de paginação continuam funcionando.
 
 ### B. Importação de PDF — História 2 (SC-002)
 
@@ -103,6 +114,11 @@ Execute na ordem, com o banco recém-semeado. Cada bloco valida uma história de
    cadastro existente.
 6. Envie um `.docx` ou um arquivo acima de 10 MB → rejeição com mensagem amigável.
 
+**Gate AJAX da Phase 4:** envio mostra “Processando…” e navega à revisão só no sucesso;
+erros aparecem na tela de origem. Na revisão, altere campos, selecione competências e inclua
+uma sugestão no catálogo: nenhum dado editado/selecionado se perde e o candidato não é salvo
+por engano. Confirmar sem consentimento retorna 422 sem apagar campos; sucesso navega ao perfil.
+
 ### C. Vaga com pesos e ranking — História 3 (SC-003)
 
 1. **Vagas → Nova vaga** "Estagiário de Desenvolvimento", área Desenvolvimento, tipo Estagiário:
@@ -114,6 +130,11 @@ Execute na ordem, com o banco recém-semeado. Cada bloco valida uma história de
 4. Tente salvar uma vaga sem competências → bloqueado.
 5. Edite o peso de Git para 3 → o ranking muda na próxima abertura do quadro.
 
+**Gate AJAX da Phase 5:** criar/editar com dados inválidos mostra erros sem navegação/perda
+de campos; sucesso navega ao quadro. “Atualizar quadro” refaz a leitura sem recarregar o
+documento; “Encerrar” atualiza status/ações e mantém somente consulta. Percentuais, explicações
+e ordem são iguais aos da página tradicional; não há atualização periódica em segundo plano.
+
 ### D. Triagem anônima e kanban — História 4 (SC-004)
 
 1. Na Triagem, nenhum card mostra nome, idade, contato ou link do perfil do banco; só o código
@@ -124,7 +145,14 @@ Execute na ordem, com o banco recém-semeado. Cada bloco valida uma história de
    quem moveu e quando; o PDF passa a abrir.
 4. Abra outra vaga em que um desses candidatos seja elegível → ele continua anônimo lá.
 5. Volte um candidato para Triagem → anônimo de novo. Encerre a vaga → o quadro fica somente
-   leitura.
+    leitura.
+
+**Gate AJAX da Phase 6:** mover por botão atualiza colunas, contagens e ações sem recarregar;
+o perfil aberto atualiza identidade e histórico quando a ação parte dele. Voltar à triagem
+remove também nome/contato/links/anotações do DOM e das mensagens do candidato afetado.
+Inspecione o JSON/HTML decodificado na aba Network: não basta ocultar visualmente. A vaga B
+continua anônima; em falha, não há movimentação visual otimista. Drag-and-drop é opcional e
+reutiliza o mesmo envio, não um segundo caminho de persistência.
 
 ### E. Anotações de entrevista — História 5 (SC-008)
 
@@ -135,13 +163,23 @@ Execute na ordem, com o banco recém-semeado. Cada bloco valida uma história de
 3. Pela gestão do banco, registre uma anotação **sem vaga** → fica associada só ao candidato.
 4. Painel → Candidatos → card → anotação visível: no máximo 3 cliques.
 
+**Gate AJAX da Phase 7:** anotar atualiza histórico e competências sem recarregar; limpar
+texto/seleções apenas no sucesso. Com texto inválido/rede falha, o rascunho permanece. No
+contexto da vaga, triagem continua negando anotação com 403 mesmo por requisição manual.
+
 ### F. LGPD — História 6
 
 1. No perfil: meio e data do consentimento e "Retenção até dd/mm/aaaa".
 2. Filtre **Retenção pendente** → candidatos semeados com dados antigos aparecem sinalizados.
 3. **Desativar** um candidato → some da busca e das triagens; reative → volta.
 4. **Excluir definitivamente** (com confirmação) → some de buscas, rankings e quadros; a URL
-   antiga do PDF responde 404; um registro de exclusão sem dados pessoais é gravado.
+    antiga do PDF responde 404; um registro de exclusão sem dados pessoais é gravado.
+
+**Gate AJAX da Phase 8:** situação/retenção entram na mesma busca parcial da US1. No perfil,
+desativar/reativar atualiza situação e seção LGPD sem recarregar. Corrigir dados mostra 422
+local em erro e navega ao perfil no sucesso; excluir exige motivo/confirmação e só navega à
+lista após resposta de sucesso. Não repetir a exclusão automaticamente após falha de rede.
+Outras abas/quadros refletem alterações na próxima leitura; não há sincronização em tempo real.
 
 ### G. Padrão de energia — História 7 (diferencial)
 
@@ -152,7 +190,47 @@ Execute na ordem, com o banco recém-semeado. Cada bloco valida uma história de
 3. Ajuste os eixos manualmente → selo "Revisado por humano".
 4. Com a IA desligada ou sem internet: "Análise indisponível" e todo o resto funciona (SC-007).
 
+**Gate AJAX da Phase 9 (se US7 incluída):** no perfil do banco, analisar/ajustar atualiza
+somente `secao-energia`, com loading e bloqueio de duplo envio. Indisponibilidade retorna
+503, mantém perfil anterior e permite ajuste manual. Os selos da vaga mudam na próxima
+atualização explícita do quadro; a ordenação principal nunca muda por energia.
+
+### H. Robustez AJAX, acessibilidade e fallback — Phases 2–10 (SC-010, SC-011)
+
+Executar em cada história entregue e repetir integralmente antes de T148:
+
+1. **Rede lenta / ordem:** na aba Network, limite a velocidade e altere rapidamente texto,
+   selects e página. Só a última intenção de busca pode atualizar resultados/URL, inclusive
+   quando a edição acontece durante o debounce e uma resposta anterior chega nesse intervalo.
+2. **Duplo envio:** dê dois cliques em Confirmar, Mover ou Registrar anotação enquanto a primeira
+   resposta está pendente. Há só uma submissão; controles voltam a funcionar após a resposta.
+3. **Validação / foco:** provoque 422; mensagens em português junto aos campos e resumo
+   anunciado, foco no primeiro erro, valores/rascunho preservados. Após atualização parcial,
+   modais, chips, botões e filtros continuam funcionando sem listeners duplicados.
+4. **Falha ambígua:** interrompa a conexão durante uma escrita. Não há retry ou submit
+   tradicional automático. O usuário é orientado a conferir estado por GET antes de repetir;
+   a tela não anuncia sucesso nem duplica anotação/movimentação/confirmação.
+5. **Sessão / segurança:** simule sessão expirada, token inválido e recurso inexistente.
+   Tratar 401/419/403/404 sem inserir uma página de login/erro dentro dos resultados nem
+   navegar automaticamente perdendo o formulário. Para arquivo grande, 413 continua amigável.
+   Não desabilitar proteção para testar a integração.
+6. **Teclado / anúncios:** usar só teclado para filtrar, paginar, mover e confirmar; foco
+   continua previsível, loading é anunciado por `aria-live`/`aria-busy`, sem depender só de cor.
+7. **Sem JavaScript:** desative JS, recarregue e execute A–F (e G se incluída) por links e
+   formulários tradicionais; confirmações continuam explícitas. Não confundir sem JS com
+   falha de rede depois que uma escrita já começou.
+8. **Sem internet:** desligue o acesso externo mantendo o servidor local acessível; A–F
+   continuam funcionando também via AJAX. Falha da IA não bloqueia o restante do sistema.
+
+**Registro da revisão 2026-10-31:** gates AJAX pendentes de implementação e execução;
+T149–T168 em `tasks.md`. Registrar resultados reais por fase, navegador e limitações; não
+considerar os testes históricos das Phases 2/3 como comprovação destes cenários.
+
 ## 5. Ensaio cronometrado (SC-005)
 
 Painel → envio de PDF → busca → vaga → triagem anônima → entrevista → anotação, sem erros, em
 até 5 minutos. Repita com o Wi-Fi desligado para confirmar o funcionamento offline.
+
+Antes deste ensaio, concluir o cenário H das histórias incluídas e os testes T167/T168.
+Quando o navegador acessar um servidor em outra máquina, manter a rede local disponível;
+o requisito offline é ausência de internet, não ausência de comunicação com o servidor.

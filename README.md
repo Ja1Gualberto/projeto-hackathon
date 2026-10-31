@@ -1,19 +1,20 @@
 # Projeto Hackathon
 
-Laravel 13 com estrutura MVC + Services + Repositories e Laravel Boost instalado. Sem CRUD ou testes iniciais.
+Laravel 13 com estrutura MVC + Services + Repositories, DTOs e Laravel Boost instalado.
 
 ## Estrutura
 
 ```text
 app/
+├── DTOs/                       # Objetos de transferência de dados, com sufixo DTO
 ├── Http/
 │   ├── Controllers/            # Entrada HTTP e respostas
 │   └── Requests/               # Validação das requisições
 ├── Models/                     # Entidades Eloquent
 ├── Services/                   # Casos de uso e regras de negócio
 ├── Repositories/
-│   ├── Contracts/              # Interfaces dos repositories
-│   └── Eloquent/               # Consultas e persistência
+│   ├── Interfaces/             # {Entidade}RepositoryInterface.php
+│   └── {Entidade}Repository.php # Implementações: consultas e persistência
 └── Providers/
     └── RepositoryServiceProvider.php
 resources/views/
@@ -25,7 +26,9 @@ database/migrations/            # Estrutura do banco
 
 Fluxo recomendado: **Rota → Form Request → Controller → Service → Repository → Model/banco**. A apresentação fica nas Views Blade.
 
-As pastas de Services e Repositories estão vazias, prontas para novos módulos. Registre os vínculos entre contratos e implementações em `RepositoryServiceProvider`, já registrado em `bootstrap/providers.php`.
+Cada repository tem uma interface em `app/Repositories/Interfaces/{Entidade}RepositoryInterface.php` e uma implementação diretamente em `app/Repositories/{Entidade}Repository.php`, sem subpastas `Contracts`/`Eloquent` nem prefixo `Eloquent`. Services dependem das interfaces; registre os vínculos interface → implementação em `RepositoryServiceProvider`, já registrado em `bootstrap/providers.php`.
+
+DTOs ficam em `app/DTOs/`, com sufixo `DTO` (ex.: `FiltroCandidatosDTO`). As operações de candidato ficam centralizadas em `app/Services/CandidatoService.php`; o painel usa `app/Services/PainelService.php`. Form Requests continuam responsáveis pela validação e autorização da entrada HTTP.
 
 ## Requisitos
 
