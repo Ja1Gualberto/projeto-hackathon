@@ -4,8 +4,83 @@
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
+@source '../../app/Enums/*.php';
 
+/*
+ * Design system do Banco de Talentos (research R16).
+ * Pares de texto/fundo usados nos componentes atendem WCAG 2.1 AA:
+ * - texto e texto-suave sobre superfície/fundo;
+ * - servidor-800 sobre servidor-100 e estagiario-800 sobre estagiario-100;
+ * - branco sobre primaria-600/700;
+ * - score-alto, score-medio e score-baixo sobre branco (≥ 4.5:1).
+ */
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+
+    --color-primaria-50: #eef4fb;
+    --color-primaria-100: #d9e6f6;
+    --color-primaria-200: #b3cdec;
+    --color-primaria-300: #84acdf;
+    --color-primaria-400: #5487cf;
+    --color-primaria-500: #2f68bd;
+    --color-primaria-600: #1f52a3;
+    --color-primaria-700: #1a4384;
+    --color-primaria-800: #18396b;
+    --color-primaria-900: #152f57;
+
+    --color-servidor-50: #eef0ff;
+    --color-servidor-100: #e0e4ff;
+    --color-servidor-200: #c6cdfd;
+    --color-servidor-300: #a3abfa;
+    --color-servidor-400: #7e83f4;
+    --color-servidor-500: #6160eb;
+    --color-servidor-600: #4f46dc;
+    --color-servidor-700: #4237c2;
+    --color-servidor-800: #372f9d;
+    --color-servidor-900: #312c7c;
+
+    --color-estagiario-50: #fffbeb;
+    --color-estagiario-100: #fef3c7;
+    --color-estagiario-200: #fde68a;
+    --color-estagiario-300: #fcd34d;
+    --color-estagiario-400: #fbbf24;
+    --color-estagiario-500: #f59e0b;
+    --color-estagiario-600: #d97706;
+    --color-estagiario-700: #b45309;
+    --color-estagiario-800: #92400e;
+    --color-estagiario-900: #78350f;
+
+    /* Score de aderência: score baixo não é "erro", por isso é neutro e não vermelho. */
+    --color-score-alto: #15803d;
+    --color-score-medio: #b45309;
+    --color-score-baixo: #64748b;
+
+    --color-superficie: #ffffff;
+    --color-fundo: #f4f6fa;
+    --color-borda: #dbe2ec;
+    --color-texto: #172033;
+    --color-texto-suave: #4b5568;
+
+    --radius-card: 1rem;
+}
+
+@layer base {
+    /* Base de 17px para legibilidade em projetor; todo o espaçamento em rem acompanha. */
+    html {
+        font-size: 17px;
+    }
+
+    body {
+        @apply bg-fundo text-texto antialiased;
+    }
+
+    :focus-visible {
+        outline: 3px solid var(--color-primaria-400);
+        outline-offset: 2px;
+    }
+
+    dialog::backdrop {
+        background-color: rgb(15 23 42 / 0.55);
+    }
 }
