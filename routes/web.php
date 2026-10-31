@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\PainelController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function (): void {
@@ -13,8 +14,7 @@ Route::middleware('guest')->group(function (): void {
 Route::middleware('auth')->group(function (): void {
     Route::post('/logout', [LoginController::class, 'destroy'])->name('logout');
 
-    // Provisória: substituída pelo PainelController em T058 (US1).
-    Route::view('/', 'painel.index')->name('painel');
+    Route::get('/', PainelController::class)->name('painel');
 
     // Rotas por módulo, com um bloco por história (ver tasks.md → Trabalho em dupla).
     require __DIR__.'/candidatos.php';

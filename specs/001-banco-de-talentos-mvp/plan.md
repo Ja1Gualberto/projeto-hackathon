@@ -25,6 +25,25 @@ dá recálculo imediato sem cache. A triagem anônima é garantida por um DTO po
 implementação nula padrão, e recebe apenas texto anonimizado. A demonstração é preparada com um
 único comando e dados 100% fictícios.
 
+### Ajuste de organização solicitado após a Phase 3
+
+Esta decisão substitui a nomenclatura antiga de repositories e da busca nas seções abaixo e
+nas tarefas originais, sem alterar os requisitos funcionais:
+
+- Cada repository tem uma interface própria em
+  `app/Repositories/Interfaces/{Entidade}RepositoryInterface.php` e implementação em
+  `app/Repositories/{Entidade}Repository.php`, sem prefixo ou subpasta `Eloquent`.
+  `RepositoryServiceProvider` registra os vínculos interface → implementação.
+- As operações de candidato ficam centralizadas em `app/Services/CandidatoService.php`.
+  `BuscaCandidatosService` foi incorporada a ela; o painel usa `app/Services/PainelService.php`.
+  Controllers não executam consultas de candidato nem carregam seus relacionamentos diretamente.
+- DTOs ficam em `app/DTOs/` e seus nomes terminam em `DTO`.
+  O antigo `Services/Busca/FiltroCandidatos` foi **preservado** como
+  `app/DTOs/FiltroCandidatosDTO.php`, mantendo seus dados e comportamento; não é uma service.
+- Form Requests continuam responsáveis pela validação/autorização da entrada HTTP.
+  `BuscarCandidatosRequest` transforma somente os dados validados no DTO; `CandidatoService`
+  coordena a busca e delega as consultas ao repository. As respostas HTTP continuam nos controllers.
+
 ## Technical Context
 
 **Language/Version**: PHP 8.5 (restrição `^8.3` no Composer), Laravel 13 (`^13.17`); JavaScript

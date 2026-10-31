@@ -28,6 +28,12 @@ implementada, testada e demonstrada de forma independente.
 - Arquitetura obrigatória: **Rota → Form Request → Controller → Service → Repository → Model**.
   Regras de negócio ficam em Services; os vínculos contrato → implementação ficam em
   `app/Providers/RepositoryServiceProvider.php`.
+- **Ajuste solicitado após a Phase 3:** interfaces em
+  `app/Repositories/Interfaces/{Entidade}RepositoryInterface.php`, uma por repository;
+  implementações em `app/Repositories/{Entidade}Repository.php`, sem `Eloquent`.
+  Operações de candidato em `app/Services/CandidatoService.php`. DTOs em `app/DTOs/`, com
+  sufixo `DTO` (ex.: `FiltroCandidatosDTO`). Esta convenção substitui os caminhos/nomes antigos
+  nas descrições originais abaixo; não elimina a validação em Form Requests.
 - PHP: chaves em todas as estruturas de controle, tipos de retorno explícitos, promoção de
   propriedades no construtor, chaves de enum em TitleCase, PHPDoc com *array shapes*.
 - Interface e mensagens em **português do Brasil**.
@@ -254,12 +260,12 @@ candidatos com todos os critérios, a contagem correta e os cards (quickstart, c
 
 ### Tests for User Story 1 ⚠️
 
-- [ ] T045 [P] [US1] Criar `tests/Feature/BuscaCandidatosTest.php`: filtro por duas competências retorna só quem tem **ambas**; combinar `tipo` e `area` restringe a lista; filtro `experiencia=1` só retorna `experiencia_na_area = true`; candidato `desativado` nunca aparece; filtro por "Inglês básico" inclui quem tem "Inglês avançado" (mesmo `grupo`, `nivel` ≥); a resposta mostra "N talentos encontrados"; filtros sem resultado mostram o estado vazio com "Remover filtros"; `busca` por parte do nome encontra o candidato; os cards **não** exibem o `codigo` `CAND-`
-- [ ] T046 [P] [US1] Criar `tests/Feature/PainelTest.php`: o painel mostra o total de candidatos ativos, a contagem de servidores e de estagiários, o número de vagas com status `aberta` e as competências mais frequentes em ordem decrescente
+- [X] T045 [P] [US1] Criar `tests/Feature/BuscaCandidatosTest.php`: filtro por duas competências retorna só quem tem **ambas**; combinar `tipo` e `area` restringe a lista; filtro `experiencia=1` só retorna `experiencia_na_area = true`; candidato `desativado` nunca aparece; filtro por "Inglês básico" inclui quem tem "Inglês avançado" (mesmo `grupo`, `nivel` ≥); a resposta mostra "N talentos encontrados"; filtros sem resultado mostram o estado vazio com "Remover filtros"; `busca` por parte do nome encontra o candidato; os cards **não** exibem o `codigo` `CAND-`
+- [X] T046 [P] [US1] Criar `tests/Feature/PainelTest.php`: o painel mostra o total de candidatos ativos, a contagem de servidores e de estagiários, o número de vagas com status `aberta` e as competências mais frequentes em ordem decrescente
 
 ### Implementation for User Story 1
 
-- [ ] T047 [US1] Criar `database/seeders/CandidatoSeeder.php` com 24 candidatos fictícios (nomes, e-mails `@exemplo.com.br`, telefones e cidades inventados; `consentimento_meio` variado; `consentimento_em` nos últimos 6 meses) (o *stub* já está registrado em `DatabaseSeeder` por T033). Para cada um, gerar o PDF com `GeradorPdfCurriculo` (linhas: nome, contato, "FORMAÇÃO", itens, "EXPERIÊNCIA PROFISSIONAL", itens, "PROJETOS", itens, "COMPETÊNCIAS", lista separada por vírgulas, "IDIOMAS"), gravá-lo em `Storage::disk('curriculos')` como `{uuid}.pdf` e preencher `curriculo_arquivo`, `curriculo_nome_original`, `curriculo_tamanho` e `texto_curriculo`. Competências com origem `curriculo`. **Estagiários** (vaga do roteiro: Python 3, SQL 3, Git 2, Inglês básico 1, Trabalho em equipe 1 = 10):
+- [X] T047 [US1] Criar `database/seeders/CandidatoSeeder.php` com 24 candidatos fictícios (nomes, e-mails `@exemplo.com.br`, telefones e cidades inventados; `consentimento_meio` variado; `consentimento_em` nos últimos 6 meses) (o *stub* já está registrado em `DatabaseSeeder` por T033). Para cada um, gerar o PDF com `GeradorPdfCurriculo` (linhas: nome, contato, "FORMAÇÃO", itens, "EXPERIÊNCIA PROFISSIONAL", itens, "PROJETOS", itens, "COMPETÊNCIAS", lista separada por vírgulas, "IDIOMAS"), gravá-lo em `Storage::disk('curriculos')` como `{uuid}.pdf` e preencher `curriculo_arquivo`, `curriculo_nome_original`, `curriculo_tamanho` e `texto_curriculo`. Competências com origem `curriculo`. **Estagiários** (vaga do roteiro: Python 3, SQL 3, Git 2, Inglês básico 1, Trabalho em equipe 1 = 10):
   - E1 (desenvolvimento): Python, SQL, Git, Inglês intermediário, Trabalho em equipe, PHP, Laravel → 100%
   - E2 (desenvolvimento): Python, SQL, Git, Inglês básico, JavaScript → 90%
   - E3 (desenvolvimento): Python, SQL, Git, Trabalho em equipe, React → 90% (empate com E2)
@@ -288,23 +294,56 @@ candidatos com todos os critérios, a contagem correta e os cards (quickstart, c
   - S12 (desenvolvimento): C#, .NET, SQL, Git, Inglês intermediário
 
   `experiencia_na_area = true` em cerca de metade (E1, E4, E7 e a maioria dos servidores). Três servidores (S6, S10, S11) com `dados_atualizados_em` há 2 anos e 2 meses (retenção pendente). `created_at` crescente na ordem da lista (desempate estável). E3 usa o e-mail `ana.lima@exemplo.com.br`, reutilizado no PDF de duplicidade (T079)
-- [ ] T048 [P] [US1] Criar `app/Repositories/Contracts/CompetenciaRepository.php` e `app/Repositories/Eloquent/EloquentCompetenciaRepository.php` com: `todasAgrupadasPorCategoria(): array` (`['hard' => Collection, 'soft' => Collection]`, ordenadas por nome); `idsQueAtendem(int $competenciaId): array<int>` (o próprio id + ids do mesmo `grupo` com `nivel` ≥, para idiomas); `buscarPorIds(array $ids): Collection`
-- [ ] T049 [P] [US1] Criar `app/Services/Busca/FiltroCandidatos.php` (classe `final readonly`: `array $competencias` (ids), `?TipoCandidato $tipo`, `?Area $area`, `bool $somenteComExperiencia`, `?string $busca`, `string $situacao` (`ativos` por padrão), com o construtor estático `fromArray(array $validados)`)
-- [ ] T050 [US1] Criar `app/Repositories/Contracts/CandidatoRepository.php` e `app/Repositories/Eloquent/EloquentCandidatoRepository.php` com: `buscar(FiltroCandidatos $filtro, int $porPagina = 12): LengthAwarePaginator` (um `whereHas('competencias', fn ($q) => $q->whereIn('competencias.id', $idsQueAtendem))` **por** competência escolhida = semântica E; `tipo`, `area` e `experiencia_na_area`; `busca` com `like` em `nome` ou `email`; situação `ativos` → `status = ativo`; eager load de `competencias`; `orderBy('nome')`; `withQueryString()`); `contarAtivosPorTipo(): array`; `topCompetencias(int $limite = 8): Collection` (nome + total entre ativos); `encontrarPorEmailOuCpf(?string $email, ?string $cpf): ?Candidato`
-- [ ] T051 [US1] Registrar `CandidatoRepository` → `EloquentCandidatoRepository` e `CompetenciaRepository` → `EloquentCompetenciaRepository` em `app/Providers/RepositoryServiceProvider.php`
-- [ ] T052 [US1] Criar `app/Services/Busca/BuscaCandidatosService.php` com `buscar(FiltroCandidatos $filtro): LengthAwarePaginator`, que resolve os ids equivalentes de cada competência via `CompetenciaRepository::idsQueAtendem` e delega ao `CandidatoRepository`
-- [ ] T053 [P] [US1] Criar `app/Services/Painel/PainelService.php` com `resumo(): array{totalTalentos:int, servidores:int, estagiarios:int, vagasAbertas:int, topCompetencias:Collection, retencaoPendente:int}` (`retencaoPendente` fica 0 até a US6)
-- [ ] T054 [US1] Criar `app/Http/Requests/BuscarCandidatosRequest.php`: `competencias` nullable|array, `competencias.*` integer|exists:competencias,id, `tipo` nullable `Rule::enum(TipoCandidato::class)`, `area` nullable `Rule::enum(Area::class)`, `experiencia` nullable|boolean, `busca` nullable|string|max:100, `situacao` nullable|in:ativos,desativados,retencao; método `filtro(): FiltroCandidatos`
-- [ ] T055 [US1] Criar `app/Http/Controllers/PainelController.php` (invokable, usa `PainelService`) e `resources/views/painel/index.blade.php` definitiva: 4 `x-cartao-estatistica` (Talentos, Servidores, Estagiários, Vagas abertas), lista "Competências mais frequentes" em barras horizontais só com CSS e atalhos para Importar currículo e Nova vaga
-- [ ] T056 [US1] Criar `app/Http/Controllers/CandidatoController.php` com `index(BuscarCandidatosRequest)` (filtros, resultado paginado, catálogo agrupado para o formulário de filtros) e `show(Candidato $candidato)` (eager load de competências, anotações com autor e vaga e perfil de energia)
-- [ ] T057 [US1] Criar `app/Http/Controllers/CurriculoController.php` com `show(Candidato $candidato)`: 404 se `curriculo_arquivo` for nulo ou o arquivo não existir; senão `Storage::disk('curriculos')->response($candidato->curriculo_arquivo, $candidato->curriculo_nome_original, ['Content-Type' => 'application/pdf', 'Cache-Control' => 'private, no-store'], 'inline')`
-- [ ] T058 [US1] Em `routes/web.php`, trocar a rota provisória `/` por `PainelController` (`painel`); em `routes/candidatos.php`, no bloco `// US1 — gestão do banco`, adicionar `GET /candidatos` (`candidatos.index`), `GET /candidatos/{candidato}` (`candidatos.show`) e `GET /candidatos/{candidato}/curriculo` (`candidatos.curriculo`), conforme `contracts/rotas-web.md`. Restringir **sempre** `{candidato}` com `->whereNumber('candidato')`, para que a ordem das rotas da US2 (`/candidatos/importar`) não importe
-- [ ] T059 [P] [US1] Criar `resources/views/candidatos/partials/_card.blade.php`: nome, `x-badge-tipo`, área, "Experiência na área: sim" ou "Experiência na área: não informado" (FR-007), até 5 `x-tag-competencia` e "+N"; o card inteiro leva a `candidatos.show`; **sem** o código `CAND-`
-- [ ] T060 [US1] Criar `resources/views/candidatos/index.blade.php`: `x-cabecalho-pagina` com o botão "Importar currículo"; formulário GET com `data-autosubmit` contendo campo de busca por nome, selects de tipo e área, *checkbox* de experiência e a lista de competências em dois grupos (Técnicas / Comportamentais) como *chips* de *checkbox*, com um campo "filtrar competências"; título "N talentos encontrados"; grade responsiva de `_card`; paginação; `x-estado-vazio` com link "Remover filtros" para `candidatos.index`
-- [ ] T061 [US1] Criar `resources/views/candidatos/show.blade.php`: cabeçalho (nome, `x-badge-tipo`, área, idade se houver, e-mail, telefone, CPF mascarado `***.***.***-NN`); seções Formação, Experiências, Competências (separadas em hard e soft, cada `x-tag-competencia` com a origem), Projetos, Links e Currículo original (botão "Abrir PDF" para `candidatos.curriculo`); listas vazias mostram "Não informado no currículo" (nunca "não possui"); as seções de outras histórias entram por `@include` de três *partials* criados agora como placeholders ("Em breve"): `resources/views/candidatos/partials/_secao-anotacoes.blade.php` (US5), `_secao-lgpd.blade.php` (US6) e `_secao-energia.blade.php` (US7). As outras histórias editam só o *partial* delas, nunca o `show.blade.php`
-- [ ] T062 [US1] Em `resources/js/modulos/chips.js`, implementar o filtro de *chips*: um input com `data-filtrar-chips="#alvo"` oculta os *chips* cujo texto (sem acento, minúsculo) não contém o termo digitado
+- [X] T048 [P] [US1] Criar `app/Repositories/Contracts/CompetenciaRepository.php` e `app/Repositories/Eloquent/EloquentCompetenciaRepository.php` com: `todasAgrupadasPorCategoria(): array` (`['hard' => Collection, 'soft' => Collection]`, ordenadas por nome); `idsQueAtendem(int $competenciaId): array<int>` (o próprio id + ids do mesmo `grupo` com `nivel` ≥, para idiomas); `buscarPorIds(array $ids): Collection`
+- [X] T049 [P] [US1] Criar `app/Services/Busca/FiltroCandidatos.php` (classe `final readonly`: `array $competencias` (ids), `?TipoCandidato $tipo`, `?Area $area`, `bool $somenteComExperiencia`, `?string $busca`, `string $situacao` (`ativos` por padrão), com o construtor estático `fromArray(array $validados)`)
+- [X] T050 [US1] Criar `app/Repositories/Contracts/CandidatoRepository.php` e `app/Repositories/Eloquent/EloquentCandidatoRepository.php` com: `buscar(FiltroCandidatos $filtro, int $porPagina = 12): LengthAwarePaginator` (um `whereHas('competencias', fn ($q) => $q->whereIn('competencias.id', $idsQueAtendem))` **por** competência escolhida = semântica E; `tipo`, `area` e `experiencia_na_area`; `busca` com `like` em `nome` ou `email`; situação `ativos` → `status = ativo`; eager load de `competencias`; `orderBy('nome')`; `withQueryString()`); `contarAtivosPorTipo(): array`; `topCompetencias(int $limite = 8): Collection` (nome + total entre ativos); `encontrarPorEmailOuCpf(?string $email, ?string $cpf): ?Candidato`
+- [X] T051 [US1] Registrar `CandidatoRepository` → `EloquentCandidatoRepository` e `CompetenciaRepository` → `EloquentCompetenciaRepository` em `app/Providers/RepositoryServiceProvider.php`
+- [X] T052 [US1] Criar `app/Services/Busca/BuscaCandidatosService.php` com `buscar(FiltroCandidatos $filtro): LengthAwarePaginator`, que resolve os ids equivalentes de cada competência via `CompetenciaRepository::idsQueAtendem` e delega ao `CandidatoRepository`
+- [X] T053 [P] [US1] Criar `app/Services/Painel/PainelService.php` com `resumo(): array{totalTalentos:int, servidores:int, estagiarios:int, vagasAbertas:int, topCompetencias:Collection, retencaoPendente:int}` (`retencaoPendente` fica 0 até a US6)
+- [X] T054 [US1] Criar `app/Http/Requests/BuscarCandidatosRequest.php`: `competencias` nullable|array, `competencias.*` integer|exists:competencias,id, `tipo` nullable `Rule::enum(TipoCandidato::class)`, `area` nullable `Rule::enum(Area::class)`, `experiencia` nullable|boolean, `busca` nullable|string|max:100, `situacao` nullable|in:ativos,desativados,retencao; método `filtro(): FiltroCandidatos`
+- [X] T055 [US1] Criar `app/Http/Controllers/PainelController.php` (invokable, usa `PainelService`) e `resources/views/painel/index.blade.php` definitiva: 4 `x-cartao-estatistica` (Talentos, Servidores, Estagiários, Vagas abertas), lista "Competências mais frequentes" em barras horizontais só com CSS e atalhos para Importar currículo e Nova vaga
+- [X] T056 [US1] Criar `app/Http/Controllers/CandidatoController.php` com `index(BuscarCandidatosRequest)` (filtros, resultado paginado, catálogo agrupado para o formulário de filtros) e `show(Candidato $candidato)` (eager load de competências, anotações com autor e vaga e perfil de energia)
+- [X] T057 [US1] Criar `app/Http/Controllers/CurriculoController.php` com `show(Candidato $candidato)`: 404 se `curriculo_arquivo` for nulo ou o arquivo não existir; senão `Storage::disk('curriculos')->response($candidato->curriculo_arquivo, $candidato->curriculo_nome_original, ['Content-Type' => 'application/pdf', 'Cache-Control' => 'private, no-store'], 'inline')`
+- [X] T058 [US1] Em `routes/web.php`, trocar a rota provisória `/` por `PainelController` (`painel`); em `routes/candidatos.php`, no bloco `// US1 — gestão do banco`, adicionar `GET /candidatos` (`candidatos.index`), `GET /candidatos/{candidato}` (`candidatos.show`) e `GET /candidatos/{candidato}/curriculo` (`candidatos.curriculo`), conforme `contracts/rotas-web.md`. Restringir **sempre** `{candidato}` com `->whereNumber('candidato')`, para que a ordem das rotas da US2 (`/candidatos/importar`) não importe
+- [X] T059 [P] [US1] Criar `resources/views/candidatos/partials/_card.blade.php`: nome, `x-badge-tipo`, área, "Experiência na área: sim" ou "Experiência na área: não informado" (FR-007), até 5 `x-tag-competencia` e "+N"; o card inteiro leva a `candidatos.show`; **sem** o código `CAND-`
+- [X] T060 [US1] Criar `resources/views/candidatos/index.blade.php`: `x-cabecalho-pagina` com o botão "Importar currículo"; formulário GET com `data-autosubmit` contendo campo de busca por nome, selects de tipo e área, *checkbox* de experiência e a lista de competências em dois grupos (Técnicas / Comportamentais) como *chips* de *checkbox*, com um campo "filtrar competências"; título "N talentos encontrados"; grade responsiva de `_card`; paginação; `x-estado-vazio` com link "Remover filtros" para `candidatos.index`
+- [X] T061 [US1] Criar `resources/views/candidatos/show.blade.php`: cabeçalho (nome, `x-badge-tipo`, área, idade se houver, e-mail, telefone, CPF mascarado `***.***.***-NN`); seções Formação, Experiências, Competências (separadas em hard e soft, cada `x-tag-competencia` com a origem), Projetos, Links e Currículo original (botão "Abrir PDF" para `candidatos.curriculo`); listas vazias mostram "Não informado no currículo" (nunca "não possui"); as seções de outras histórias entram por `@include` de três *partials* criados agora como placeholders ("Em breve"): `resources/views/candidatos/partials/_secao-anotacoes.blade.php` (US5), `_secao-lgpd.blade.php` (US6) e `_secao-energia.blade.php` (US7). As outras histórias editam só o *partial* delas, nunca o `show.blade.php`
+- [X] T062 [US1] Em `resources/js/modulos/chips.js`, implementar o filtro de *chips*: um input com `data-filtrar-chips="#alvo"` oculta os *chips* cujo texto (sem acento, minúsculo) não contém o termo digitado
 
 **Checkpoint**: cenário A do quickstart funciona; `BuscaCandidatosTest` e `PainelTest` passam.
+
+**Implementação da Phase 3 (2026-10-31):** T045–T062 implementadas, sem avançar às fases
+seguintes. Interface de catálogo institucional com Instrument Sans, tokens e componentes da
+fundação preservados; filtros laterais no desktop, grade responsiva e perfil em ficha. A busca
+combina competências com E e respeita os níveis de idioma. Seeder idempotente com 24 pessoas
+fictícias (12 de cada tipo), PDFs privados e 7 estagiários com Python e SQL.
+
+- `FiltroCandidatosDTO` mantém os ids selecionados e carrega também os grupos de ids equivalentes
+  resolvidos pelo service, preservando a assinatura do repository.
+- Adicionados `PainelRepositoryInterface` e `PainelRepository` para a contagem de vagas abertas
+  não acessar o model diretamente no service. Não antecipa o CRUD/repository de vagas da US3.
+- `situacao` é validada conforme o contrato, mas os filtros de desativados/retenção e o
+  indicador de retenção permanecem para T129; os atalhos de funcionalidades futuras ficam
+  desabilitados e os três partials do perfil mostram “Em breve”. O seeder de vagas continua stub
+  até T095, portanto um banco com somente esta fase mostra 0 vagas abertas, não 3.
+- Testes de busca/painel escritos antes da implementação e falhas esperadas confirmadas.
+  Verificação final: **56 testes PHP / 222 asserções**, teste JavaScript dos chips aprovado,
+  `vendor/bin/pint --dirty --format agent`, build Vite e `route:list` aprovados.
+  PHP executado em Docker com `.env.testing`, SQLite em memória e armazenamento privado
+  temporário. Dependências existentes sincronizadas com os lockfiles, sem scripts do Composer
+  e sem novas dependências. Fonte empacotada em `public/build`. A checagem final do build usou
+  a API do Vite com `envDir` apontando para um diretório temporário vazio, para impedir a carga
+  automática de arquivos de ambiente pelo Vite/plugin Laravel. O `.env` não foi alterado.
+- **Gate manual pendente:** ambiente sem navegador para revisão visual real. Conferir cenário A,
+  layout em 1280×720 e celular e navegação por teclado antes de aceitar o checkpoint visual.
+
+**Revisão de organização solicitada pelo usuário:** repositories renomeados conforme a
+convenção acima; `CandidatoService` concentra busca, catálogo usado na busca, detalhamento,
+consulta de currículo, contagens e consulta de duplicidade. O DTO foi mantido e movido para
+`app/DTOs/FiltroCandidatosDTO.php`. `PainelService` passou para a raiz de `app/Services` e
+consulta os dados de candidato via `CandidatoService`. Não houve mudança de rotas, layout,
+regras de filtro ou esquema do banco.
+Validação da refatoração: **59 testes PHP / 239 asserções**, Pint e `route:list` aprovados.
 
 ---
 
