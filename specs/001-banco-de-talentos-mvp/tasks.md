@@ -49,6 +49,96 @@ Projeto Laravel único na raiz: `app/`, `config/`, `database/`, `lang/`, `resour
 
 ---
 
+## Trabalho em dupla (duas trilhas em paralelo)
+
+O trabalho é feito por duas pessoas **ao mesmo tempo**, em duas trilhas:
+
+- **Trilha A — "Banco, Vagas e Seleção"**: esquema, models, busca, ranking e kanban.
+- **Trilha B — "Interface, Currículo e LGPD"**: design system, importação de PDF, LGPD,
+  anotações e IA.
+
+Em cada **rodada**, as duas trilhas trabalham em histórias diferentes. As rodadas terminam em
+um **ponto de sincronização** (S0…S4): as duas branches são mescladas no `main`, a suíte
+inteira roda e as duas pessoas voltam a partir do `main` atualizado.
+
+### Rodadas
+
+| Rodada | Trilha A | Trilha B | Sincronização |
+|---|---|---|---|
+| **R0 — Fundação** | Esquema e backend base: T013–T034, T041, T043, T044 | Design system e telas base: T035–T040, T042 | **S0**: login, layout e `migrate:fresh --seed` funcionando |
+| **R1 — P1** | **US1** busca e painel: T045–T062. Fazer **primeiro** T048–T051 (repositories) e enviar ao `main` cedo | **US2** importação de PDF: T063–T079. Começar por T063–T066, T070–T072 e T076, que não dependem da trilha A; T067–T069 usam os repositories de T048/T050 | **S1**: cenários A e B do quickstart |
+| **R2 — P2 + LGPD** | **US3** vagas e ranking: T080–T095 | **US6** LGPD: T122–T129. Preparação da US4: T099, T100 e os testes T096–T098, escritos contra os contratos e falhando até a trilha A implementar | **S2**: cenários C e F |
+| **R3 — P2 + P3** | **US4** kanban e triagem anônima: T101–T112, fazendo os testes T096–T098 passarem | **US5** pelo banco: T113–T117 e T120 (só a inclusão em `_secao-anotacoes`; os casos de T113 pelo contexto da vaga passam só depois da R4). **US7** sem tocar em ranking ou cards: T130–T139 e T141 | **S3**: cenários D e E (parte do banco) e G (parte do perfil) |
+| **R4 — Fechamento** | **US5** pela vaga: T118, T119 (só o bloco de `routes/vagas.php`), a inclusão dos *partials* de `anotacoes/` em `participacoes/show` (parte de T120) e T121; depois T146–T147 | **US7** no ranking: T140; depois T142–T145 | **S4**: T148 juntos (ensaio online e offline) |
+
+**Cronograma**: R0 no sábado 31/10 de manhã · R1 no sábado 31/10, tarde e noite · R2 no
+domingo 01/11 de manhã · R3 no domingo 01/11, tarde e noite · R4 na segunda 02/11 ·
+apresentação na terça 03/11. Se uma trilha terminar antes, ela adianta tarefas de acabamento
+**da própria trilha** ou revisa o PR da outra; não pega arquivos da outra trilha.
+
+### Dono de cada arquivo
+
+Cada arquivo tem um dono. O outro só edita com combinação prévia, e de forma aditiva.
+
+| Área | Trilha A | Trilha B |
+|---|---|---|
+| Banco e domínio | `app/Enums/*`, `database/migrations/*`, `app/Models/*`, `database/factories/*`, `database/seeders/*` (exceto `curriculos/`) | `database/seeders/curriculos/*` (T079) |
+| Repositories | `CandidatoRepository`, `CompetenciaRepository`, `VagaRepository`, `ParticipacaoRepository` | `AnotacaoRepository` |
+| Services | `Busca/`, `Painel/`, `Aderencia/`, `Selecao/SelecaoService`, `Selecao/VisibilidadeCandidatoService` | `Curriculo/`, `Lgpd/`, `Anotacoes/`, `Energia/`, `Selecao/LimpadorTexto`, `Selecao/PerfilNaVaga` |
+| Controllers e requests | Painel, Candidato (`index`/`show`), Curriculo, Vaga, VagaStatus, Participacao* (exceto Anotacao) e os requests deles | Importacao, ConfirmacaoImportacao, Competencia, Anotacao, ParticipacaoAnotacao, CandidatoStatus, PerfilEnergia, `CandidatoController@edit/update/destroy` (US6) e os requests deles |
+| Views | `painel/`, `candidatos/index`, `candidatos/show`, `candidatos/partials/_card`, `vagas/*` (exceto `_selo-energia` e o bloco de energia de `_formulario`), `participacoes/show` | `layouts/`, `components/*`, `auth/`, `errors/`, `importacoes/*`, `candidatos/partials/_formulario`, `candidatos/edit`, `candidatos/partials/_secao-*`, `anotacoes/*`, `vagas/partials/_selo-energia` |
+| Front-end | `resources/js/modulos/kanban.js` | `resources/css/app.css`, `resources/js/app.js`, `resources/js/modulos/formularios.js`, `resources/js/modulos/chips.js` |
+| Rotas | `routes/web.php`; em `routes/candidatos.php` e `routes/vagas.php`, os blocos `// US1`, `// US3` e `// US4` | Nos mesmos arquivos, os blocos `// US2`, `// US5`, `// US6` e `// US7` |
+| Testes | testes de US1, US3 e US4 (exceto T096–T098) | testes de US2, US5, US6 e US7 e T096–T098 |
+
+**Arquivos compartilhados (só edição aditiva, uma linha por vez)**:
+`app/Providers/RepositoryServiceProvider.php` (cada trilha adiciona o seu `bind` no fim),
+`app/Providers/AppServiceProvider.php` (só a trilha B, em T137) e `lang/pt_BR/validation.php`
+(acrescentar atributos no fim). Os blocos `// USn` das rotas também são aditivos.
+
+**Edições cruzadas já previstas** (feitas pela trilha indicada, depois do *sync* anterior,
+quando o dono já terminou aquele arquivo):
+
+- T129 (B) mexe em `EloquentCandidatoRepository`, `PainelService`, `candidatos/index` e `_card`, da US1 (A).
+- T139 (B) mexe em `SalvarVagaRequest`, `EloquentVagaRepository` e no bloco de energia de `vagas/partials/_formulario`, da US3 (A).
+- T140 (B) mexe em `RankingVagaService`, da US3 (A), e só pode começar depois de S3.
+
+### Combinados para não travar um ao outro
+
+1. **Contrato antes de código**: quem é dono de uma interface usada pela outra trilha
+   (repositories em T048/T050, `PerfilNaVaga` em T100, `LimpadorTexto` em T099) cria a
+   interface com as assinaturas desta lista e envia ao `main` **logo no começo** da rodada; a
+   implementação vem depois. Enquanto isso, a outra trilha programa contra a interface.
+2. **Sem novas migrations depois da R0**: todo o esquema está em T015–T023. Se faltar uma
+   coluna, a trilha A cria a migration e avisa antes.
+3. **Links para rotas que ainda não existem**: no layout e nas telas, use
+   `Route::has('nome') ? route('nome') : '#'` até a rota existir.
+4. **Git**: uma branch por trilha e rodada (`a/r1-us1-busca`, `b/r1-us2-importacao`…);
+   commits pequenos; `git pull --rebase origin main` pelo menos a cada 2 horas; antes de
+   mesclar, rode `php artisan test` e `vendor/bin/pint --dirty --format agent`. No ponto de
+   sincronização, mescle primeiro a branch que mexe em menos arquivos compartilhados.
+5. **Marcação**: ao concluir uma tarefa, marque `[X]` **na própria branch**. Cada trilha só
+   marca as suas tarefas, então os conflitos no `tasks.md` ficam triviais.
+
+### Como pedir para a IA implementar uma trilha
+
+Cada pessoa roda o `/speckit-implement` restringindo às suas tarefas da rodada, por exemplo:
+
+```text
+/speckit-implement Implemente SOMENTE as tarefas T045–T062 (Trilha A, Rodada R1) de
+specs/001-banco-de-talentos-mvp/tasks.md. Siga a tabela "Dono de cada arquivo": não edite
+arquivos da Trilha B. Comece por T048–T051. Pare ao fim da rodada e não marque tarefas de
+outras rodadas.
+```
+
+```text
+/speckit-implement Implemente SOMENTE as tarefas T063–T079 (Trilha B, Rodada R1) de
+specs/001-banco-de-talentos-mvp/tasks.md. Siga a tabela "Dono de cada arquivo": não edite
+arquivos da Trilha A. Comece pelas tarefas que não dependem de T048/T050.
+```
+
+---
+
 ## Phase 1: Setup (Shared Infrastructure)
 
 **Purpose**: dependências aprovadas, runner de testes, configuração e ambiente de demonstração.
@@ -118,7 +208,7 @@ migration entre histórias.
   - **Soft**: Trabalho em equipe, Comunicação, Proatividade, Organização, Resolução de problemas, Liderança, Atendimento ao público, Aprendizado contínuo e Pensamento analítico.
   - **Sinônimos** em minúsculas e sem acento, para o casamento do extrator. Ex.: SQL ← `sql`, `mysql`, `postgresql`, `postgres`, `sql server`, `oracle`, `banco de dados relacional` (assim "PostgreSQL" implica SQL); MySQL ← `mysql`, `mariadb`; PostgreSQL ← `postgresql`, `postgres`; JavaScript ← `javascript`, `js`, `ecmascript`; Node.js ← `node.js`, `nodejs`, `node`; C# ← `c#`, `csharp`; .NET ← `.net`, `dotnet`, `asp.net`; Git ← `git`, `github`, `gitlab`, `versionamento`; Trabalho em equipe ← `trabalho em equipe`, `trabalhar em equipe`, `colaboracao`, `colaborativo`; Comunicação ← `comunicacao`, `comunicativo`, `comunicativa`; Pensamento analítico ← `pensamento analitico`, `analitico`, `analitica`.
   - Usar `updateOrCreate` por `nome`, para o seeder ser idempotente.
-- [ ] T033 Criar `database/seeders/UsuarioSeeder.php` (recrutador `name` "Recrutadora Demo", `email` `recrutador@setic.demo`, senha `demo1234` com hash) e reescrever `database/seeders/DatabaseSeeder.php` para chamar `UsuarioSeeder` e `CompetenciaSeeder`. As histórias seguintes acrescentam seus seeders nesta lista
+- [ ] T033 Criar `database/seeders/UsuarioSeeder.php` (recrutador `name` "Recrutadora Demo", `email` `recrutador@setic.demo`, senha `demo1234` com hash) e reescrever `database/seeders/DatabaseSeeder.php` chamando, já na ordem final, `UsuarioSeeder`, `CompetenciaSeeder`, `CandidatoSeeder` e `VagaSeeder`. Criar `CandidatoSeeder` e `VagaSeeder` agora como *stubs* vazios (`run()` sem conteúdo), para nenhuma história precisar editar o `DatabaseSeeder` (evita conflito entre as trilhas)
 
 ### Infraestrutura HTTP, autenticação e design system
 
@@ -128,10 +218,10 @@ migration entre histórias.
 - [ ] T037 [P] Criar componentes Blade anônimos em `resources/views/components/`: `campo.blade.php` (label, `input`/`select`/`textarea` por prop `tipo`, mensagem de `@error`, `old()`), `modal.blade.php` (`<dialog>` com título, conteúdo e rodapé), `alerta.blade.php` (variantes `info`, `sucesso`, `aviso`, `erro`), `estado-vazio.blade.php` (ícone, título, texto, slot de ação), `cartao-estatistica.blade.php` (rótulo, valor grande, detalhe), `cabecalho-pagina.blade.php` (título, subtítulo, slot de ações), `barra-score.blade.php` (percentual 0–100 com barra colorida pela faixa ≥ 70 / 40–69 / < 40 e número grande ao lado; `aria-label` "Aderência de N%")
 - [ ] T038 Criar `resources/views/layouts/app.blade.php` (barra lateral com navegação Painel, Candidatos, Importar currículo e Vagas; topo com o nome do usuário e botão Sair via `POST /logout`; área de mensagens `session('status')` com `x-alerta`; `@vite`; `<title>` com o nome da página) e `resources/views/layouts/visitante.blade.php` (centralizado, para o login). Depende de T036 e T037
 - [ ] T039 [P] Criar `resources/views/errors/403.blade.php` ("Identidade protegida na triagem anônima", com explicação e botão de voltar) e `resources/views/errors/404.blade.php` (mensagem amigável em português)
-- [ ] T040 [P] Criar a base de `resources/js/app.js`: (1) formulários com `data-autosubmit` enviam ao alterar qualquer campo (com *debounce* de 400 ms para texto); (2) botões com `data-abrir-modal="id"` chamam `showModal()` no `<dialog>` correspondente e `data-fechar-modal` o fecham; (3) formulários com `data-confirmar="mensagem"` pedem confirmação antes do envio
+- [ ] T040 [P] Criar `resources/js/app.js` apenas como ponto de entrada que importa `./modulos/formularios.js`, `./modulos/chips.js` e `./modulos/kanban.js` (os dois últimos criados agora vazios, com um comentário indicando a tarefa que os preenche: T062 e T111). Em `resources/js/modulos/formularios.js`: (1) formulários com `data-autosubmit` enviam ao alterar qualquer campo (com *debounce* de 400 ms para texto); (2) botões com `data-abrir-modal="id"` chamam `showModal()` no `<dialog>` correspondente e `data-fechar-modal` o fecham; (3) formulários com `data-confirmar="mensagem"` pedem confirmação antes do envio
 - [ ] T041 Criar `app/Http/Requests/LoginRequest.php` (`email` required|email, `password` required|string) e `app/Http/Controllers/Auth/LoginController.php` com `create()` (view de login), `store(LoginRequest)` (`Auth::attempt` + `session()->regenerate()`; em caso de falha, volta com o erro "E-mail ou senha inválidos." em `email`) e `destroy()` (logout, `invalidate`, `regenerateToken`, redireciona para `login`)
 - [ ] T042 Criar `resources/views/auth/login.blade.php` (layout visitante, nome do sistema, campos e-mail e senha com `x-campo`, botão Entrar, aviso "Ambiente de demonstração — dados fictícios")
-- [ ] T043 Reescrever `routes/web.php`: grupo `guest` com `GET /login` (`login`) e `POST /login` (`login.store`, middleware `throttle:5,1`); grupo `auth` com `POST /logout` (`logout`) e `GET /` (`painel`, temporariamente `Route::view('/', 'painel.index')` com `resources/views/painel/index.blade.php` provisória, substituída em T057). Remover a rota `welcome`
+- [ ] T043 Criar `routes/candidatos.php` e `routes/vagas.php` (só com `<?php` e `use Illuminate\Support\Facades\Route;`) e reescrever `routes/web.php`, incluindo os dois arquivos com `require` **dentro** do grupo `auth`. Cada história adiciona suas rotas no arquivo do módulo, em um bloco com comentário próprio (`// USn — ...`), para as trilhas não editarem as mesmas linhas. Em `routes/web.php`: grupo `guest` com `GET /login` (`login`) e `POST /login` (`login.store`, middleware `throttle:5,1`); grupo `auth` com `POST /logout` (`logout`) e `GET /` (`painel`, temporariamente `Route::view('/', 'painel.index')` com `resources/views/painel/index.blade.php` provisória, substituída em T057). Remover a rota `welcome`
 - [ ] T044 Criar `tests/Feature/AutenticacaoTest.php`: visitante em `/` é redirecionado para `/login`; login válido do usuário da factory redireciona para `painel`; login inválido volta com erro e continua visitante; logout encerra a sessão
 
 **Checkpoint**: `php artisan migrate:fresh --seed` roda sem erros; o login funciona e mostra o
@@ -154,7 +244,7 @@ candidatos com todos os critérios, a contagem correta e os cards (quickstart, c
 
 ### Implementation for User Story 1
 
-- [ ] T047 [US1] Criar `database/seeders/CandidatoSeeder.php` com 24 candidatos fictícios (nomes, e-mails `@exemplo.com.br`, telefones e cidades inventados; `consentimento_meio` variado; `consentimento_em` nos últimos 6 meses) e registrá-lo em `DatabaseSeeder`. Para cada um, gerar o PDF com `GeradorPdfCurriculo` (linhas: nome, contato, "FORMAÇÃO", itens, "EXPERIÊNCIA PROFISSIONAL", itens, "PROJETOS", itens, "COMPETÊNCIAS", lista separada por vírgulas, "IDIOMAS"), gravá-lo em `Storage::disk('curriculos')` como `{uuid}.pdf` e preencher `curriculo_arquivo`, `curriculo_nome_original`, `curriculo_tamanho` e `texto_curriculo`. Competências com origem `curriculo`. **Estagiários** (vaga do roteiro: Python 3, SQL 3, Git 2, Inglês básico 1, Trabalho em equipe 1 = 10):
+- [ ] T047 [US1] Criar `database/seeders/CandidatoSeeder.php` com 24 candidatos fictícios (nomes, e-mails `@exemplo.com.br`, telefones e cidades inventados; `consentimento_meio` variado; `consentimento_em` nos últimos 6 meses) (o *stub* já está registrado em `DatabaseSeeder` por T033). Para cada um, gerar o PDF com `GeradorPdfCurriculo` (linhas: nome, contato, "FORMAÇÃO", itens, "EXPERIÊNCIA PROFISSIONAL", itens, "PROJETOS", itens, "COMPETÊNCIAS", lista separada por vírgulas, "IDIOMAS"), gravá-lo em `Storage::disk('curriculos')` como `{uuid}.pdf` e preencher `curriculo_arquivo`, `curriculo_nome_original`, `curriculo_tamanho` e `texto_curriculo`. Competências com origem `curriculo`. **Estagiários** (vaga do roteiro: Python 3, SQL 3, Git 2, Inglês básico 1, Trabalho em equipe 1 = 10):
   - E1 (desenvolvimento): Python, SQL, Git, Inglês intermediário, Trabalho em equipe, PHP, Laravel → 100%
   - E2 (desenvolvimento): Python, SQL, Git, Inglês básico, JavaScript → 90%
   - E3 (desenvolvimento): Python, SQL, Git, Trabalho em equipe, React → 90% (empate com E2)
@@ -193,11 +283,11 @@ candidatos com todos os critérios, a contagem correta e os cards (quickstart, c
 - [ ] T055 [US1] Criar `app/Http/Controllers/PainelController.php` (invokable, usa `PainelService`) e `resources/views/painel/index.blade.php` definitiva: 4 `x-cartao-estatistica` (Talentos, Servidores, Estagiários, Vagas abertas), lista "Competências mais frequentes" em barras horizontais só com CSS e atalhos para Importar currículo e Nova vaga
 - [ ] T056 [US1] Criar `app/Http/Controllers/CandidatoController.php` com `index(BuscarCandidatosRequest)` (filtros, resultado paginado, catálogo agrupado para o formulário de filtros) e `show(Candidato $candidato)` (eager load de competências, anotações com autor e vaga e perfil de energia)
 - [ ] T057 [US1] Criar `app/Http/Controllers/CurriculoController.php` com `show(Candidato $candidato)`: 404 se `curriculo_arquivo` for nulo ou o arquivo não existir; senão `Storage::disk('curriculos')->response($candidato->curriculo_arquivo, $candidato->curriculo_nome_original, ['Content-Type' => 'application/pdf', 'Cache-Control' => 'private, no-store'], 'inline')`
-- [ ] T058 [US1] Em `routes/web.php` (grupo `auth`), trocar a rota provisória `/` por `PainelController` (`painel`) e adicionar `GET /candidatos` (`candidatos.index`), `GET /candidatos/{candidato}` (`candidatos.show`) e `GET /candidatos/{candidato}/curriculo` (`candidatos.curriculo`), conforme `contracts/rotas-web.md`. Declarar `/candidatos/importar` (US2) **antes** de `/candidatos/{candidato}` ou restringir `{candidato}` com `whereNumber`
+- [ ] T058 [US1] Em `routes/web.php`, trocar a rota provisória `/` por `PainelController` (`painel`); em `routes/candidatos.php`, no bloco `// US1 — gestão do banco`, adicionar `GET /candidatos` (`candidatos.index`), `GET /candidatos/{candidato}` (`candidatos.show`) e `GET /candidatos/{candidato}/curriculo` (`candidatos.curriculo`), conforme `contracts/rotas-web.md`. Restringir **sempre** `{candidato}` com `->whereNumber('candidato')`, para que a ordem das rotas da US2 (`/candidatos/importar`) não importe
 - [ ] T059 [P] [US1] Criar `resources/views/candidatos/partials/_card.blade.php`: nome, `x-badge-tipo`, área, "Experiência na área: sim" ou "Experiência na área: não informado" (FR-007), até 5 `x-tag-competencia` e "+N"; o card inteiro leva a `candidatos.show`; **sem** o código `CAND-`
 - [ ] T060 [US1] Criar `resources/views/candidatos/index.blade.php`: `x-cabecalho-pagina` com o botão "Importar currículo"; formulário GET com `data-autosubmit` contendo campo de busca por nome, selects de tipo e área, *checkbox* de experiência e a lista de competências em dois grupos (Técnicas / Comportamentais) como *chips* de *checkbox*, com um campo "filtrar competências"; título "N talentos encontrados"; grade responsiva de `_card`; paginação; `x-estado-vazio` com link "Remover filtros" para `candidatos.index`
-- [ ] T061 [US1] Criar `resources/views/candidatos/show.blade.php`: cabeçalho (nome, `x-badge-tipo`, área, idade se houver, e-mail, telefone, CPF mascarado `***.***.***-NN`); seções Formação, Experiências, Competências (separadas em hard e soft, cada `x-tag-competencia` com a origem), Projetos, Links e Currículo original (botão "Abrir PDF" para `candidatos.curriculo`); listas vazias mostram "Não informado no currículo" (nunca "não possui"); seções reservadas para Anotações (US5), Consentimento e retenção (US6) e Padrão de energia (US7)
-- [ ] T062 [US1] Em `resources/js/app.js`, adicionar o filtro de *chips*: um input com `data-filtrar-chips="#alvo"` oculta os *chips* cujo texto (sem acento, minúsculo) não contém o termo digitado
+- [ ] T061 [US1] Criar `resources/views/candidatos/show.blade.php`: cabeçalho (nome, `x-badge-tipo`, área, idade se houver, e-mail, telefone, CPF mascarado `***.***.***-NN`); seções Formação, Experiências, Competências (separadas em hard e soft, cada `x-tag-competencia` com a origem), Projetos, Links e Currículo original (botão "Abrir PDF" para `candidatos.curriculo`); listas vazias mostram "Não informado no currículo" (nunca "não possui"); as seções de outras histórias entram por `@include` de três *partials* criados agora como placeholders ("Em breve"): `resources/views/candidatos/partials/_secao-anotacoes.blade.php` (US5), `_secao-lgpd.blade.php` (US6) e `_secao-energia.blade.php` (US7). As outras histórias editam só o *partial* delas, nunca o `show.blade.php`
+- [ ] T062 [US1] Em `resources/js/modulos/chips.js`, implementar o filtro de *chips*: um input com `data-filtrar-chips="#alvo"` oculta os *chips* cujo texto (sem acento, minúsculo) não contém o termo digitado
 
 **Checkpoint**: cenário A do quickstart funciona; `BuscaCandidatosTest` e `PainelTest` passam.
 
@@ -229,7 +319,7 @@ US1 (quickstart, cenário B).
 - [ ] T072 [P] [US2] Criar `app/Http/Requests/CriarCompetenciaRequest.php` (`nome` required|string|max:80|unique:competencias,nome; `categoria` required enum `CategoriaCompetencia`) e `app/Http/Controllers/CompetenciaController.php` com `store()`, que cria a competência (`sinonimos` = [nome normalizado]) e volta com "Competência adicionada ao catálogo."
 - [ ] T073 [US2] Criar `app/Http/Controllers/ImportacaoCurriculoController.php` com `create()` (formulário), `store(ImportarCurriculoRequest)` (chama `importar` e redireciona para `importacoes.show`) e `show(string $importacao)` (404 com link "Enviar novamente" se não existir na sessão; passa os dados extraídos, o duplicado eventual, a situação de leitura e o catálogo agrupado para a view)
 - [ ] T074 [US2] Criar `app/Http/Controllers/ConfirmacaoImportacaoController.php` com `store(ConfirmarImportacaoRequest, string $importacao)`: 404 se a importação não existir; chama `CadastroCandidatoService::confirmar`, limpa a sessão e redireciona para `candidatos.show` com "Candidato salvo no banco de talentos."
-- [ ] T075 [US2] Em `routes/web.php` (grupo `auth`, antes de `/candidatos/{candidato}`), adicionar `GET /candidatos/importar` (`importacoes.create`), `POST /candidatos/importar` (`importacoes.store`), `GET /candidatos/importar/{importacao}` (`importacoes.show`, `whereUuid`), `POST /candidatos/importar/{importacao}/confirmar` (`importacoes.confirmar`) e `POST /competencias` (`competencias.store`)
+- [ ] T075 [US2] Em `routes/candidatos.php`, no bloco `// US2 — importação`, adicionar `GET /candidatos/importar` (`importacoes.create`), `POST /candidatos/importar` (`importacoes.store`), `GET /candidatos/importar/{importacao}` (`importacoes.show`, `whereUuid`), `POST /candidatos/importar/{importacao}/confirmar` (`importacoes.confirmar`) e `POST /competencias` (`competencias.store`)
 - [ ] T076 [P] [US2] Criar `resources/views/importacoes/create.blade.php`: área de envio com o input de arquivo (`accept="application/pdf"`), escolha de tipo (Servidor/Estagiário) em dois cartões grandes com as cores do tipo, texto "PDF com texto selecionável, até 10 MB" e botão "Ler currículo"
 - [ ] T077 [US2] Criar `resources/views/candidatos/partials/_formulario.blade.php`, reutilizável na revisão e na edição (US6): identificação e contato; tipo, área e experiência na área; *textareas* de formação, experiências, projetos e links (uma linha por item); competências em *chips* de *checkbox* agrupados (hard/soft) com o filtro de *chips*, mostrando o trecho de origem quando houver; bloco "Consentimento do candidato" (select de meio, data e texto explicativo LGPD)
 - [ ] T078 [US2] Criar `resources/views/importacoes/show.blade.php` (tela de revisão): `x-alerta` de acordo com a situação (`sem_texto`: "Não conseguimos ler o texto deste PDF (parece digitalizado). Preencha os dados manualmente."; `corrompido`: "O arquivo parece corrompido."); alerta de duplicidade com o nome do cadastro existente e radios `modo` ("Atualizar cadastro existente", marcado por padrão, ou "Criar novo mesmo assim") + `candidato_existente_id` oculto; `_formulario` pré-preenchido; soft skills marcadas como "declaradas no currículo"; *chips* de `sugestoes_competencias` com mini-formulário para `competencias.store` ("Adicionar ao catálogo") ou "Ignorar"; botão "Confirmar e salvar"
@@ -265,11 +355,11 @@ um com a explicação (quickstart, cenário C).
 - [ ] T088 [US3] Criar `app/Http/Requests/SalvarVagaRequest.php`. No `prepareForValidation`, converter `competencias[ID] = peso` (selects com opção vazia "Não usar") em uma lista `[{id, peso}]` sem itens vazios. Regras: `titulo` required|string|max:120; `area` required enum; `tipo_candidato` required enum `TipoCandidatoVaga`; `descricao` nullable|string|max:1000; `competencias` required|array|min:1; `competencias.*.id` required|distinct|exists:competencias,id; `competencias.*.peso` required|in:1,2,3. Mensagem: "Selecione ao menos uma competência para a vaga."
 - [ ] T089 [US3] Criar `app/Http/Controllers/VagaController.php` com `index`, `create`, `store` (redireciona para `vagas.show` com "Vaga criada."), `show(Vaga $vaga)` (usa `RankingVagaService`), `edit` e `update`
 - [ ] T090 [US3] Criar `app/Http/Controllers/VagaStatusController.php` com `update(Vaga $vaga)`, que encerra a vaga e volta com "Vaga encerrada. O quadro fica disponível para consulta."
-- [ ] T091 [US3] Em `routes/web.php` (grupo `auth`), adicionar `GET /vagas` (`vagas.index`), `GET /vagas/criar` (`vagas.create`), `POST /vagas` (`vagas.store`), `GET /vagas/{vaga}` (`vagas.show`), `GET /vagas/{vaga}/editar` (`vagas.edit`), `PUT /vagas/{vaga}` (`vagas.update`) e `PATCH /vagas/{vaga}/status` (`vagas.status`)
+- [ ] T091 [US3] Em `routes/vagas.php`, no bloco `// US3 — vagas`, adicionar `GET /vagas` (`vagas.index`), `GET /vagas/criar` (`vagas.create`), `POST /vagas` (`vagas.store`), `GET /vagas/{vaga}` (`vagas.show`), `GET /vagas/{vaga}/editar` (`vagas.edit`), `PUT /vagas/{vaga}` (`vagas.update`) e `PATCH /vagas/{vaga}/status` (`vagas.status`)
 - [ ] T092 [US3] Criar `resources/views/vagas/partials/_formulario.blade.php` (título, área, tipo de candidato, descrição; duas seções "Competências técnicas (hard skills)" e "Competências comportamentais (soft skills)", cada competência com um select de peso `—`/1 Desejável/2 Importante/3 Essencial e o filtro de *chips*; espaço reservado para o padrão de energia (US7)), `resources/views/vagas/create.blade.php` e `resources/views/vagas/edit.blade.php`
 - [ ] T093 [US3] Criar `resources/views/vagas/index.blade.php`: cards de vaga com título, área, tipo aceito (`x-badge`), status, contagem de candidatos elegíveis e botão "Nova vaga"; `x-estado-vazio` quando não houver vagas
-- [ ] T094 [US3] Criar `resources/views/vagas/partials/_card-ranking.blade.php` (código, `x-badge-tipo`, área, `x-barra-score`, `explicacao()`, tags atendidas com origem e tags `faltante` com peso, experiência na área; **sem** nome, contato ou link para `candidatos.show`) e `resources/views/vagas/show.blade.php` (cabeçalho da vaga com competências e pesos, ações Editar/Encerrar e a lista ranqueada "Triagem")
-- [ ] T095 [US3] Criar `database/seeders/VagaSeeder.php` e registrá-lo em `DatabaseSeeder` depois de `CandidatoSeeder`, com 3 vagas abertas: "Analista de Suporte Técnico" (servidor, suporte: Atendimento ao público 3, Windows 3, ITIL 2, Comunicação 2, Proatividade 1); "Analista de Dados" (ambos, dados: SQL 3, Power BI 3, Python 2, Pensamento analítico 1, Inglês intermediário 1); "Estagiário de Infraestrutura" (estagiário, infraestrutura: Linux 3, Redes de Computadores 3, Suporte a Hardware 2, Trabalho em equipe 1). A vaga "Estagiário de Desenvolvimento" **não** é semeada (é criada ao vivo no pitch)
+- [ ] T094 [US3] Criar `resources/views/vagas/partials/_card-ranking.blade.php` (código, `x-badge-tipo`, área, `x-barra-score`, `explicacao()`, tags atendidas com origem e tags `faltante` com peso, experiência na área; **sem** nome, contato ou link para `candidatos.show`) com um `@include('vagas.partials._selo-energia', ['item' => $item])` apontando para um *partial* vazio criado agora (preenchido em T140 pela outra trilha), e `resources/views/vagas/show.blade.php` (cabeçalho da vaga com competências e pesos, ações Editar/Encerrar e a lista ranqueada "Triagem")
+- [ ] T095 [US3] Criar `database/seeders/VagaSeeder.php` (o *stub* já está registrado por T033) com 3 vagas abertas: "Analista de Suporte Técnico" (servidor, suporte: Atendimento ao público 3, Windows 3, ITIL 2, Comunicação 2, Proatividade 1); "Analista de Dados" (ambos, dados: SQL 3, Power BI 3, Python 2, Pensamento analítico 1, Inglês intermediário 1); "Estagiário de Infraestrutura" (estagiário, infraestrutura: Linux 3, Redes de Computadores 3, Suporte a Hardware 2, Trabalho em equipe 1). A vaga "Estagiário de Desenvolvimento" **não** é semeada (é criada ao vivo no pitch)
 
 **Checkpoint**: cenário C do quickstart funciona; `CalculadoraAderenciaTest`,
 `RankingVagaTest` e `VagaTest` passam.
@@ -302,10 +392,10 @@ responde 403; ao mover três candidatos para Entrevista, os nomes aparecem só n
 - [ ] T105 [US4] Criar `app/Http/Controllers/ParticipacaoController.php` com `show(Vaga $vaga, Candidato $candidato)`, que renderiza `participacoes.show` **só** com o `PerfilNaVaga` (nunca passar o model `Candidato` à view)
 - [ ] T106 [US4] Criar `app/Http/Controllers/ParticipacaoEtapaController.php` com `update(MoverEtapaRequest, Vaga $vaga, Candidato $candidato)`: chama `SelecaoService::moverEtapa` e volta para `vagas.show` com "CAND-NNNN movido para Entrevista." (ou o nome, se a etapa revelar)
 - [ ] T107 [US4] Criar `app/Http/Controllers/ParticipacaoCurriculoController.php` com `show(Vaga $vaga, Candidato $candidato)`: `abort_unless($visibilidade->podeRevelar($vaga, $candidato), 403)`; depois, a mesma resposta `inline`/`no-store` de T057
-- [ ] T108 [US4] Em `routes/web.php` (grupo `auth`), adicionar `GET /vagas/{vaga}/candidatos/{candidato:codigo}` (`vagas.candidatos.show`), `PATCH /vagas/{vaga}/candidatos/{candidato:codigo}/etapa` (`vagas.candidatos.etapa`) e `GET /vagas/{vaga}/candidatos/{candidato:codigo}/curriculo` (`vagas.candidatos.curriculo`), **todas** com `->withoutScopedBindings()` (research R9)
+- [ ] T108 [US4] Em `routes/vagas.php`, no bloco `// US4 — seleção`, adicionar `GET /vagas/{vaga}/candidatos/{candidato:codigo}` (`vagas.candidatos.show`), `PATCH /vagas/{vaga}/candidatos/{candidato:codigo}/etapa` (`vagas.candidatos.etapa`) e `GET /vagas/{vaga}/candidatos/{candidato:codigo}/curriculo` (`vagas.candidatos.curriculo`), **todas** com `->withoutScopedBindings()` (research R9)
 - [ ] T109 [US4] Transformar `resources/views/vagas/show.blade.php` em quadro de 3 colunas (Triagem, Entrevista, Aprovado) usando o novo `resources/views/vagas/partials/_coluna.blade.php` (título, contagem e estado vazio por coluna). Atualizar `_card-ranking.blade.php`: mostrar o nome só quando `$item->nome` não for nulo (código como texto secundário); link do card para `vagas.candidatos.show` (pelo código); botões de movimentação (Triagem → "Mover para Entrevista"; Entrevista → "Aprovar" e "Voltar para Triagem"; Aprovado → "Voltar para Entrevista") com formulário `PATCH`; `draggable="true"` e `data-codigo`; selo "Desativado" esmaecido e sem ações; vaga encerrada sem botões e com o aviso "Vaga encerrada — somente consulta"
 - [ ] T110 [US4] Criar `resources/views/participacoes/show.blade.php` a partir do `PerfilNaVaga`: em triagem, cabeçalho com `x-icone cadeado` e "Identidade protegida na triagem anônima", código, tipo, área, aderência explicada, formação, experiências, projetos, competências e "N links — visíveis a partir da entrevista"; quando revelado, também nome, contatos, idade, links, botão "Abrir PDF" (`vagas.candidatos.curriculo`) e espaço reservado para as anotações (US5); sempre o histórico de movimentações da vaga ("Movido para Entrevista por {usuário} em dd/mm/aaaa hh:mm") e os botões de movimentação
-- [ ] T111 [US4] Em `resources/js/app.js`, adicionar arrastar e soltar (HTML5 Drag and Drop) no quadro: soltar um card numa coluna `[data-etapa]` envia o mesmo formulário `PATCH` do card com o valor da etapa de destino; sem JavaScript, os botões continuam funcionando
+- [ ] T111 [US4] Em `resources/js/modulos/kanban.js`, implementar arrastar e soltar (HTML5 Drag and Drop) no quadro: soltar um card numa coluna `[data-etapa]` envia o mesmo formulário `PATCH` do card com o valor da etapa de destino; sem JavaScript, os botões continuam funcionando
 - [ ] T112 [US4] Em `database/seeders/VagaSeeder.php`, mover via `ParticipacaoRepository::moverPara` (usuário do `UsuarioSeeder`) S3 e S9 para Entrevista na vaga "Analista de Dados", para o quadro semeado já mostrar candidatos revelados
 
 **Checkpoint**: cenário D do quickstart funciona; `TriagemAnonimaTest`,
@@ -333,8 +423,8 @@ outra vaga em que ele esteja revelado (quickstart, cenário E).
 - [ ] T116 [US5] Criar `app/Http/Requests/RegistrarAnotacaoRequest.php`: `texto` required|string|max:5000; `vaga_id` nullable|exists:vagas,id; `competencias_observadas` nullable|array; `competencias_observadas.*` integer|exists:competencias,id
 - [ ] T117 [US5] Criar `app/Http/Controllers/AnotacaoController.php` com `store(RegistrarAnotacaoRequest, Candidato $candidato)` (contexto do banco; vaga opcional vinda do request), que volta com "Anotação registrada."
 - [ ] T118 [US5] Criar `app/Http/Controllers/ParticipacaoAnotacaoController.php` com `store(RegistrarAnotacaoRequest, Vaga $vaga, Candidato $candidato)`: `abort_unless(podeRevelar, 403)`; a vaga é a da rota (ignora `vaga_id` do request)
-- [ ] T119 [US5] Em `routes/web.php`, adicionar `POST /candidatos/{candidato}/anotacoes` (`candidatos.anotacoes.store`) e `POST /vagas/{vaga}/candidatos/{candidato:codigo}/anotacoes` (`vagas.candidatos.anotacoes.store`, com `->withoutScopedBindings()`)
-- [ ] T120 [US5] Criar `resources/views/anotacoes/_formulario.blade.php` (textarea, select opcional de vaga só no contexto do banco, *chips* de competências observadas) e `resources/views/anotacoes/_historico.blade.php` (cada item com autor, data dd/mm/aaaa hh:mm, vaga ou "Sem vaga associada", texto e tags "observada em entrevista"; estado vazio "Nenhuma anotação ainda") e incluí-los em `resources/views/candidatos/show.blade.php` e, só quando revelado, em `resources/views/participacoes/show.blade.php`
+- [ ] T119 [US5] Adicionar `POST /candidatos/{candidato}/anotacoes` (`candidatos.anotacoes.store`) em `routes/candidatos.php` (bloco `// US5 — anotações`) e `POST /vagas/{vaga}/candidatos/{candidato:codigo}/anotacoes` (`vagas.candidatos.anotacoes.store`, com `->withoutScopedBindings()`) em `routes/vagas.php` (bloco `// US5 — anotações`)
+- [ ] T120 [US5] Criar `resources/views/anotacoes/_formulario.blade.php` (textarea, select opcional de vaga só no contexto do banco, *chips* de competências observadas) e `resources/views/anotacoes/_historico.blade.php` (cada item com autor, data dd/mm/aaaa hh:mm, vaga ou "Sem vaga associada", texto e tags "observada em entrevista"; estado vazio "Nenhuma anotação ainda") e incluí-los em `resources/views/candidatos/partials/_secao-anotacoes.blade.php` e, só quando revelado, em `resources/views/participacoes/show.blade.php`
 - [ ] T121 [US5] Em `database/seeders/VagaSeeder.php`, registrar via `AnotacaoService` uma anotação para S3 e outra para S9 na vaga "Analista de Dados" (texto fictício sobre a entrevista, competência observada "Comunicação")
 
 **Checkpoint**: cenário E do quickstart funciona; `AnotacaoEntrevistaTest` passa.
@@ -359,8 +449,8 @@ que ele sumiu de buscas, rankings e quadros e que o PDF não abre mais (quicksta
 - [ ] T124 [US6] Criar `app/Http/Requests/AlterarStatusCandidatoRequest.php` (`status` required enum `StatusCandidato`) e `app/Http/Controllers/CandidatoStatusController.php` com `update()`, que altera o status e volta com "Candidato desativado. Ele não aparece em buscas e rankings, mas os dados continuam guardados." ou "Candidato reativado."
 - [ ] T125 [US6] Criar `app/Services/Lgpd/ExclusaoCandidatoService.php` com `excluir(Candidato $candidato, MotivoExclusao $motivo, User $responsavel): void`: guarda o caminho do PDF, em `DB::transaction` apaga o candidato (as FKs `cascadeOnDelete` removem os vínculos) e cria `RegistroExclusao` (`user_id`, `motivo`, `excluido_em = now()`); apaga o arquivo do disco `curriculos` **depois do commit**
 - [ ] T126 [US6] Criar `app/Http/Requests/ExcluirCandidatoRequest.php` (`motivo` required enum `MotivoExclusao`; `confirmacao` accepted) e o método `destroy(ExcluirCandidatoRequest, Candidato $candidato)` em `CandidatoController`, que redireciona para `candidatos.index` com "Dados do candidato excluídos definitivamente."
-- [ ] T127 [US6] Em `routes/web.php`, adicionar `GET /candidatos/{candidato}/editar` (`candidatos.edit`), `PUT /candidatos/{candidato}` (`candidatos.update`), `PATCH /candidatos/{candidato}/status` (`candidatos.status`) e `DELETE /candidatos/{candidato}` (`candidatos.destroy`)
-- [ ] T128 [US6] Em `resources/views/candidatos/show.blade.php`, preencher a seção "Consentimento e retenção" (meio, data, responsável, "Retenção até dd/mm/aaaa" e o selo "revisão de retenção pendente" quando vencida) e as ações Editar, Desativar/Reativar e "Excluir definitivamente" (`x-modal` explicando o que será apagado, select de motivo, *checkbox* de confirmação e botão `perigo`)
+- [ ] T127 [US6] Em `routes/candidatos.php`, no bloco `// US6 — LGPD`, adicionar `GET /candidatos/{candidato}/editar` (`candidatos.edit`), `PUT /candidatos/{candidato}` (`candidatos.update`), `PATCH /candidatos/{candidato}/status` (`candidatos.status`) e `DELETE /candidatos/{candidato}` (`candidatos.destroy`)
+- [ ] T128 [US6] Em `resources/views/candidatos/partials/_secao-lgpd.blade.php`, preencher a seção "Consentimento e retenção" (meio, data, responsável, "Retenção até dd/mm/aaaa" e o selo "revisão de retenção pendente" quando vencida) e as ações Editar, Desativar/Reativar e "Excluir definitivamente" (`x-modal` explicando o que será apagado, select de motivo, *checkbox* de confirmação e botão `perigo`)
 - [ ] T129 [US6] Completar a US1 com a LGPD: em `EloquentCandidatoRepository::buscar`, tratar `situacao` `desativados` (`status = desativado`) e `retencao` (ativos com retenção vencida); adicionar `contarRetencaoVencida(): int` e usá-lo em `PainelService` (cartão "Retenção pendente" com link para `candidatos.index?situacao=retencao`); em `resources/views/candidatos/index.blade.php`, adicionar o seletor de situação; em `_card.blade.php`, adicionar o selo de retenção pendente
 
 **Checkpoint**: cenário F do quickstart funciona; `LgpdTest` passa.
@@ -390,9 +480,9 @@ sem afetar o resto (quickstart, cenário G).
 - [ ] T135 [US7] Criar `app/Services/Energia/ClaudeAnalisadorEnergia.php`, implementando `AnalisadorEnergia` com o SDK oficial `anthropic-ai/sdk` (`Anthropic\Client`, chave de `config('services.anthropic.key')`, modelo de `config('services.anthropic.model')`), `messages->create` com o *system prompt* fixo em pt-BR descrito no contrato, `outputConfig` com `'format' => ['type' => 'json_schema', 'schema' => <esquema de contracts/analise-energia.md>]` e esforço baixo, e `maxTokens` 2000. Antes de escrever o código, confirmar na documentação do SDK PHP os nomes das opções de *timeout* (`config('banco_talentos.energia.timeout')`) e de novas tentativas (máximo 1). Ler o primeiro bloco `text`, fazer `json_decode`, validar os eixos entre 1 e 5 e truncar a justificativa em 500 caracteres. Devolver `null` em qualquer exceção do SDK (`Anthropic\Core\Exceptions\APIStatusException` e erros de conexão), em `stopReason === 'refusal'` ou em JSON inválido, registrando `Log::warning` **sem** o conteúdo do currículo. *Plano B (se T001 recusou o SDK)*: mesma classe usando `Http::withHeaders([...])->timeout(...)->post('https://api.anthropic.com/v1/messages', ...)`, com o mesmo contrato
 - [ ] T136 [US7] Criar `app/Services/Energia/PerfilEnergiaService.php`: `textoAnonimizado(Candidato $candidato): string` (formações, experiências, projetos e nomes das competências passados pelo `LimpadorTexto` com os termos do nome; **nunca** nome, contatos, nascimento, links ou PDF); `analisar(Candidato $candidato): ?PerfilEnergia` (chama o analisador e faz upsert com `origem = ia` e `analisado_em = now()`, ou devolve `null`); `ajustar(Candidato $candidato, array $eixos, ?string $justificativa, User $revisor): PerfilEnergia` (`origem = humano`)
 - [ ] T137 [US7] Em `app/Providers/AppServiceProvider.php` (`register`), vincular `AnalisadorEnergia` a `ClaudeAnalisadorEnergia` quando `config('banco_talentos.energia.habilitada')` for verdadeiro **e** `config('services.anthropic.key')` estiver preenchida; nos outros casos, a `AnalisadorEnergiaIndisponivel`
-- [ ] T138 [US7] Criar `app/Http/Requests/AjustarPerfilEnergiaRequest.php` (`dinamico_analitico`, `individual_equipe` e `execucao_planejamento` required|integer|between:1,5; `justificativa` nullable|string|max:500) e `app/Http/Controllers/PerfilEnergiaController.php` com `store(Candidato $candidato)` (analisar; falha → volta com "Análise indisponível no momento.") e `update(AjustarPerfilEnergiaRequest, Candidato $candidato)`; adicionar em `routes/web.php` `POST /candidatos/{candidato}/energia` (`candidatos.energia.analisar`) e `PUT /candidatos/{candidato}/energia` (`candidatos.energia.update`)
+- [ ] T138 [US7] Criar `app/Http/Requests/AjustarPerfilEnergiaRequest.php` (`dinamico_analitico`, `individual_equipe` e `execucao_planejamento` required|integer|between:1,5; `justificativa` nullable|string|max:500) e `app/Http/Controllers/PerfilEnergiaController.php` com `store(Candidato $candidato)` (analisar; falha → volta com "Análise indisponível no momento.") e `update(AjustarPerfilEnergiaRequest, Candidato $candidato)`; adicionar em `routes/candidatos.php` (bloco `// US7 — energia`) `POST /candidatos/{candidato}/energia` (`candidatos.energia.analisar`) e `PUT /candidatos/{candidato}/energia` (`candidatos.energia.update`)
 - [ ] T139 [US7] Em `app/Http/Requests/SalvarVagaRequest.php`, adicionar `energia.dinamico_analitico`, `energia.individual_equipe` e `energia.execucao_planejamento` nullable|integer|between:1,5 com `required_with` cruzado (todos ou nenhum) e persistir nas colunas `energia_*` em `EloquentVagaRepository`; em `resources/views/vagas/partials/_formulario.blade.php`, adicionar a seção opcional "Padrão de energia desejado" com três controles de 5 posições (Dinâmico ↔ Analítico, Individual ↔ Equipe, Execução ↔ Planejamento) e a opção "Não definir"
-- [ ] T140 [US7] Criar o componente `resources/views/components/eixos-energia.blade.php` (três réguas de 1 a 5 com o rótulo dos extremos, marcador do candidato e, opcionalmente, marcador da vaga); exibir em `candidatos/show.blade.php` e `participacoes/show.blade.php` (eixos, justificativa, origem, data, botões "Analisar com IA" e "Ajustar manualmente" com `x-modal`, estados "Não analisado" e "Análise indisponível"); em `RankingVagaService`, preencher `ItemRanking::proximidadeEnergia` com `ProximidadeEnergia` quando a vaga tiver padrão e o candidato tiver perfil (sem alterar a ordenação); em `_card-ranking.blade.php`, mostrar o selo "Energia: N% de proximidade" separado da barra de aderência
+- [ ] T140 [US7] Criar o componente `resources/views/components/eixos-energia.blade.php` (três réguas de 1 a 5 com o rótulo dos extremos, marcador do candidato e, opcionalmente, marcador da vaga); exibir em `candidatos/partials/_secao-energia.blade.php` e `participacoes/show.blade.php` (eixos, justificativa, origem, data, botões "Analisar com IA" e "Ajustar manualmente" com `x-modal`, estados "Não analisado" e "Análise indisponível"); em `RankingVagaService`, preencher `ItemRanking::proximidadeEnergia` com `ProximidadeEnergia` quando a vaga tiver padrão e o candidato tiver perfil (sem alterar a ordenação); em `vagas/partials/_selo-energia.blade.php`, mostrar o selo "Energia: N% de proximidade" separado da barra de aderência (o `_card-ranking` já inclui esse *partial* desde T094). Fazer **depois** da sincronização S3, quando a trilha A já terminou T109
 - [ ] T141 [US7] Criar `app/Console/Commands/AnalisarEnergiaCommand.php` (`energia:analisar {--todos}`): sem `--todos`, analisa só candidatos ativos sem perfil; com `--todos`, reanalisa os de origem `ia` (nunca sobrescreve `humano`); barra de progresso e resumo "N analisados, M indisponíveis"; se a IA estiver desligada, avisar e encerrar com sucesso
 
 **Checkpoint**: cenário G do quickstart funciona com a IA ligada e desligada;
@@ -404,7 +494,7 @@ sem afetar o resto (quickstart, cenário G).
 
 **Purpose**: acabamento visual, acessibilidade, verificação final e ensaio do pitch.
 
-- [ ] T142 Revisar todas as telas em `resources/views/` quanto aos estados vazio, de erro e de carregamento (botões de envio com `data-carregando` desabilitados e mostrando "Processando…" no envio do PDF e na análise de IA, implementado em `resources/js/app.js`) e às microinterações leves (transições Tailwind em hover/foco e no surgimento de alertas)
+- [ ] T142 Revisar todas as telas em `resources/views/` quanto aos estados vazio, de erro e de carregamento (botões de envio com `data-carregando` desabilitados e mostrando "Processando…" no envio do PDF e na análise de IA, implementado em `resources/js/modulos/formularios.js`) e às microinterações leves (transições Tailwind em hover/foco e no surgimento de alertas)
 - [ ] T143 [P] Verificar o contraste WCAG 2.1 AA dos pares de cor definidos em `resources/css/app.css` (texto sobre `servidor`, `estagiario`, `primaria` e faixas de score), o foco visível em todos os elementos interativos, os `label`s dos campos e a navegação do quadro por teclado (botões de movimentação)
 - [ ] T144 [P] Rodar `npm run build` sem internet e verificar se a fonte Instrument Sans configurada em `vite.config.js` fica empacotada em `public/build`; se depender de CDN, garantir que a pilha `ui-sans-serif, system-ui` em `resources/css/app.css` mantenha a aparência aceitável offline
 - [ ] T145 [P] Atualizar `README.md` com a seção "Demonstração" (comando `demo`, credenciais `recrutador@setic.demo` / `demo1234`, `php artisan demo:curriculos`, `php artisan energia:analisar` e o link para `specs/001-banco-de-talentos-mvp/quickstart.md`)
@@ -457,8 +547,8 @@ sem afetar o resto (quickstart, cenário G).
 - US3: T080 ∥ T081 ∥ T082 ∥ T083 ∥ T085. A `CalculadoraAderencia` (T084) é pura e pode ser
   feita em paralelo desde a Foundational.
 - US4: T096 ∥ T097 ∥ T098 ∥ T099 ∥ T100.
-- US5 ∥ US6 depois da US4 (arquivos diferentes, exceto `candidatos/show.blade.php` — combinar
-  as seções).
+- US5 e US6 não disputam `candidatos/show.blade.php`: cada uma edita só o seu *partial*
+  `_secao-*` (T061).
 - US7: T130–T134 em paralelo.
 
 ---
@@ -502,10 +592,10 @@ Task: "T100 PerfilNaVaga em app/Services/Selecao/PerfilNaVaga.php"
 
 | Quando | Entrega | Demonstrável |
 |---|---|---|
-| Sex 30/10 | Fases 1–2 | Login, layout, dados semeados |
-| Sáb 31/10 | US1 + US2 | Busca + importação de PDF (todo o P1) |
-| Dom 01/11 | US3 + US4 | Ranking explicado + kanban anônimo (todo o P2) |
-| Seg 02/11 | US5 + US6 + Polish (+ US7 se sobrar tempo) | Roteiro completo do pitch |
+| Sex 30/10 | Fase 1 (concluída) | Infraestrutura e testes de base |
+| Sáb 31/10 | R0 + R1: Fase 2, US1 ∥ US2 | Busca + importação de PDF (todo o P1) |
+| Dom 01/11 | R2 + R3: US3 ∥ US6, depois US4 ∥ US5/US7 | Ranking + LGPD + kanban anônimo |
+| Seg 02/11 | R4: fechamento de US5/US7 + Polish | Roteiro completo do pitch |
 | Ter 03/11 | Ensaio final (T148) e apresentação | — |
 
 **Cortes, se faltar tempo (nesta ordem)**: US7 inteira → T111 (arrastar e soltar) →
@@ -514,10 +604,9 @@ consentimento.
 
 ### Parallel Team Strategy
 
-1. Todos juntos na Fase 1; na Fase 2, uma pessoa no *backend* (migrations, models, seeders,
-   login) e outra no *frontend* (T035–T040).
-2. Depois da Fundação: pessoa A em US1 → US3 → US4; pessoa B em US2 (extrator primeiro) →
-   US6 → US5; US7 com quem terminar antes.
+A divisão completa entre as duas pessoas, com rodadas, donos de arquivos e pontos de
+sincronização, está em [Trabalho em dupla](#trabalho-em-dupla-duas-trilhas-em-paralelo).
+Resumo: trilha A em US1 → US3 → US4; trilha B em design system → US2 → US6 → US5/US7.
 
 ---
 

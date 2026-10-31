@@ -174,7 +174,7 @@ lang/pt_BR/validation.php                   # mensagens e atributos em portuguê
 
 resources/
 ├── css/app.css                             # tokens do design system (@theme)
-├── js/app.js                               # autoenvio de filtros, chips, drag-and-drop, <dialog>
+├── js/app.js                               # ponto de entrada; importa js/modulos/{formularios,chips,kanban}.js
 └── views/
     ├── layouts/app.blade.php · layouts/visitante.blade.php
     ├── components/                         # botao, card, badge, badge-tipo, tag-competencia, campo, modal,
@@ -188,7 +188,10 @@ resources/
     ├── participacoes/show.blade.php
     └── errors/403.blade.php                # "Identidade protegida na triagem anônima"
 
-routes/web.php                              # rotas de contracts/rotas-web.md
+routes/
+├── web.php                                 # login/logout, painel; inclui os arquivos abaixo no grupo auth
+├── candidatos.php                          # rotas do banco, importação, LGPD, anotações e energia (blocos por história)
+└── vagas.php                               # rotas de vagas e seleção (blocos por história)
 
 tests/
 ├── TestCase.php
@@ -231,15 +234,25 @@ demonstrável e passa pelos gates (testes, Pint, fluxo manual, revisão visual).
 
 | Dia | Foco |
 |---|---|
-| Sex 30/10 | Incremento 0 (fundação + design system) |
-| Sáb 31/10 | Incrementos 1 e 2 (P1 completas) |
-| Dom 01/11 | Incrementos 3 e 4 (P2 completas) |
-| Seg 02/11 | Incrementos 5 e 6, polimento e ensaio; incremento 7 só se o restante estiver pronto |
+| Sex 30/10 | Setup (concluído) |
+| Sáb 31/10 | R0 Fundação (backend ∥ design system) e R1 (US1 ∥ US2) |
+| Dom 01/11 | R2 (US3 ∥ US6) e R3 (US4 ∥ US5 pelo banco + US7 sem ranking) |
+| Seg 02/11 | R4: fechamento de US5 pela vaga e de US7 no ranking, polimento e ensaio |
 | Ter 03/11 | Ensaio final e apresentação |
 
-**Paralelização possível**: design system e views (frontend) em paralelo com migrations,
-services e testes (backend). O extrator (US2) e a calculadora de aderência (US3) são classes
-puras e podem ser desenvolvidos e testados em paralelo desde o primeiro dia.
+**Trabalho em dupla**: a implementação é dividida em duas trilhas paralelas. A **trilha A**
+("Banco, Vagas e Seleção") faz esquema, US1, US3 e US4. A **trilha B** ("Interface, Currículo
+e LGPD") faz design system, US2, US6, US5 e US7. São cinco rodadas, com pontos de
+sincronização no `main`. Para evitar conflitos de merge, cada arquivo tem um dono, e o plano
+inclui três ajustes estruturais:
+
+- rotas separadas por módulo (`routes/candidatos.php`, `routes/vagas.php`), com blocos por
+  história;
+- seções do perfil do candidato em *partials* por história;
+- JavaScript em módulos.
+
+Rodadas, donos de arquivos e combinados de Git estão em
+[tasks.md → Trabalho em dupla](./tasks.md#trabalho-em-dupla-duas-trilhas-em-paralelo).
 
 **Riscos principais e mitigação**:
 
