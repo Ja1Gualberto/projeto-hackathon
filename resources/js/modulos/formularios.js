@@ -63,7 +63,7 @@ export async function enviarFormulario(formulario, botao = null, confirmar = (te
         if (formulario.isConnected === false) {
             focarRegiaoAtualizada(Object.keys(resposta.fragments), formulario.ownerDocument);
         }
-        anunciar(resposta.message ?? 'Operação concluída.', formulario.ownerDocument);
+        anunciar(resposta.message ?? 'Operação concluída.', formulario.ownerDocument, 'sucesso');
         formulario.dispatchEvent?.(new CustomEvent('ajax:sucesso', { bubbles: true, detail: { resposta, novos } }));
         limparDepois = formulario.hasAttribute?.('data-limpar-apos-sucesso') === true;
         if (resposta.redirect) {

@@ -9,6 +9,10 @@
             <p class="text-texto-suave">Acesso restrito à equipe de recrutamento.</p>
         </div>
 
+        @if ($errors->any())
+            <x-alerta tipo="erro" titulo="Não foi possível entrar">{{ $errors->first() }}</x-alerta>
+        @endif
+
         <form method="POST" action="{{ route('login.store') }}" class="flex flex-col gap-5">
             @csrf
 
@@ -26,8 +30,8 @@
             </x-botao>
         </form>
 
-        <x-alerta tipo="info">
+        <p class="text-center text-sm text-texto-suave">
             Ambiente de demonstração — dados fictícios.
-        </x-alerta>
+        </p>
     </div>
 @endsection

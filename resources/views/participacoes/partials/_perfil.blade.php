@@ -56,7 +56,10 @@
     </header>
 
     @unless ($vaga->estaAberta())
-        <x-alerta tipo="aviso" titulo="Vaga encerrada — somente consulta">A vaga não aceita mais movimentações; o perfil e o histórico continuam disponíveis.</x-alerta>
+        <div class="flex flex-col gap-1 border-l-4 border-borda pl-4 text-sm text-texto-suave">
+            <p class="font-semibold text-texto">Vaga encerrada — somente consulta</p>
+            <p>A vaga não aceita mais movimentações; o perfil e o histórico continuam disponíveis.</p>
+        </div>
     @endunless
 
     <div class="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_18rem]">

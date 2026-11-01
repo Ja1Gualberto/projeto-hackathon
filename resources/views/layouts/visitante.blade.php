@@ -13,6 +13,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="min-h-screen bg-linear-to-br from-primaria-900 via-primaria-800 to-primaria-600">
+    <x-central-alertas />
     <main class="flex min-h-screen items-center justify-center px-4 py-12">
         <div class="flex w-full max-w-md flex-col gap-6">
             <div class="flex items-center justify-center gap-3 text-white">

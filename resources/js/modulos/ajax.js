@@ -1,3 +1,5 @@
+import { mostrarAlerta } from './alertas.js';
+
 const REGIOES = new Set([
     'resultados-candidatos', 'catalogo-competencias', 'quadro-vaga', 'perfil-na-vaga',
     'historico-anotacoes', 'competencias-candidato', 'situacao-candidato', 'secao-lgpd', 'secao-energia',
@@ -132,11 +134,13 @@ export function mesclarFragmento(dados, regiaoId, doc = document, base = doc.bas
     return novos;
 }
 
-export function anunciar(mensagem, doc = document) {
+export function anunciar(mensagem, doc = document, tipo = null) {
+    const alerta = tipo ? mostrarAlerta(mensagem, doc, tipo) : null;
     const regiao = doc.querySelector('[data-ajax-anuncios]');
     if (regiao) {
-        regiao.textContent = mensagem ?? '';
+        regiao.textContent = alerta ? '' : mensagem ?? '';
     }
+    return alerta;
 }
 
 export function limparErros(formulario) {
@@ -175,6 +179,8 @@ export function mostrarErros(formulario, erro, { focar = true } = {}) {
         formulario.prepend(resumo);
     }
     resumo.hidden = false;
+    resumo.className = 'sr-only';
+    resumo.removeAttribute?.('role');
     resumo.textContent = [erro.message, ...Object.values(erro.errors ?? {}).flat()].join(' ');
     let primeiro;
     const avisosFixos = Array.from(formulario.querySelectorAll('[data-erro-campo]'));
@@ -210,10 +216,10 @@ export function mostrarErros(formulario, erro, { focar = true } = {}) {
             primeiro ??= campo;
         }
     }
+    const alerta = anunciar(resumo.textContent, doc, 'erro');
     if (focar) {
-        (primeiro ?? resumo).focus?.();
+        (primeiro ?? alerta?.querySelector('[data-alerta-fechar]') ?? resumo).focus?.();
     }
-    anunciar(resumo.textContent, doc);
     if (erro.status === 401) {
         const login = doc.querySelector('[data-ajax-login]');
         if (login) {

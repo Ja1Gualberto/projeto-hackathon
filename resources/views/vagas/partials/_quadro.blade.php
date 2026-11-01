@@ -36,9 +36,10 @@
     </header>
 
     @unless ($aberta)
-        <x-alerta tipo="aviso" titulo="Vaga encerrada — somente consulta">
-            Encerrada em {{ $vaga->encerrada_em?->format('d/m/Y') }}. O quadro e o histórico continuam disponíveis para consulta; a vaga não aceita mais edições nem movimentações.
-        </x-alerta>
+        <div class="flex flex-col gap-1 border-l-4 border-borda pl-4 text-sm text-texto-suave">
+            <p class="font-semibold text-texto">Vaga encerrada — somente consulta</p>
+            <p>Encerrada em {{ $vaga->encerrada_em?->format('d/m/Y') }}. O quadro e o histórico continuam disponíveis para consulta; a vaga não aceita mais edições nem movimentações.</p>
+        </div>
     @endunless
 
     <section aria-labelledby="requisitos-titulo" class="rounded-card border border-borda bg-superficie p-5">

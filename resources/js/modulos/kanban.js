@@ -74,11 +74,11 @@ export function registrarQuadro(doc = document) {
                 throw new ErroAjax('O servidor enviou uma resposta inesperada.');
             }
             aplicarFragmentos(dados, doc);
-            anunciar(dados.message ?? 'Quadro atualizado.', doc);
+            anunciar(dados.message ?? 'Quadro atualizado.', doc, 'sucesso');
             regiao.querySelector('[data-atualizar-quadro]')?.focus();
         } catch (erro) {
             // Leitura não altera nada no servidor: o quadro anterior fica na tela e pode ser recarregado.
-            anunciar(MENSAGENS_PROPRIAS.has(erro.status) ? erro.message : 'Não foi possível atualizar o quadro. O quadro anterior foi mantido; tente novamente.', doc);
+            anunciar(MENSAGENS_PROPRIAS.has(erro.status) ? erro.message : 'Não foi possível atualizar o quadro. O quadro anterior foi mantido; tente novamente.', doc, 'erro');
             const login = erro.status === 401 ? doc.querySelector('[data-ajax-login]') : null;
             if (login) {
                 login.hidden = false;

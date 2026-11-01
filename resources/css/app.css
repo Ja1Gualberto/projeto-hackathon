@@ -84,3 +84,78 @@
         background-color: rgb(15 23 42 / 0.55);
     }
 }
+
+@layer components {
+    .central-alertas {
+        @apply pointer-events-none fixed top-4 right-4 z-[100] flex w-[438px] max-w-[calc(100%_-_2rem)] flex-col gap-3;
+        max-height: calc(100dvh - 2rem);
+        overflow-y: auto;
+        scrollbar-width: thin;
+    }
+
+    .central-alertas:empty {
+        display: none;
+    }
+
+    .alerta {
+        --alerta-fundo: #b8b5ff;
+        --alerta-topo: clamp(0px, calc((100vw - 2rem) * 0.09589), 42px);
+        @apply pointer-events-auto relative isolate w-[438px] max-w-full shrink-0;
+        min-height: 174px;
+        padding: calc(var(--alerta-topo) + 24px) 48px 24px clamp(80px, 24vw, 104px);
+        color: #27234d;
+        filter: drop-shadow(0 8px 12px rgb(23 32 51 / 0.14));
+    }
+
+    .alerta::before {
+        content: '';
+        position: absolute;
+        z-index: -1;
+        inset: var(--alerta-topo) 0 0;
+        border-radius: 32px;
+        background: var(--alerta-fundo);
+    }
+
+    .alerta--sucesso {
+        --alerta-fundo: #2d6a4f;
+        color: #fff;
+    }
+
+    .alerta--erro {
+        --alerta-fundo: #f05454;
+        color: #351010;
+    }
+
+    .alerta--aviso {
+        --alerta-fundo: #fca652;
+        color: #48240e;
+    }
+
+    .alerta-arte {
+        @apply pointer-events-none absolute top-0 left-0 -z-1 h-auto w-full select-none;
+    }
+
+    .alerta-fechar {
+        @apply absolute right-3 flex size-9 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-black/10;
+        top: calc(var(--alerta-topo) + 8px);
+    }
+
+    .alerta-fechar:focus-visible {
+        outline-color: currentColor;
+    }
+
+    [data-alerta-ativo] {
+        animation: alerta-entrada 180ms ease-out;
+    }
+}
+
+@keyframes alerta-entrada {
+    from { opacity: 0; transform: translateY(-8px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-alerta-ativo] {
+        animation: none;
+    }
+}

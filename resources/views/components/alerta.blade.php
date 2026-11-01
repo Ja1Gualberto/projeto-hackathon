@@ -5,21 +5,23 @@
 
 @php
     $estilos = [
-        'info' => ['classes' => 'border-primaria-200 bg-primaria-50 text-primaria-900', 'icone' => 'info'],
-        'sucesso' => ['classes' => 'border-emerald-200 bg-emerald-50 text-emerald-900', 'icone' => 'sucesso'],
-        'aviso' => ['classes' => 'border-amber-300 bg-amber-50 text-amber-900', 'icone' => 'alerta'],
-        'erro' => ['classes' => 'border-red-200 bg-red-50 text-red-900', 'icone' => 'erro'],
+        'info' => ['arquivo' => 'help', 'titulo' => 'Informação', 'duracao' => 7000],
+        'sucesso' => ['arquivo' => 'success', 'titulo' => 'Tudo certo!', 'duracao' => 7000],
+        'aviso' => ['arquivo' => 'warning', 'titulo' => 'Atenção', 'duracao' => 10000],
+        'erro' => ['arquivo' => 'fail', 'titulo' => 'Não foi possível concluir', 'duracao' => 10000],
     ];
 
-    $estilo = $estilos[$tipo] ?? $estilos['info'];
+    $tipo = array_key_exists($tipo, $estilos) ? $tipo : 'info';
+    $estilo = $estilos[$tipo];
 @endphp
 
-<div role="{{ $tipo === 'erro' ? 'alert' : 'status' }}" {{ $attributes->merge(['class' => 'flex items-start gap-3 rounded-lg border px-4 py-3 '.$estilo['classes']]) }}>
-    <x-icone :nome="$estilo['icone']" class="mt-0.5" />
-    <div class="flex flex-col gap-1 text-sm">
-        @if ($titulo)
-            <p class="font-bold">{{ $titulo }}</p>
-        @endif
-        <div>{{ $slot }}</div>
+<div data-alerta data-alerta-tipo="{{ $tipo }}" data-alerta-duracao="{{ $estilo['duracao'] }}" role="{{ in_array($tipo, ['erro', 'aviso'], true) ? 'alert' : 'status' }}" aria-atomic="true" {{ $attributes->merge(['class' => 'alerta alerta--'.$tipo]) }}>
+    <img src="{{ asset('images/message/'.$estilo['arquivo'].'.svg') }}" alt="" aria-hidden="true" width="438" height="174" class="alerta-arte">
+    <div class="relative flex min-w-0 flex-col gap-2">
+        <p class="text-base leading-tight font-bold" data-alerta-titulo>{{ $titulo ?? $estilo['titulo'] }}</p>
+        <div class="text-sm leading-relaxed wrap-anywhere" data-alerta-mensagem>{{ $slot }}</div>
     </div>
+    <button type="button" data-alerta-fechar aria-label="Fechar alerta" title="Fechar alerta" class="alerta-fechar">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6" stroke-linecap="round" /></svg>
+    </button>
 </div>
