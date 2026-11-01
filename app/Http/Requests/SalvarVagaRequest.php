@@ -70,6 +70,10 @@ class SalvarVagaRequest extends FormRequest
             'competencias' => ['required', 'array', 'min:1'],
             'competencias.*.id' => ['required', 'integer', 'distinct', 'exists:competencias,id'],
             'competencias.*.peso' => ['required', 'in:1,2,3'],
+            'energia' => ['nullable', 'array:dinamico_analitico,individual_equipe,execucao_planejamento'],
+            'energia.dinamico_analitico' => ['nullable', 'integer', 'between:1,5', 'required_with:energia.individual_equipe,energia.execucao_planejamento'],
+            'energia.individual_equipe' => ['nullable', 'integer', 'between:1,5', 'required_with:energia.dinamico_analitico,energia.execucao_planejamento'],
+            'energia.execucao_planejamento' => ['nullable', 'integer', 'between:1,5', 'required_with:energia.dinamico_analitico,energia.individual_equipe'],
         ];
     }
 
@@ -103,7 +107,7 @@ class SalvarVagaRequest extends FormRequest
     }
 
     /**
-     * @return array{titulo: string, area: Area, tipo_candidato: TipoCandidatoVaga, descricao: ?string}
+     * @return array{titulo: string, area: Area, tipo_candidato: TipoCandidatoVaga, descricao: ?string, energia_dinamico_analitico: ?int, energia_individual_equipe: ?int, energia_execucao_planejamento: ?int}
      */
     public function dadosVaga(): array
     {
@@ -112,6 +116,9 @@ class SalvarVagaRequest extends FormRequest
             'area' => Area::from($this->validated('area')),
             'tipo_candidato' => TipoCandidatoVaga::from($this->validated('tipo_candidato')),
             'descricao' => $this->validated('descricao'),
+            'energia_dinamico_analitico' => $this->validated('energia.dinamico_analitico') !== null ? (int) $this->validated('energia.dinamico_analitico') : null,
+            'energia_individual_equipe' => $this->validated('energia.individual_equipe') !== null ? (int) $this->validated('energia.individual_equipe') : null,
+            'energia_execucao_planejamento' => $this->validated('energia.execucao_planejamento') !== null ? (int) $this->validated('energia.execucao_planejamento') : null,
         ];
     }
 

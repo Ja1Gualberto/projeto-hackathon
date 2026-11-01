@@ -57,5 +57,13 @@ return [
         'texto' => 'anotação',
         'etapa' => 'etapa',
         'motivo' => 'motivo',
+        'energia' => 'padrão de energia',
+        'dinamico_analitico' => 'eixo dinâmico ↔ analítico',
+        'individual_equipe' => 'eixo individual ↔ equipe',
+        'execucao_planejamento' => 'eixo execução ↔ planejamento',
+        'energia.dinamico_analitico' => 'eixo dinâmico ↔ analítico',
+        'energia.individual_equipe' => 'eixo individual ↔ equipe',
+        'energia.execucao_planejamento' => 'eixo execução ↔ planejamento',
+        'justificativa' => 'justificativa',
     ],
 ];

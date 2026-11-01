@@ -5,13 +5,14 @@
 **Planning revision**: 2026-10-31 — AJAX progressivo distribuído pelas Phases 2–10.
 
 **Atualização de andamento**: 2026-11-01 — sincronizado com as marcações e evidências de
-`tasks.md` até a Phase 8 (US6/LGPD), incluindo T149–T164.
+`tasks.md` até a Phase 9 (US7/energia), incluindo T149–T166.
 
 **Input**: Feature specification from `/specs/001-banco-de-talentos-mvp/spec.md`
 
 **Nota**: este plano mantém as decisões de design e acompanha a execução. `tasks.md` é a fonte
-de verdade das marcações; os resultados abaixo reproduzem os registros existentes, sem nova
-execução das suítes nesta atualização documental. A branch de trabalho atual é `main`; o
+de verdade das marcações; os resultados até a Phase 8 reproduzem os registros anteriores.
+A Phase 9 inclui nova execução das suítes PHP/JS, Pint e build em cópia isolada sem `.env`.
+A branch de trabalho atual é `main`; o
 identificador da feature continua sendo `001-banco-de-talentos-mvp`.
 
 ## Summary
@@ -40,7 +41,7 @@ SPA, API pública, dependência nova ou camada paralela de regras de negócio (R
 
 ## Andamento e validação registrados — 2026-11-01
 
-**144 de 168 tarefas marcadas como concluídas (85,7%)**. As Phases 2–8 têm toda a
+**158 de 168 tarefas marcadas como concluídas (94,0%)**. As Phases 2–9 têm toda a
 implementação marcada, inclusive AJAX; isso **não equivale ao aceite final das histórias**.
 Continuam pendentes os gates manuais de navegador, acessibilidade e revisão visual previstos
 na constituição. T012 também permanece como ação exclusiva do usuário.
@@ -55,32 +56,32 @@ na constituição. T012 também permanece como ação exclusiva do usuário.
 | 6 — US4: triagem e kanban | T096–T112, T159–T160 | 19/19 | 222 testes PHP / 1175 asserções, 42 JS, Pint, build e fumaça HTTP D; drag-and-drop implementado |
 | 7 — US5: anotações | T113–T121, T161–T162 | 11/11 | 240 testes PHP / 1296 asserções, 44 JS, Pint, build e fumaça HTTP E |
 | 8 — US6: LGPD | T122–T129, T163–T164 | 10/10 | 262 testes PHP / 1517 asserções, 47 JS (também Node 22), Pint, rotas, `git diff --check` e build |
-| 9 — US7: energia (opcional) | T130–T141, T165–T166 | 0/14 | Não implementada; cenário G sem aceite |
+| 9 — US7: energia (opcional, incluída) | T130–T141, T165–T166 | 14/14 | 311 testes PHP / 1731 asserções, 61 JS (Node 22, inclui menu paralelo), Pint, rotas e build; API simulada; cenário G/manual ainda sem aceite |
 | 10 — Polimento e validação final | T142–T148, T167–T168 | 0/9 | Segurança transversal, revisão manual, offline e ensaio ainda pendentes |
 
 Os totais de testes são fotografias **cumulativas** de cada checkpoint, não devem ser somados.
-A evidência mais recente é a da Phase 8. Testes de fumaça HTTP B–E não substituem a execução
+A evidência mais recente é a da Phase 9. Testes de fumaça HTTP B–E não substituem a execução
 em navegador; não há registro equivalente de fumaça HTTP F nas notas da Phase 8. As validações
 registram execução isolada sem disponibilizar o `.env` aos comandos.
 
-**Fontes**: [tasks.md](./tasks.md) (notas das Phases 1–8 e complemento AJAX das Phases 2/3),
+**Fontes**: [tasks.md](./tasks.md) (notas das Phases 1–9 e complemento AJAX das Phases 2/3),
 [fundação](../implementacoes/fase-2-fundacao.md),
 [importação](../implementacoes/fase-4-importacao.md),
 [vagas/ranking](../implementacoes/fase-5-vagas-ranking.md),
 [triagem/kanban](../implementacoes/fase-6-triagem-kanban.md) e
 [anotações](../implementacoes/fase-7-anotacoes.md). A evidência da Phase 8 está nas próprias
-notas de `tasks.md`.
+notas de `tasks.md`, assim como a da Phase 9.
 
 ### Pendências e próximo ponto de retomada
 
 1. **T012 — usuário**: confirmar localmente a configuração prevista no quickstart. A IA não
    consulta nem altera o `.env`; a tarefa não pode ser marcada por inferência.
-2. **Aceite manual das entregas existentes**: executar os cenários A–F/H em navegador real,
+2. **Aceite manual das entregas existentes**: executar os cenários A–H em navegador real,
    com e sem JS, teclado/foco, histórico, rede lenta, duplo envio e conferência dos fragmentos
    ao voltar à triagem; revisar visual em projetor. SC-010/SC-011 continuam sem aceite.
-3. **Decidir a inclusão da US7**: se mantida, executar T130–T141 e T165–T166 (Phase 9), com
-   cliente HTTP nativo do Laravel, sem instalar o SDK recusado. Se cortada, registrar o corte;
-   não marcar essas tarefas como implementadas.
+3. **US7 incluída e implementada a pedido do responsável**: T130–T141 e T165–T166 concluídas
+   com cliente HTTP nativo, sem SDK recusado. Validar G/H manualmente; a API real não foi
+   chamada. Habilitação/chave ficam a cargo do usuário, sem acesso da IA ao `.env`.
 4. **Phase 10**: concluir T142–T147 e T167–T168 para o escopo incluído; segurança transversal
    T167 → validação AJAX/manual T168 → ensaio T148. Reexecutar os gates finais mesmo com
    checkpoints anteriores aprovados. Comandos de `demo`/setup que possam alterar o `.env`
@@ -130,6 +131,46 @@ próximas implementações, sem alterar os requisitos funcionais:
   `AtualizarCandidatoRequest`. Exclusão e registro mínimo passam pelo repository, em
   transação coordenada por `ExclusaoCandidatoService`; o PDF é removido após commit.
   Desativar não renova retenção; contagem/filtro de retenção consideram somente ativos vencidos.
+
+### Decisões e entrega da Phase 9 — 2026-11-01
+
+- **Escopo:** US7 incluída por solicitação explícita; T130–T141 e T165–T166 implementadas.
+  As Phases 1–8 foram preservadas e nenhuma tarefa da Phase 10 foi marcada por antecipação.
+- **Integração:** `ClaudeAnalisadorEnergia` implementa o plano B de T001 via `Http` do Laravel,
+  Messages API com `output_config.format`/`json_schema`, `effort=low` e `max_tokens=2000`.
+  Documentação Laravel 13 e da API Anthropic consultada. Conexão: 3 s; resposta: timeout
+  configurável, padrão 20 s. Não segue redirects nem repete o POST automaticamente (zero
+  tentativas adicionais, dentro do máximo de uma previsto), evitando chamadas/custos duplicados.
+  Recusa, resposta incompleta, JSON/esquema inválido, erro HTTP e conexão resultam em `null`.
+  Logs guardam somente motivo/status, sem currículo, chave, corpo de resposta ou exceção.
+- **Arquitetura:** `PerfilEnergiaService` coordena análise, ajuste, anonimização e proximidade.
+  Upsert e seleção de candidatos ficam no `CandidatoRepository`, pela interface existente;
+  nenhuma nova entidade, migration, dependência, worker ou pasta-base foi necessária.
+  `AnalisarEnergiaCommand` seleciona ativos sem perfil; `--todos` também inclui origem `ia`,
+  nunca `humano`. Atualização de energia não renova a retenção do cadastro.
+- **Privacidade:** entrada da IA contém somente formação, experiências, projetos e nomes das
+  competências limpos por `LimpadorTexto`. Não usa texto bruto, PDF, contatos, links ou código.
+  A justificativa da IA é limpa antes de persistir; a manual é limpa antes da exibição na vaga.
+  `PerfilNaVagaDTO` recebe `SugestaoEnergiaDTO`, origem, data e proximidade, não o model de energia
+  com o id do candidato/revisor. O retorno à triagem também é testado no fragmento JSON.
+- **UI:** mantém os tokens/componentes do design system; réguas de 1–5 e selo complementar,
+  sem misturar energia e aderência. Vaga aceita todos os eixos ou nenhum, com “Não definir”.
+  Perfil na vaga é somente leitura; análise e ajuste ficam no banco. Modal com fallback
+  `noscript` e erros locais; sucesso troca apenas `secao-energia`, falha 503 mantém perfil
+  anterior. Transporte genérico já atende loading, foco, duplo envio e ausência de replay;
+  `ajax.js` não impõe um timeout menor e foi preservado.
+- **Ranking:** ambos os caminhos (`ranquear` e `classificar` → quadro) preenchem a proximidade;
+  a função de comparação não mudou. Repositories carregam `perfilEnergia` com as competências
+  para evitar N+1. Selos refletem mudanças na próxima consulta explícita, sem sincronizar abas.
+- **Evidências:** 46 testes PHP iniciais falharam antes do código; três regressões adicionais
+  completam 49 testes novos. Suíte final: **311 PHP / 1731 asserções**, **61 JS em Node 22**,
+  Pint e build Vite aprovados. `route:list --path=energia` confirma POST/PUT autenticados.
+  Testes usam analisador falso/`Http::fake` e dados fictícios; não houve chamada real da API.
+  O build apenas avisou sobre `fontaine` opcional, não instalado; compilação concluída.
+  A primeira execução JS tinha 49 testes (incluindo dois novos da energia); a checagem final
+  incluiu 12 testes das alterações paralelas de menu/layout, preservadas e fora do escopo US7.
+- **Aceite pendente:** G/H em navegador real, API real opcional, offline, revisão visual e
+  projetor. Testes automatizados não substituem esses gates nem aprovam SC-010/SC-011.
 
 ## Technical Context
 
@@ -191,7 +232,7 @@ Nenhum item ficou como NEEDS CLARIFICATION. As decisões estão em [research.md]
 | **VI. Explicabilidade** | ✅ Passa | Explicação obrigatória em todo percentual; "não identificado" ≠ "não possui"; soft skills "declaradas" × "observadas"; movimentações sempre humanas e registradas (R7) |
 | **Stack e arquitetura** | ✅ Passa | Laravel 13 + Blade + Tailwind v4; Services para regras (score, anonimização, extração); contratos dos repositories vinculados no `RepositoryServiceProvider` |
 | **Segurança do `.env`** | ✅ Passa | Novas chaves só no `.env.example`; instruções para o usuário; nenhum passo do plano lê, cria ou altera o `.env` |
-| **Gates de qualidade** | ⚠️ Parcialmente validados | Testes de aderência, anonimato e PDF, suítes PHP/JS, Pint e build aprovados até a Phase 8; revisão no navegador/projetor, segurança transversal e ensaio final pendentes |
+| **Gates de qualidade** | ⚠️ Parcialmente validados | Testes de aderência, anonimato e PDF, suítes PHP/JS, Pint e build aprovados até a Phase 9; revisão no navegador/projetor, segurança transversal e ensaio final pendentes |
 
 **Resultado (pré-pesquisa)**: aprovado, com as justificativas registradas.
 **Reavaliação pós-design (Fase 1)**: aprovado. O design não introduziu violações novas. A
@@ -204,8 +245,9 @@ as histórias demonstráveis sem JS e sem internet (servidor local disponível).
 CSRF e matriz de visibilidade se aplicam também a fragmentos/mensagens. Nenhum gate é adiado
 ao polimento; cada integração AJAX tem testes e cenário manual na própria fase.
 
-**Reavaliação de andamento (2026-11-01)**: evidências automatizadas registradas até a Phase 8,
-sem novas dependências ou migrations nas Phases 4–8. O desenho continua alinhado à
+**Reavaliação de andamento (2026-11-01)**: evidências automatizadas registradas até a Phase 9,
+sem novas dependências ou migrations nas Phases 4–9. A US7 usa o plano B aprovado e respeita
+anonimato/decisão humana, com ajuste manual independente da IA. O desenho continua alinhado à
 constituição, mas o aceite integral está **pendente**: não há registro de execução dos gates
 manuais das histórias, e T167/T168/T148 seguem desmarcadas.
 Não interpretar `[X]` de implementação como dispensa desses gates.
@@ -231,15 +273,14 @@ specs/001-banco-de-talentos-mvp/
 
 ### Source Code (repository root)
 
-A árvore combina a estrutura implementada até a Phase 8 e o escopo ainda planejado. Os
-services/DTO/componente/controller/comando de energia e seus testes continuam previstos
-para a Phase 9; os placeholders existentes não comprovam implementação da US7.
+A árvore reflete a estrutura implementada até a Phase 9, incluindo os services, DTO,
+componente, controller, comando e testes de energia. Polimento/aceite final seguem pendentes.
 
 ```text
 app/
 ├── Console/Commands/
 │   ├── GerarCurriculosDemoCommand.php     # demo:curriculos (implementado)
-│   └── AnalisarEnergiaCommand.php          # energia:analisar {--todos} (pendente)
+│   └── AnalisarEnergiaCommand.php          # energia:analisar {--todos} (implementado)
 ├── DTOs/                                   # FiltroCandidatosDTO, ResultadoLeituraDTO, DadosExtraidosDTO,
 │                                           # ResultadoAderenciaDTO, ItemRankingDTO, PerfilNaVagaDTO, SugestaoEnergiaDTO
 ├── Enums/                                  # TipoCandidato, TipoCandidatoVaga, Area, CategoriaCompetencia,
@@ -325,7 +366,7 @@ resources/
     │                                       # cabecalho-pagina, eixos-energia, icone
     ├── auth/login.blade.php
     ├── painel/index.blade.php
-    ├── candidatos/ (index, show, edit, partials/_formulario, partials/_card, partials/_resultados, partials/_competencias)
+    ├── candidatos/ (index, show, edit, partials/_formulario, partials/_card, partials/_resultados, partials/_competencias, partials/_secao-energia, partials/_formulario-energia)
     ├── importacoes/ (create, show, expirada)
     ├── anotacoes/ (_formulario, _historico)
     ├── vagas/ (index, create, edit, show, partials/_formulario, partials/_card-ranking, partials/_coluna, partials/_quadro)
@@ -343,7 +384,7 @@ tests/
 ├── js/                                     # ajax, busca, chips, formularios, importacao e kanban; runner nativo Node
 └── Feature/                                # AutenticacaoTest, PainelTest, BuscaCandidatosTest, ImportacaoCurriculoTest,
                                             # VagaTest, RankingVagaTest, TriagemAnonimaTest, CurriculoProtegidoTest,
-                                            # MovimentacaoEtapaTest, AnotacaoEntrevistaTest, LgpdTest, PerfilEnergiaTest
+                                            # MovimentacaoEtapaTest, AnotacaoEntrevistaTest, LgpdTest, PerfilEnergiaTest, ClaudeAnalisadorEnergiaTest
 
 Dockerfile                                  # + conf.d/uploads.ini (upload 12M / post 13M)
 hackaton · hackaton.ps1                     # + comando "demo" (setup + migrate:fresh --seed --force)
@@ -384,7 +425,7 @@ demonstrável e passa pelos gates (testes, Pint, fluxo manual, revisão visual).
 Esta tabela complementa os incrementos acima e usa a numeração **Phase** de `tasks.md`
 (não a numeração de incrementos 0–8). Preservar T001–T148 e seus estados; as novas tarefas
 T149–T168 foram distribuídas nas fases, em ordem de dependência. No estado atual,
-T149–T164 estão implementadas; T165–T168 continuam pendentes.
+T149–T166 estão implementadas; T167–T168 continuam pendentes.
 
 | Phase / incremento | Entrega AJAX | Tarefas / estado em 2026-11-01 | Critério adicional de pronto |
 |---|---|---|---|
@@ -396,11 +437,11 @@ T149–T164 estão implementadas; T165–T168 continuam pendentes.
 | 6 / US4 | Mover por botão via AJAX; atualizar quadro/perfil, contagens, identidade e histórico | T159–T160 — implementadas | Cenário D; anonimato verificado no JSON/HTML e retorno à triagem |
 | 7 / US5 | Registrar anotação e atualizar histórico/competências, limpando somente após sucesso | T161–T162 — implementadas | Cenário E no banco e na vaga revelada; triagem continua 403 |
 | 8 / US6 | Correção com erros locais; desativar/reativar parcial; excluir confirmado com navegação após sucesso | T163–T164 — implementadas | Cenário F; filtros de retenção continuam no fluxo AJAX da US1 |
-| 9 / US7 | Analisar/ajustar energia no perfil do banco, com loading e indisponibilidade sem bloquear a tela | T165–T166 — pendentes | Cenário G; falha mantém perfil anterior e ranking principal |
+| 9 / US7 | Analisar/ajustar energia no perfil do banco, com loading e indisponibilidade sem bloquear a tela | T165–T166 — implementadas | Cenário G; falha mantém perfil anterior e ranking principal; gate manual pendente |
 | 10 / polimento | Segurança, falhas, acessibilidade, sem JS e ensaio completo | T167–T168 — pendentes | SC-010/SC-011; nenhuma escrita repetida automaticamente |
 
-**Retomada atual**: não refazer T149–T164 nem as histórias US1–US6. Retomar pelos gates
-manuais pendentes e pela decisão de incluir US7; depois concluir Phase 10 conforme a seção
+**Retomada atual**: não refazer T149–T166 nem as histórias US1–US7. Retomar pelos gates
+manuais pendentes e concluir Phase 10 conforme a seção
 de andamento. A instrução de antecipar T149–T154 foi atendida. A coluna de critérios continua
 representando o aceite exigido, não uma declaração de aprovação manual.
 
@@ -420,8 +461,8 @@ dados permanece inalterado.
 |---|---|
 | Sex 30/10 | Setup implementado (T001–T011); T012 manual ainda pendente |
 | Sáb 31/10 | Fundação, US1, complemento AJAX T149–T154 e US2 implementados e testados; gates de navegador pendentes |
-| Dom 01/11 | US3, US4, US5 (banco e vaga) e US6 implementadas, incluindo AJAX; validação automatizada até Phase 8 registrada |
-| Seg 02/11 | Meta: validar A–F/H no navegador; decidir/implementar US7 se mantida; fechar polimento e T167/T168; ensaio T148 após os gates |
+| Dom 01/11 | US3, US4, US5 (banco e vaga), US6 e US7 implementadas, incluindo AJAX; validação automatizada até Phase 9 registrada |
+| Seg 02/11 | Meta: validar A–H no navegador; conferir API real opcional; fechar polimento e T167/T168; ensaio T148 após os gates |
 | Ter 03/11 | Meta: ensaio final e apresentação; não há aceite antecipado |
 
 **Trabalho em dupla**: a implementação é dividida em duas trilhas paralelas. A **trilha A**
@@ -448,8 +489,8 @@ Phases 6/7 registram execução das duas trilhas com a dupla offline.
 | Extração imprecisa em PDFs com layout complexo | PDFs de demonstração em coluna única, testados antes; revisão humana; sinônimos no catálogo |
 | Vazamento de identidade na triagem | DTO com campos nulos + testes de invariantes ([visibilidade](./contracts/visibilidade-por-contexto.md)) |
 | Rede instável no pitch | Histórias 1–6 offline; perfis de energia pré-gravados com `energia:analisar` |
-| Prazo curto | US1–US6 e drag-and-drop já implementados; US7 continua sendo o primeiro corte de escopo futuro, sem cortar gates de segurança ou ensaio |
-| AJAX aumenta o esforço e pode perder estado | Transporte único e integrações T149–T164 já entregues; validar navegador/fallback e segurança transversal, sem SPA/polling |
+| Prazo curto | US1–US7 e drag-and-drop implementados; não acrescentar escopo antes dos gates de segurança e ensaio; energia pode ser demonstrada com ajuste manual/perfis pré-gravados |
+| AJAX aumenta o esforço e pode perder estado | Transporte único e integrações T149–T166 já entregues; validar navegador/fallback e segurança transversal, sem SPA/polling |
 | Respostas fora de ordem ou rede falha após gravar | Invalidar GET ao editar filtros, cancelar/descartar leitura antiga; confirmar interface só após sucesso; conferir estado por GET antes de repetir escrita |
 | Dados revelados retidos após retorno à triagem | Substituir quadro/perfil completo com DTO do estado final; testar fragmentos e mensagens; não cachear respostas pessoais |
 | Desvio das dependências aprovadas | PDFParser e PHPUnit já instalados; Mockery registrado como suporte aos testes; manter IA com `Http` do Laravel, sem instalar SDK recusado nem adicionar dependências sem aprovação |
@@ -464,7 +505,7 @@ Phases 6/7 registram execução das duas trilhas com a dupla offline.
 Recusada a instalação de `anthropic-ai/sdk`: a US7 (T135, integração com Claude) usará o
 plano B com `Illuminate\Support\Facades\Http`, sem alterar o contrato `AnalisadorEnergia`.
 Esta decisão substitui a escolha do SDK em research R13 e no contrato de análise de energia;
-a integração será implementada somente na Phase 9.
+a integração foi implementada na Phase 9, sem novas dependências.
 
 **Registro da implementação da Phase 2 — 2026-10-31:** `mockery/mockery` foi adicionado como
 dependência de desenvolvimento para executar os testes com `RefreshDatabase`. Esta revisão

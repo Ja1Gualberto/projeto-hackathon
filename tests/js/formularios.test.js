@@ -156,3 +156,53 @@ test('exclusão não repete envio ambíguo nem navega em falha; só navega após
     assert.deepEqual(navegacoes, ['https://banco.test/candidatos']);
     assert.equal(ui.form.resetado, 0);
 });
+
+test('energia indisponível preserva perfil e rascunho, bloqueia duplo envio e libera controles sem retry', async () => {
+    const ui = montarAnotacao();
+    ui.form.action = 'https://banco.test/candidatos/7/energia';
+    ui.form.hasAttribute = () => false;
+    ui.regioes['secao-energia'] = { innerHTML: 'Perfil revisado por humano' };
+    let concluir;
+    let chamadas = 0;
+    globalThis.fetch = () => {
+        chamadas++;
+        return new Promise((resolve) => { concluir = resolve; });
+    };
+
+    const envio = enviarFormulario(ui.form);
+    await enviarFormulario(ui.form);
+    assert.equal(ui.texto.disabled, true);
+    assert.equal(ui.aviso.textContent, 'Processando…');
+    concluir(resposta({ message: 'Análise indisponível no momento.' }, 503));
+    await envio;
+
+    assert.equal(chamadas, 1);
+    assert.equal(ui.texto.disabled, false);
+    assert.equal(ui.form.resetado, 0);
+    assert.equal(ui.texto.value, 'Rascunho da entrevista');
+    assert.equal(ui.regioes['secao-energia'].innerHTML, 'Perfil revisado por humano');
+    assert.equal(ui.aviso.textContent, 'Análise indisponível no momento.');
+});
+
+test('ajuste de energia confirmado substitui apenas a seção e restaura foco após remover o formulário modal', async () => {
+    const ui = montarAnotacao();
+    ui.form.action = 'https://banco.test/candidatos/7/energia';
+    ui.form.hasAttribute = () => false;
+    const foco = { focado: false, focus() { this.focado = true; } };
+    ui.regioes['secao-energia'] = {
+        set innerHTML(html) { this.html = html; ui.form.isConnected = false; },
+        querySelector: () => foco,
+    };
+    globalThis.fetch = async () => resposta({
+        message: 'Padrão de energia revisado por humano.', redirect: null,
+        fragments: { 'secao-energia': 'Eixos e justificativa revisados' },
+    });
+
+    await enviarFormulario(ui.form);
+
+    assert.equal(ui.regioes['secao-energia'].html, 'Eixos e justificativa revisados');
+    assert.equal(ui.regioes['historico-anotacoes'].innerHTML, 'histórico anterior');
+    assert.equal(ui.regioes['competencias-candidato'].innerHTML, 'competências anteriores');
+    assert.equal(foco.focado, true);
+    assert.equal(ui.form.resetado, 0);
+});

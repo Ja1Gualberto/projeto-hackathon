@@ -43,16 +43,24 @@ experiências, projetos e nomes das competências**, com remoção de e-mails, t
 e de qualquer ocorrência dos termos do nome do candidato. Nunca inclui nome, contatos, data de
 nascimento, links ou o PDF.
 
-## Requisição (Messages API via SDK oficial `anthropic-ai/sdk`)
+## Requisição (Messages API via cliente HTTP nativo do Laravel)
+
+**Implementado em 2026-11-01 (Phase 9):** plano B aprovado em T001, pois o SDK foi recusado.
+`Http::withHeaders` envia POST para `https://api.anthropic.com/v1/messages`, com `x-api-key`
+da configuração e `anthropic-version: 2023-06-01`. Não segue redirecionamentos.
 
 - **Modelo**: `config('services.anthropic.model')`.
-- **Esforço**: baixo (`outputConfig` com `effort: low`), por ser uma classificação curta.
-- **`maxTokens`**: folgado para a justificativa (ex.: 2000), sem cortar a resposta.
+- **Esforço**: baixo (`output_config.effort: low`), por ser uma classificação curta.
+- **`max_tokens`**: 2000, folgado para a justificativa.
+- **Timeout**: conexão até 3 s; resposta conforme `banco_talentos.energia.timeout` (padrão 20 s).
+- **Tentativas**: uma chamada, zero repetições automáticas (dentro do máximo de uma nova
+  tentativa previsto). Não repetir POST pago sem garantia de idempotência; também não há
+  replay da escrita pelo navegador. O transporte AJAX existente não impõe timeout menor.
 - **System** (pt-BR, fixo): descreve os três eixos e a escala 1–5, pede justificativa curta
   baseada **apenas** em evidências do texto e orienta a usar 3 (neutro) quando não houver
   evidência.
 - **User**: o texto anonimizado.
-- **Saída estruturada**: `outputConfig.format` com `json_schema`:
+- **Saída estruturada**: `output_config.format` com `type: json_schema` e `schema`:
 
 ```json
 {
@@ -73,9 +81,9 @@ nascimento, links ou o PDF.
 | Situação | Tratamento |
 |---|---|
 | IA desligada ou sem chave | `AnalisadorEnergiaIndisponivel` |
-| Erro de conexão / tempo limite | captura a exceção do SDK, registra em log (sem conteúdo do currículo) e devolve `null` |
-| Erro HTTP da API (4xx/5xx, *rate limit*, sobrecarga) | idem; no máximo 1 nova tentativa |
-| `stop_reason = refusal` | `null` |
+| Erro de conexão / tempo limite | captura `ConnectionException`, log apenas do motivo, devolve `null` |
+| Erro HTTP da API (4xx/5xx, *rate limit*, sobrecarga) ou redirect | log apenas do motivo/status, devolve `null`, sem repetição |
+| `stop_reason` diferente de `end_turn` (inclui recusa/truncamento) | `null` |
 | JSON fora do esquema ou eixos fora de 1–5 | `null` |
 | Justificativa com mais de 500 caracteres | truncada |
 
@@ -83,12 +91,21 @@ nascimento, links ou o PDF.
 
 - Sucesso → `perfis_energia` (upsert por candidato) com `origem = ia` e `analisado_em = agora`.
 - Ajuste manual → mesmos campos, `origem = humano`, `revisado_por = usuário` (US7-5).
+- Persistência/seleção do lote no `CandidatoRepository`, via interface, coordenadas pelo
+  `PerfilEnergiaService`. A justificativa da IA é limpa antes de persistir; a justificativa
+  manual é limpa antes de entrar no DTO do contexto da vaga, sem expor candidato/revisor.
+- Controles de análise/ajuste somente no banco; perfil na vaga somente leitura, inclusive
+  depois da entrevista. Não buscar identidade do banco para alimentar a triagem.
+- Falha não grava nem apaga perfil anterior. HTML redireciona com mensagem; JSON responde
+  503 com `{message: "Análise indisponível no momento."}`. Sucesso JSON retorna somente
+  `secao-energia`, `message` e `redirect: null`, com `private, no-store`.
 - No ranking e no perfil: componente `eixos-energia` (três réguas) e selo
   "Energia: 83% de proximidade", **separado** da barra de aderência e fora da ordenação
   (FR-035). Sem perfil na vaga → nada é exibido; candidato sem perfil → "Não analisado";
   falha → "Análise indisponível".
-- Comando `php artisan energia:analisar {--todos}` processa candidatos sem perfil, com barra de
-  progresso e resumo (analisados / indisponíveis).
+- Comando `php artisan energia:analisar {--todos}` processa **ativos** sem perfil; `--todos`
+  acrescenta perfis de origem `ia`, nunca `humano`, com barra de progresso e resumo
+  (analisados / indisponíveis). Desligado/sem chave avisa e encerra com sucesso.
 
 ## Proximidade
 

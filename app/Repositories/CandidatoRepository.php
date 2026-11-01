@@ -5,10 +5,12 @@ namespace App\Repositories;
 use App\DTOs\FiltroCandidatosDTO;
 use App\Enums\MotivoExclusao;
 use App\Enums\OrigemCompetencia;
+use App\Enums\OrigemPerfilEnergia;
 use App\Enums\StatusCandidato;
 use App\Enums\TipoCandidato;
 use App\Models\Candidato;
 use App\Models\Competencia;
+use App\Models\PerfilEnergia;
 use App\Models\RegistroExclusao;
 use App\Models\User;
 use App\Repositories\Interfaces\CandidatoRepositoryInterface;
@@ -84,6 +86,25 @@ class CandidatoRepository implements CandidatoRepositoryInterface
             'servidores' => (int) ($totais[TipoCandidato::Servidor->value] ?? 0),
             'estagiarios' => (int) ($totais[TipoCandidato::Estagiario->value] ?? 0),
         ];
+    }
+
+    public function salvarPerfilEnergia(Candidato $candidato, array $atributos): PerfilEnergia
+    {
+        $perfil = $candidato->perfilEnergia()->updateOrCreate([], $atributos);
+        $candidato->setRelation('perfilEnergia', $perfil);
+
+        return $perfil;
+    }
+
+    public function candidatosParaAnaliseEnergia(bool $todos): Collection
+    {
+        return Candidato::query()->ativos()->with(['competencias', 'perfilEnergia'])
+            ->where(function (Builder $query) use ($todos): void {
+                $query->whereDoesntHave('perfilEnergia');
+                if ($todos) {
+                    $query->orWhereHas('perfilEnergia', fn (Builder $perfil) => $perfil->where('origem', OrigemPerfilEnergia::Ia));
+                }
+            })->orderBy('id')->get();
     }
 
     public function topCompetencias(int $limite = 8): Collection

@@ -66,7 +66,7 @@ class VagaRepository implements VagaRepositoryInterface
     {
         return Candidato::query()
             ->elegiveisPara($vaga)
-            ->with('competencias')
+            ->with(['competencias', 'perfilEnergia'])
             ->orderBy('created_at')
             ->orderBy('id')
             ->get();

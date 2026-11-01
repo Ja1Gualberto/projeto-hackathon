@@ -202,6 +202,16 @@ formato **Decisão / Racional / Alternativas consideradas**. Nenhum item permane
 
 ## R13. Padrão de energia com IA (História 7)
 
+**Atualização de implementação — 2026-11-01:** a decisão T001 recusou o SDK. A Phase 9 usa
+o plano B com `Illuminate\Support\Facades\Http`, sem nova dependência. O contrato
+`AnalisadorEnergia` e a saída estruturada são os mesmos; no payload HTTP os nomes são
+`output_config.format`/`effort` e `max_tokens`. Uma chamada com timeout de 20 s (configurável),
+conexão até 3 s, sem seguir redirects ou repetir automaticamente o POST pago. As referências
+ao SDK abaixo registram a proposta original, substituída por essa decisão e pelo
+[contrato atualizado](./contracts/analise-energia.md). Documentação Laravel 13 e
+[saída estruturada da Anthropic](https://platform.claude.com/docs/en/build-with-claude/structured-outputs)
+consultadas; integração validada com `Http::fake`, sem envio real de dados à API.
+
 - **Decisão**:
   - Contrato `App\Services\Energia\AnalisadorEnergia` com
     `analisar(string $textoAnonimizado): ?SugestaoEnergiaDTO` (retorna `null` quando indisponível).

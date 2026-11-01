@@ -7,6 +7,7 @@ use App\Http\Controllers\CompetenciaController;
 use App\Http\Controllers\ConfirmacaoImportacaoController;
 use App\Http\Controllers\CurriculoController;
 use App\Http\Controllers\ImportacaoCurriculoController;
+use App\Http\Controllers\PerfilEnergiaController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -51,3 +52,9 @@ Route::patch('/candidatos/{candidato}/status', [CandidatoStatusController::class
     ->whereNumber('candidato')->name('candidatos.status');
 Route::delete('/candidatos/{candidato}', [CandidatoController::class, 'destroy'])
     ->whereNumber('candidato')->name('candidatos.destroy');
+
+// US7 — energia
+Route::post('/candidatos/{candidato}/energia', [PerfilEnergiaController::class, 'store'])
+    ->whereNumber('candidato')->name('candidatos.energia.analisar');
+Route::put('/candidatos/{candidato}/energia', [PerfilEnergiaController::class, 'update'])
+    ->whereNumber('candidato')->name('candidatos.energia.update');

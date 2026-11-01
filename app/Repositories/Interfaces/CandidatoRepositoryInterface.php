@@ -7,6 +7,7 @@ use App\Enums\MotivoExclusao;
 use App\Enums\OrigemCompetencia;
 use App\Models\Candidato;
 use App\Models\Competencia;
+use App\Models\PerfilEnergia;
 use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
@@ -17,6 +18,12 @@ interface CandidatoRepositoryInterface
     public function buscar(FiltroCandidatosDTO $filtro, int $porPagina = 12): LengthAwarePaginator;
 
     public function detalhar(Candidato $candidato): Candidato;
+
+    /** @param array<string, mixed> $atributos */
+    public function salvarPerfilEnergia(Candidato $candidato, array $atributos): PerfilEnergia;
+
+    /** @return Collection<int, Candidato> */
+    public function candidatosParaAnaliseEnergia(bool $todos): Collection;
 
     /** @return array{servidores: int, estagiarios: int} */
     public function contarAtivosPorTipo(): array;

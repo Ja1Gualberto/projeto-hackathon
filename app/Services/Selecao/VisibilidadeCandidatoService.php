@@ -13,6 +13,7 @@ use App\Repositories\Interfaces\ParticipacaoRepositoryInterface;
 use App\Repositories\Interfaces\VagaRepositoryInterface;
 use App\Services\Aderencia\CalculadoraAderencia;
 use App\Services\CandidatoService;
+use App\Services\Energia\PerfilEnergiaService;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
@@ -31,6 +32,7 @@ class VisibilidadeCandidatoService
         private CandidatoService $candidatos,
         private CalculadoraAderencia $calculadora,
         private LimpadorTexto $limpador,
+        private PerfilEnergiaService $energia,
     ) {}
 
     /**
@@ -113,6 +115,10 @@ class VisibilidadeCandidatoService
             links: $revelado ? array_values($candidato->links ?? []) : null,
             anotacoes: $revelado ? $this->anotacoes->historico($candidato) : null,
             temCurriculo: $revelado && $this->candidatos->obterCurriculo($candidato) !== null,
+            energia: $this->energia->sugestaoNaVaga($candidato),
+            origemEnergia: $candidato->perfilEnergia?->origem,
+            energiaAnalisadaEm: $candidato->perfilEnergia?->analisado_em->format('d/m/Y H:i'),
+            proximidadeEnergia: $this->energia->proximidadeNaVaga($vaga, $candidato),
         );
     }
 

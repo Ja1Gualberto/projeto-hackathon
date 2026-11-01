@@ -82,6 +82,21 @@
                 </section>
             @endforeach
 
+            <section aria-labelledby="energia-na-vaga-titulo" class="flex flex-col gap-4 border-t border-borda pt-6">
+                <h2 id="energia-na-vaga-titulo" class="text-xl font-semibold tracking-tight">Padrão de energia</h2>
+                <p class="text-sm text-texto-suave">Sugestão revisável, não um diagnóstico. Não altera a aderência ou a ordenação.</p>
+                @if ($perfil->energia)
+                    <div class="flex flex-wrap gap-3 text-sm"><x-badge>{{ $perfil->origemEnergia->rotulo() }}</x-badge><span>{{ $perfil->energiaAnalisadaEm }}</span></div>
+                    <x-eixos-energia :eixos="$perfil->energia->eixos()" :vaga="$vaga->temPadraoEnergia() ? ['dinamico_analitico' => $vaga->energia_dinamico_analitico, 'individual_equipe' => $vaga->energia_individual_equipe, 'execucao_planejamento' => $vaga->energia_execucao_planejamento] : null" />
+                    <p class="text-sm leading-relaxed wrap-anywhere">{{ $perfil->energia->justificativa ?: 'Justificativa não informada.' }}</p>
+                    @if ($perfil->proximidadeEnergia !== null)
+                        <p class="text-sm font-semibold">Energia: {{ $perfil->proximidadeEnergia }}% de proximidade</p>
+                    @endif
+                @else
+                    <p class="text-sm text-texto-suave">Não analisado</p>
+                @endif
+            </section>
+
             @if ($revelado)
                 {{-- Só com a identidade revelada nesta vaga: as anotações podem citar o nome (matriz de visibilidade). --}}
                 <section aria-labelledby="perfil-anotacoes" class="flex flex-col gap-4 border-t border-borda pt-6">

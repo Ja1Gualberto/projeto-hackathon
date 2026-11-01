@@ -4,6 +4,7 @@ namespace App\DTOs;
 
 use App\Enums\Area;
 use App\Enums\EtapaSelecao;
+use App\Enums\OrigemPerfilEnergia;
 use App\Enums\TipoCandidato;
 use App\Models\Anotacao;
 use App\Models\Competencia;
@@ -50,5 +51,9 @@ final readonly class PerfilNaVagaDTO
         public ?array $links = null,
         public ?Collection $anotacoes = null,
         public bool $temCurriculo = false,
+        public ?SugestaoEnergiaDTO $energia = null,
+        public ?OrigemPerfilEnergia $origemEnergia = null,
+        public ?string $energiaAnalisadaEm = null,
+        public ?int $proximidadeEnergia = null,
     ) {}
 }

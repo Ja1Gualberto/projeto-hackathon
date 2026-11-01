@@ -71,7 +71,7 @@ class ParticipacaoRepository implements ParticipacaoRepositoryInterface
             ->whereHas('participacoes', fn (Builder $query) => $query
                 ->where('vaga_id', $vaga->id)
                 ->whereIn('etapa', [EtapaSelecao::Entrevista->value, EtapaSelecao::Aprovado->value]))
-            ->with('competencias')
+            ->with(['competencias', 'perfilEnergia'])
             ->orderBy('created_at')
             ->orderBy('id')
             ->get();

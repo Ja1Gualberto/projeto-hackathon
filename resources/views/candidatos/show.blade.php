@@ -54,7 +54,7 @@
 
             @include('candidatos.partials._secao-anotacoes')
             <div id="secao-lgpd">@include('candidatos.partials._secao-lgpd')</div>
-            @include('candidatos.partials._secao-energia')
+            <div id="secao-energia">@include('candidatos.partials._secao-energia')</div>
         </div>
 
         <aside class="flex min-w-0 flex-col gap-6 rounded-card border border-borda bg-superficie p-5" aria-label="Contato e documentos">

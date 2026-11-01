@@ -48,7 +48,7 @@ class SelecaoService
 
         $colunas = ['triagem' => collect(), 'entrevista' => collect(), 'aprovado' => collect()];
 
-        foreach ($this->ranking->classificar($vaga, $candidatos) as ['candidato' => $candidato, 'resultado' => $resultado]) {
+        foreach ($this->ranking->classificar($vaga, $candidatos) as ['candidato' => $candidato, 'resultado' => $resultado, 'proximidadeEnergia' => $proximidade]) {
             $etapa = $etapas[$candidato->id] ?? EtapaSelecao::Triagem;
 
             $colunas[$etapa->value]->push(new ItemRankingDTO(
@@ -59,6 +59,7 @@ class SelecaoService
                 resultado: $resultado,
                 etapa: $etapa,
                 nome: $etapa->revelaIdentidade() ? $candidato->nome : null,
+                proximidadeEnergia: $proximidade,
                 desativado: $candidato->status === StatusCandidato::Desativado,
                 elegivel: isset($idsElegiveis[$candidato->id]),
             ));

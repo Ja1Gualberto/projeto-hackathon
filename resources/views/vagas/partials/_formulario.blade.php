@@ -84,4 +84,14 @@
     </div>
 </section>
 
-{{-- Padrão de energia da vaga (US7, T139): eixos opcionais, incluídos aqui pela trilha B. --}}
+<section aria-labelledby="energia-vaga-titulo" class="flex flex-col gap-5 border-t border-borda pt-6">
+    <div>
+        <h2 id="energia-vaga-titulo" class="text-lg font-semibold">Padrão de energia desejado</h2>
+        <p class="mt-2 text-sm leading-relaxed text-texto-suave">Opcional: preencha os três eixos ou deixe todos em “Não definir”. A proximidade é informativa e não altera a aderência ou a ordenação.</p>
+    </div>
+    <div class="grid gap-5 sm:grid-cols-3">
+        @foreach (['dinamico_analitico' => 'Dinâmico ↔ Analítico', 'individual_equipe' => 'Individual ↔ Equipe', 'execucao_planejamento' => 'Execução ↔ Planejamento'] as $eixo => $rotulo)
+            <x-campo :nome="'energia['.$eixo.']'" :rotulo="$rotulo" tipo="select" :valor="$vaga->{'energia_'.$eixo}" vazio="Não definir" :opcoes="[1 => '1', 2 => '2', 3 => '3 · Neutro', 4 => '4', 5 => '5']" />
+        @endforeach
+    </div>
+</section>

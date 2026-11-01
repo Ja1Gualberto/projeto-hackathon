@@ -8,6 +8,7 @@ use App\Enums\EtapaSelecao;
 use App\Models\Candidato;
 use App\Models\Vaga;
 use App\Repositories\Interfaces\VagaRepositoryInterface;
+use App\Services\Energia\PerfilEnergiaService;
 use Illuminate\Support\Collection;
 
 /**
@@ -19,6 +20,7 @@ class RankingVagaService
     public function __construct(
         private VagaRepositoryInterface $vagas,
         private CalculadoraAderencia $calculadora,
+        private PerfilEnergiaService $energia,
     ) {}
 
     /**
@@ -36,6 +38,7 @@ class RankingVagaService
                 experienciaNaArea: $linha['candidato']->experiencia_na_area,
                 resultado: $linha['resultado'],
                 etapa: EtapaSelecao::Triagem,
+                proximidadeEnergia: $linha['proximidadeEnergia'],
             ));
     }
 
@@ -44,7 +47,7 @@ class RankingVagaService
      * quadro da seleção, que inclui também quem já avançou de etapa nesta vaga.
      *
      * @param  Collection<int, Candidato>  $candidatos
-     * @return Collection<int, array{candidato: Candidato, resultado: ResultadoAderenciaDTO}>
+     * @return Collection<int, array{candidato: Candidato, resultado: ResultadoAderenciaDTO, proximidadeEnergia: ?int}>
      */
     public function classificar(Vaga $vaga, Collection $candidatos): Collection
     {
@@ -54,6 +57,7 @@ class RankingVagaService
             ->map(fn (Candidato $candidato): array => [
                 'candidato' => $candidato,
                 'resultado' => $this->calculadora->calcular($requisitos, $candidato->competencias),
+                'proximidadeEnergia' => $this->energia->proximidadeNaVaga($vaga, $candidato),
             ])
             ->sort($this->comparar(...))
             ->values();
