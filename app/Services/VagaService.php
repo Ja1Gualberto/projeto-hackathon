@@ -10,7 +10,7 @@ use App\Models\User;
 use App\Models\Vaga;
 use App\Repositories\Interfaces\CompetenciaRepositoryInterface;
 use App\Repositories\Interfaces\VagaRepositoryInterface;
-use App\Services\Aderencia\RankingVagaService;
+use App\Services\Selecao\SelecaoService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Collection as SupportCollection;
 use Illuminate\Support\Facades\DB;
@@ -27,7 +27,7 @@ class VagaService
         private VagaRepositoryInterface $vagas,
         private CompetenciaRepositoryInterface $competencias,
         private CandidatoService $candidatos,
-        private RankingVagaService $ranking,
+        private SelecaoService $selecao,
     ) {}
 
     /**
@@ -108,16 +108,20 @@ class VagaService
     }
 
     /**
-     * Dados da região `quadro-vaga`: a vaga, as competências pedidas com peso e o ranking.
+     * Dados da região `quadro-vaga`: a vaga, as competências pedidas com peso, as três colunas
+     * da seleção e quantos candidatos são elegíveis.
      *
-     * @return array{vaga: Vaga, requisitos: Collection<int, Competencia>, ranking: SupportCollection<int, ItemRankingDTO>}
+     * @return array{vaga: Vaga, requisitos: Collection<int, Competencia>, colunas: array<string, SupportCollection<int, ItemRankingDTO>>, totalElegiveis: int}
      */
     public function quadro(Vaga $vaga): array
     {
+        $colunas = $this->selecao->quadro($vaga);
+
         return [
             'vaga' => $vaga,
             'requisitos' => $this->vagas->requisitos($vaga),
-            'ranking' => $this->ranking->ranquear($vaga),
+            'colunas' => $colunas,
+            'totalElegiveis' => collect($colunas)->flatten(1)->filter(fn (ItemRankingDTO $item): bool => $item->elegivel)->count(),
         ];
     }
 }

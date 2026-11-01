@@ -22,18 +22,13 @@ class RankingVagaService
     ) {}
 
     /**
+     * Ranking anônimo de todos os elegíveis, como se estivessem em triagem.
+     *
      * @return Collection<int, ItemRankingDTO>
      */
     public function ranquear(Vaga $vaga): Collection
     {
-        $requisitos = $this->vagas->requisitos($vaga);
-
-        return $this->vagas->candidatosElegiveis($vaga)
-            ->map(fn (Candidato $candidato): array => [
-                'candidato' => $candidato,
-                'resultado' => $this->calculadora->calcular($requisitos, $candidato->competencias),
-            ])
-            ->sort($this->comparar(...))
+        return $this->classificar($vaga, $this->vagas->candidatosElegiveis($vaga))
             ->map(fn (array $linha): ItemRankingDTO => new ItemRankingDTO(
                 codigo: $linha['candidato']->codigo,
                 tipo: $linha['candidato']->tipo,
@@ -41,7 +36,26 @@ class RankingVagaService
                 experienciaNaArea: $linha['candidato']->experiencia_na_area,
                 resultado: $linha['resultado'],
                 etapa: EtapaSelecao::Triagem,
-            ))
+            ));
+    }
+
+    /**
+     * Aderência e ordem de um conjunto de candidatos (com as competências carregadas). Usado pelo
+     * quadro da seleção, que inclui também quem já avançou de etapa nesta vaga.
+     *
+     * @param  Collection<int, Candidato>  $candidatos
+     * @return Collection<int, array{candidato: Candidato, resultado: ResultadoAderenciaDTO}>
+     */
+    public function classificar(Vaga $vaga, Collection $candidatos): Collection
+    {
+        $requisitos = $this->vagas->requisitos($vaga);
+
+        return $candidatos->toBase()
+            ->map(fn (Candidato $candidato): array => [
+                'candidato' => $candidato,
+                'resultado' => $this->calculadora->calcular($requisitos, $candidato->competencias),
+            ])
+            ->sort($this->comparar(...))
             ->values();
     }
 

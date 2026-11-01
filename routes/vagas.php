@@ -1,5 +1,9 @@
 <?php
 
+use App\Http\Controllers\ParticipacaoAnotacaoController;
+use App\Http\Controllers\ParticipacaoController;
+use App\Http\Controllers\ParticipacaoCurriculoController;
+use App\Http\Controllers\ParticipacaoEtapaController;
 use App\Http\Controllers\VagaController;
 use App\Http\Controllers\VagaStatusController;
 use Illuminate\Support\Facades\Route;
@@ -28,3 +32,19 @@ Route::put('/vagas/{vaga}', [VagaController::class, 'update'])
     ->whereNumber('vaga')->name('vagas.update');
 Route::patch('/vagas/{vaga}/status', [VagaStatusController::class, 'update'])
     ->whereNumber('vaga')->name('vagas.status');
+
+// US4 — seleção
+Route::get('/vagas/{vaga}/candidatos/{candidato:codigo}', [ParticipacaoController::class, 'show'])
+    ->whereNumber('vaga')->where('candidato', 'CAND-[0-9]{4}')
+    ->withoutScopedBindings()->name('vagas.candidatos.show');
+Route::patch('/vagas/{vaga}/candidatos/{candidato:codigo}/etapa', [ParticipacaoEtapaController::class, 'update'])
+    ->whereNumber('vaga')->where('candidato', 'CAND-[0-9]{4}')
+    ->withoutScopedBindings()->name('vagas.candidatos.etapa');
+Route::get('/vagas/{vaga}/candidatos/{candidato:codigo}/curriculo', [ParticipacaoCurriculoController::class, 'show'])
+    ->whereNumber('vaga')->where('candidato', 'CAND-[0-9]{4}')
+    ->withoutScopedBindings()->name('vagas.candidatos.curriculo');
+
+// US5 — anotações
+Route::post('/vagas/{vaga}/candidatos/{candidato:codigo}/anotacoes', [ParticipacaoAnotacaoController::class, 'store'])
+    ->whereNumber('vaga')->where('candidato', 'CAND-[0-9]{4}')
+    ->withoutScopedBindings()->name('vagas.candidatos.anotacoes.store');

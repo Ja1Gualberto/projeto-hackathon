@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AnotacaoController;
 use App\Http\Controllers\CandidatoController;
 use App\Http\Controllers\CompetenciaController;
 use App\Http\Controllers\ConfirmacaoImportacaoController;
@@ -35,3 +36,7 @@ Route::get('/candidatos/importar/{importacao}', [ImportacaoCurriculoController::
 Route::post('/candidatos/importar/{importacao}/confirmar', [ConfirmacaoImportacaoController::class, 'store'])
     ->whereUuid('importacao')->name('importacoes.confirmar');
 Route::post('/competencias', [CompetenciaController::class, 'store'])->name('competencias.store');
+
+// US5 — anotações
+Route::post('/candidatos/{candidato}/anotacoes', [AnotacaoController::class, 'store'])
+    ->whereNumber('candidato')->name('candidatos.anotacoes.store');

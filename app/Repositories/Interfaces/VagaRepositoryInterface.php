@@ -35,6 +35,8 @@ interface VagaRepositoryInterface
     /** Encerra uma vaga aberta; numa vaga já encerrada, mantém a data original. */
     public function encerrar(Vaga $vaga): void;
 
+    public function encontrar(int $id): ?Vaga;
+
     /**
      * Competências pedidas pela vaga, lidas do banco a cada chamada (FR-020), com `pivot->peso`.
      *

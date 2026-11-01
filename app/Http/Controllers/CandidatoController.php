@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\BuscarCandidatosRequest;
 use App\Models\Candidato;
+use App\Services\Anotacoes\AnotacaoService;
 use App\Services\CandidatoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Response;
@@ -11,7 +12,10 @@ use Illuminate\View\View;
 
 class CandidatoController extends Controller
 {
-    public function __construct(private CandidatoService $candidatos) {}
+    public function __construct(
+        private CandidatoService $candidatos,
+        private AnotacaoService $anotacoes,
+    ) {}
 
     public function index(BuscarCandidatosRequest $request): Response|JsonResponse
     {
@@ -38,6 +42,11 @@ class CandidatoController extends Controller
 
     public function show(Candidato $candidato): View
     {
-        return view('candidatos.show', ['candidato' => $this->candidatos->detalhar($candidato)]);
+        return view('candidatos.show', [
+            'candidato' => $this->candidatos->detalhar($candidato),
+            'anotacoes' => $this->anotacoes->historico($candidato),
+            'vagas' => $this->anotacoes->vagasParaAssociar(),
+            'catalogo' => $this->candidatos->catalogoCompetencias(),
+        ]);
     }
 }

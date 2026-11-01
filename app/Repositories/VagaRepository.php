@@ -52,6 +52,11 @@ class VagaRepository implements VagaRepositoryInterface
         $vaga->forceFill(['status' => StatusVaga::Encerrada, 'encerrada_em' => now()])->save();
     }
 
+    public function encontrar(int $id): ?Vaga
+    {
+        return Vaga::query()->find($id);
+    }
+
     public function requisitos(Vaga $vaga): Collection
     {
         return $vaga->competencias()->orderByPivot('peso', 'desc')->orderBy('nome')->get();

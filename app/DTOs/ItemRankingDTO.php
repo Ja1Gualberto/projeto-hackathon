@@ -15,6 +15,8 @@ final readonly class ItemRankingDTO
     /**
      * @param  ?string  $nome  Nulo, exceto quando a etapa revela a identidade nesta vaga (US4).
      * @param  ?int  $proximidadeEnergia  Preenchida na US7.
+     * @param  bool  $desativado  Continua no quadro, esmaecido e sem ações, se já estava em entrevista ou aprovado.
+     * @param  bool  $elegivel  Ativo e do tipo aceito pela vaga; só elegíveis podem ser movidos.
      */
     public function __construct(
         public string $codigo,
@@ -25,5 +27,7 @@ final readonly class ItemRankingDTO
         public EtapaSelecao $etapa = EtapaSelecao::Triagem,
         public ?string $nome = null,
         public ?int $proximidadeEnergia = null,
+        public bool $desativado = false,
+        public bool $elegivel = true,
     ) {}
 }

@@ -1,11 +1,11 @@
 {{--
-    Conteúdo da região "quadro-vaga" (contracts/rotas-web.md): cabeçalho, situação, ações e o
-    ranking da triagem. A mesma marcação serve a página e o fragmento AJAX ("Atualizar quadro" e
-    "Encerrar vaga"). Os cards recebem só ItemRankingDTO, sem identidade nem link para o banco.
+    Conteúdo da região "quadro-vaga" (contracts/rotas-web.md): cabeçalho, situação, ações e as três
+    colunas da seleção. A mesma marcação serve a página e os fragmentos AJAX ("Atualizar quadro",
+    "Encerrar vaga" e as movimentações). Os cards recebem só ItemRankingDTO: o nome aparece apenas
+    em Entrevista e Aprovado, e nunca há link para o perfil do banco.
 --}}
 @php
     $aberta = $vaga->estaAberta();
-    $totalElegiveis = $ranking->count();
 @endphp
 
 <div class="flex flex-col gap-6">
@@ -37,7 +37,7 @@
 
     @unless ($aberta)
         <x-alerta tipo="aviso" titulo="Vaga encerrada — somente consulta">
-            Encerrada em {{ $vaga->encerrada_em?->format('d/m/Y') }}. O ranking continua disponível para consulta; a vaga não aceita mais edições nem movimentações.
+            Encerrada em {{ $vaga->encerrada_em?->format('d/m/Y') }}. O quadro e o histórico continuam disponíveis para consulta; a vaga não aceita mais edições nem movimentações.
         </x-alerta>
     @endunless
 
@@ -53,25 +53,21 @@
         </ul>
     </section>
 
-    <section aria-labelledby="triagem-titulo" class="flex flex-col gap-4">
+    <section aria-labelledby="selecao-titulo" class="flex flex-col gap-4">
         <div class="flex flex-wrap items-baseline justify-between gap-3 border-b border-borda pb-3">
-            <h2 id="triagem-titulo" class="text-xl font-semibold tracking-tight">
-                Triagem <span class="font-normal text-texto-suave">· {{ $totalElegiveis }} {{ $totalElegiveis === 1 ? 'candidato elegível' : 'candidatos elegíveis' }}</span>
+            <h2 id="selecao-titulo" class="text-xl font-semibold tracking-tight">
+                Seleção <span class="font-normal text-texto-suave">· {{ $totalElegiveis }} {{ $totalElegiveis === 1 ? 'candidato elegível' : 'candidatos elegíveis' }}</span>
             </h2>
             <p class="flex items-center gap-2 text-sm text-texto-suave">
                 <x-icone nome="cadeado" class="size-4" />
-                Identidade protegida: só o código aparece. Ordem por aderência.
+                Triagem anônima: o nome aparece a partir da entrevista, só nesta vaga.
             </p>
         </div>
 
-        @if ($ranking->isEmpty())
-            <x-estado-vazio icone="grupo" titulo="Nenhum candidato elegível" texto="Ainda não há candidatos ativos do tipo aceito por esta vaga. Novos cadastros compatíveis entram aqui automaticamente." />
-        @else
-            <ol class="flex flex-col gap-3" aria-label="Ranking da triagem">
-                @foreach ($ranking as $item)
-                    <li>@include('vagas.partials._card-ranking', ['item' => $item, 'posicao' => $loop->iteration])</li>
-                @endforeach
-            </ol>
-        @endif
+        <div class="grid items-start gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)]">
+            @foreach (\App\Enums\EtapaSelecao::cases() as $etapa)
+                @include('vagas.partials._coluna', ['etapa' => $etapa, 'itens' => $colunas[$etapa->value]])
+            @endforeach
+        </div>
     </section>
 </div>

@@ -29,6 +29,7 @@ export async function enviarFormulario(formulario, botao = null, confirmar = (te
     pendentes.add(formulario);
     let controles = [];
     let erroEnvio;
+    let limparDepois = false;
     try {
         // Serializar antes de bloquear: controles disabled não participam do FormData.
         const dados = new FormData(formulario);
@@ -64,6 +65,7 @@ export async function enviarFormulario(formulario, botao = null, confirmar = (te
         }
         anunciar(resposta.message ?? 'Operação concluída.', formulario.ownerDocument);
         formulario.dispatchEvent?.(new CustomEvent('ajax:sucesso', { bubbles: true, detail: { resposta, novos } }));
+        limparDepois = formulario.hasAttribute?.('data-limpar-apos-sucesso') === true;
         if (resposta.redirect) {
             globalThis.location.assign(mesmaOrigem(resposta.redirect, formulario.ownerDocument.baseURI).href);
         }
@@ -83,6 +85,12 @@ export async function enviarFormulario(formulario, botao = null, confirmar = (te
     }
     if (erroEnvio) {
         mostrarErros(formulario, erroEnvio);
+    } else if (limparDepois) {
+        // data-limpar-apos-sucesso: só depois de confirmado pelo servidor; em erro, o rascunho fica.
+        formulario.reset();
+        // reset() não dispara "input": os filtros de chips voltam a mostrar todas as opções.
+        formulario.querySelectorAll('[data-filtrar-chips]').forEach((filtro) => filtro.dispatchEvent(new Event('input')));
+        formulario.querySelector('[data-foco-apos-limpar]')?.focus();
     }
 }
 

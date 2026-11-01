@@ -186,3 +186,169 @@ test('Encerrar pelo quadro substitui a região e leva o foco ao ponto indicado p
     assert.equal(aviso.textContent, 'Vaga encerrada. O quadro fica disponível para consulta.');
     assert.deepEqual(focados, ['titulo']);
 });
+
+function montarMovimentacao() {
+    const docEventos = {};
+    const focados = [];
+    const aviso = { textContent: '' };
+    const atributos = new Map();
+    const alvos = new Set();
+    let html = 'quadro anterior';
+    let versao = 0;
+    const regiao = {
+        id: 'quadro-vaga',
+        get innerHTML() { return html; },
+        set innerHTML(novo) { html = novo; versao++; },
+        setAttribute: (chave, valor) => atributos.set(chave, valor),
+        removeAttribute: (chave) => atributos.delete(chave),
+        contains: (elemento) => elemento?.dentroDoQuadro === true,
+        querySelectorAll: (seletor) => seletor === '[data-codigo]'
+            ? [{ dataset: { codigo: 'CAND-0042' }, querySelector: () => ({ focus: () => focados.push('CAND-0042') }) }]
+            : [],
+        querySelector: () => null,
+    };
+    const coluna = (etapa) => ({
+        dentroDoQuadro: true, dataset: { etapa },
+        setAttribute: () => alvos.add(etapa), removeAttribute: () => alvos.delete(etapa),
+    });
+    const colunas = { triagem: coluna('triagem'), entrevista: coluna('entrevista'), aprovado: coluna('aprovado') };
+    const doc = {
+        baseURI: 'https://banco.test/vagas/3',
+        getElementById: (id) => id === 'quadro-vaga' ? regiao : null,
+        querySelector: (seletor) => seletor === '[data-ajax-anuncios]' ? aviso : null,
+        querySelectorAll: () => [...alvos].map((etapa) => colunas[etapa]),
+        addEventListener: (nome, fn) => { docEventos[nome] = fn; },
+        createElement: () => ({ dataset: {}, setAttribute() {}, focus() {} }),
+    };
+    function formulario(codigo = 'CAND-0042', etapa = 'triagem') {
+        const versaoInicial = versao;
+        const form = {
+            method: 'post', action: `https://banco.test/vagas/3/candidatos/${codigo}/etapa`, dataset: {},
+            elements: [], ownerDocument: doc, dentroDoQuadro: true,
+            get isConnected() { return versao === versaoInicial; },
+            matches: (seletor) => seletor === 'form[data-mover-etapa]',
+            closest: (seletor) => ({ '#quadro-vaga, #perfil-na-vaga': regiao, '[data-codigo]': card })[seletor] ?? null,
+            setAttribute() {}, removeAttribute() {}, querySelectorAll: () => [], querySelector: () => null,
+            dispatchEvent: () => true, prepend() {},
+        };
+        const card = {
+            dentroDoQuadro: true, dataset: { codigo },
+            querySelector: (seletor) => seletor === 'form[data-mover-etapa]' ? form : null,
+            closest: (seletor) => seletor === '[data-etapa]' ? colunas[etapa] : null,
+        };
+        return { form, card };
+    }
+    function evento(target, extra = {}) {
+        return { target, prevenido: false, preventDefault() { this.prevenido = true; }, ...extra };
+    }
+    const elementoEm = (alvo) => ({
+        closest: (seletor) => {
+            if (seletor === '[data-etapa]') {
+                return alvo.dataset?.etapa ? alvo : (alvo.closest?.('[data-etapa]') ?? null);
+            }
+            return seletor === '[draggable="true"][data-codigo]' && alvo.dataset?.codigo ? alvo : null;
+        },
+    });
+    registrarQuadro(doc);
+    globalThis.FormData = class { constructor() { return new formDataOriginal(); } };
+    return { docEventos, regiao, atributos, alvos, colunas, aviso, focados, formulario, evento, elementoEm };
+}
+
+test('mover por botão bloqueia o quadro enquanto pendente e só aplica o HTML do servidor', async () => {
+    const quadro = montarMovimentacao();
+    const chamadas = [];
+    let liberar;
+    globalThis.fetch = (url, opcoes) => {
+        chamadas.push({ url: String(url), opcoes });
+        return new Promise((resolve) => {
+            liberar = () => resolve(resposta(envelope({ 'quadro-vaga': 'quadro novo' }, 'CAND-0042 está agora em Entrevista.')));
+        });
+    };
+    const primeiro = quadro.formulario();
+    const segundo = quadro.formulario('CAND-0077');
+
+    const envio = quadro.evento(primeiro.form, { submitter: { name: 'etapa', value: 'entrevista' } });
+    const pendente = quadro.docEventos.submit(envio);
+    const repetido = quadro.evento(segundo.form, { submitter: { name: 'etapa', value: 'entrevista' } });
+    await quadro.docEventos.submit(repetido);
+
+    assert.equal(envio.prevenido, true);
+    assert.equal(repetido.prevenido, true);
+    assert.equal(chamadas.length, 1);
+    assert.equal(quadro.atributos.get('aria-busy'), 'true');
+    assert.equal(quadro.regiao.innerHTML, 'quadro anterior');
+
+    liberar();
+    await pendente;
+
+    assert.equal(chamadas[0].opcoes.method, 'POST');
+    assert.equal(chamadas[0].opcoes.body.get('etapa'), 'entrevista');
+    assert.equal(quadro.regiao.innerHTML, 'quadro novo');
+    assert.equal(quadro.atributos.has('aria-busy'), false);
+    assert.equal(quadro.aviso.textContent, 'CAND-0042 está agora em Entrevista.');
+    assert.deepEqual(quadro.focados, ['CAND-0042']);
+});
+
+test('falha na movimentação não move o card e libera o quadro', async () => {
+    const quadro = montarMovimentacao();
+    globalThis.fetch = async () => resposta({ message: 'Revise.', errors: { etapa: ['Vaga encerrada — somente consulta. Não é possível mover candidatos.'] } }, 422);
+
+    await quadro.docEventos.submit(quadro.evento(quadro.formulario().form, { submitter: { name: 'etapa', value: 'entrevista' } }));
+
+    assert.equal(quadro.regiao.innerHTML, 'quadro anterior');
+    assert.equal(quadro.atributos.has('aria-busy'), false);
+    assert.match(quadro.aviso.textContent, /Vaga encerrada/);
+
+    let chamadas = 0;
+    globalThis.fetch = async () => { chamadas++; return resposta(envelope({ 'quadro-vaga': 'quadro novo' })); };
+    await quadro.docEventos.submit(quadro.evento(quadro.formulario().form, { submitter: { name: 'etapa', value: 'entrevista' } }));
+    assert.equal(chamadas, 1);
+});
+
+test('arrastar para outra coluna envia o mesmo formulário com a etapa de destino', async () => {
+    const quadro = montarMovimentacao();
+    const corpos = [];
+    globalThis.fetch = async (url, opcoes) => {
+        corpos.push(opcoes.body);
+        return resposta(envelope({ 'quadro-vaga': 'quadro novo' }));
+    };
+    const { card } = quadro.formulario('CAND-0042', 'triagem');
+    const transferencia = { dados: {}, setData(tipo, valor) { this.dados[tipo] = valor; } };
+
+    quadro.docEventos.dragstart(quadro.evento(quadro.elementoEm(card), { dataTransfer: transferencia }));
+    const mesmaColuna = quadro.evento(quadro.elementoEm(quadro.colunas.triagem));
+    quadro.docEventos.dragover(mesmaColuna);
+    const sobreEntrevista = quadro.evento(quadro.elementoEm(quadro.colunas.entrevista));
+    quadro.docEventos.dragover(sobreEntrevista);
+
+    assert.equal(transferencia.dados['text/plain'], 'CAND-0042');
+    assert.equal(mesmaColuna.prevenido, false);
+    assert.equal(sobreEntrevista.prevenido, true);
+    assert.deepEqual([...quadro.alvos], ['entrevista']);
+
+    await quadro.docEventos.drop(quadro.evento(quadro.elementoEm(quadro.colunas.entrevista)));
+
+    assert.equal(corpos.length, 1);
+    assert.equal(corpos[0].get('etapa'), 'entrevista');
+    assert.equal(quadro.regiao.innerHTML, 'quadro novo');
+    assert.deepEqual([...quadro.alvos], []);
+});
+
+test('soltar na própria coluna ou sem arrastar um card não envia nada', async () => {
+    const quadro = montarMovimentacao();
+    let chamadas = 0;
+    globalThis.fetch = async () => { chamadas++; return resposta(envelope({ 'quadro-vaga': 'x' })); };
+    const { card } = quadro.formulario('CAND-0042', 'entrevista');
+
+    const semArrasto = quadro.evento(quadro.elementoEm(quadro.colunas.aprovado));
+    await quadro.docEventos.drop(semArrasto);
+    quadro.docEventos.dragstart(quadro.evento(quadro.elementoEm(card), { dataTransfer: { setData() {} } }));
+    const mesma = quadro.evento(quadro.elementoEm(quadro.colunas.entrevista));
+    await quadro.docEventos.drop(mesma);
+    quadro.docEventos.dragend(quadro.evento(quadro.elementoEm(card)));
+
+    assert.equal(semArrasto.prevenido, false);
+    assert.equal(mesma.prevenido, false);
+    assert.equal(chamadas, 0);
+    assert.equal(quadro.regiao.innerHTML, 'quadro anterior');
+});
