@@ -7,7 +7,9 @@ use App\Repositories\CompetenciaRepository;
 use App\Repositories\Interfaces\CandidatoRepositoryInterface;
 use App\Repositories\Interfaces\CompetenciaRepositoryInterface;
 use App\Repositories\Interfaces\PainelRepositoryInterface;
+use App\Repositories\Interfaces\VagaRepositoryInterface;
 use App\Repositories\PainelRepository;
+use App\Repositories\VagaRepository;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -20,6 +22,7 @@ class RepositoryServiceProvider extends ServiceProvider
         $this->app->bind(CandidatoRepositoryInterface::class, CandidatoRepository::class);
         $this->app->bind(CompetenciaRepositoryInterface::class, CompetenciaRepository::class);
         $this->app->bind(PainelRepositoryInterface::class, PainelRepository::class);
+        $this->app->bind(VagaRepositoryInterface::class, VagaRepository::class);
     }
 
     /**

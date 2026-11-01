@@ -4,6 +4,20 @@ const pendentes = new WeakSet();
 const temporizadores = new WeakMap();
 const SELETOR_TEXTO = 'input[type="text"], input[type="search"], textarea';
 
+/**
+ * Quando o próprio formulário é substituído junto com a região (ex.: Encerrar vaga no quadro),
+ * o foco iria para o documento; leva-o ao ponto indicado pelo novo HTML com data-foco-apos-ajax.
+ */
+function focarRegiaoAtualizada(regioes, doc) {
+    for (const id of regioes) {
+        const alvo = doc.getElementById(id)?.querySelector('[data-foco-apos-ajax]');
+        if (alvo) {
+            alvo.focus();
+            return;
+        }
+    }
+}
+
 export function suportaAjax() {
     return typeof fetch === 'function' && typeof FormData === 'function' && typeof AbortController === 'function';
 }
@@ -45,6 +59,9 @@ export async function enviarFormulario(formulario, botao = null, confirmar = (te
         const novos = formulario.dataset.ajaxMesclar
             ? mesclarFragmento(resposta, formulario.dataset.ajaxMesclar, formulario.ownerDocument)
             : (aplicarFragmentos(resposta, formulario.ownerDocument), []);
+        if (formulario.isConnected === false) {
+            focarRegiaoAtualizada(Object.keys(resposta.fragments), formulario.ownerDocument);
+        }
         anunciar(resposta.message ?? 'Operação concluída.', formulario.ownerDocument);
         formulario.dispatchEvent?.(new CustomEvent('ajax:sucesso', { bubbles: true, detail: { resposta, novos } }));
         if (resposta.redirect) {

@@ -10,8 +10,9 @@ document.querySelectorAll('[data-filtrar-chips]').forEach((input) => {
     const filtrar = () => {
         const termo = normalizar(input.value);
 
+        // data-chip-texto limita a busca ao nome quando o chip tem outros textos (ex.: opções de peso).
         alvo.querySelectorAll('[data-chip]').forEach((chip) => {
-            chip.hidden = !normalizar(chip.textContent).includes(termo);
+            chip.hidden = !normalizar(chip.dataset?.chipTexto ?? chip.textContent).includes(termo);
         });
     };
 

@@ -38,6 +38,16 @@ test('filtra sem acentos, preserva as seleções e restaura os chips ao limpar',
         input.value = '';
         eventos.input();
         assert.deepEqual(chips.map((chip) => chip.hidden), [false, false]);
+
+        // Linha de peso da vaga: o filtro olha só o nome (data-chip-texto), não as opções do select.
+        chips.push({ textContent: 'Git Não usar 1 · Desejável 2 · Importante', dataset: { chipTexto: 'Git' }, hidden: false });
+        input.value = 'desejavel';
+        eventos.input();
+        assert.deepEqual(chips.map((chip) => chip.hidden), [true, true, true]);
+
+        input.value = 'GIT';
+        eventos.input();
+        assert.deepEqual(chips.map((chip) => chip.hidden), [true, true, false]);
     } finally {
         delete globalThis.document;
     }
