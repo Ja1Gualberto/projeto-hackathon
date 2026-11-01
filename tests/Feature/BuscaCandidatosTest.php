@@ -129,6 +129,84 @@ class BuscaCandidatosTest extends TestCase
     {
         $this->actingAs(User::factory()->create())->from(route('candidatos.index'))
             ->get(route('candidatos.index', $parametros))->assertSessionHasErrors($campo);
+        $this->getJson(route('candidatos.index', $parametros))->assertUnprocessable()
+            ->assertJsonValidationErrors($campo)->assertHeader('Cache-Control', 'no-store, private');
+    }
+
+    #[TestWith([1, 'Talento 00', 'Talento 12'])]
+    #[TestWith([2, 'Talento 12', 'Talento 00'])]
+    public function test_busca_json_preserva_filtros_contagem_ordem_e_paginacao_do_html(int $pagina, string $presente, string $ausente): void
+    {
+        $python = Competencia::factory()->hard()->create(['nome' => 'Python']);
+        $basico = Competencia::factory()->idioma('ingles', 1)->create();
+        $avancado = Competencia::factory()->idioma('ingles', 3)->create();
+        $perfis = Candidato::factory()->estagiario()->count(13)->sequence(
+            fn ($sequencia): array => ['nome' => 'Talento '.str_pad((string) $sequencia->index, 2, '0', STR_PAD_LEFT)],
+        )->create(['area' => Area::Desenvolvimento, 'experiencia_na_area' => true]);
+        foreach ($perfis as $perfil) {
+            $perfil->competencias()->attach([$python->id, $avancado->id], ['origem' => 'curriculo']);
+        }
+        foreach ([
+            ['tipo' => 'servidor'], ['area' => Area::Dados], ['experiencia_na_area' => false],
+            ['status' => 'desativado'], ['nome' => 'Outra pessoa'],
+        ] as $diferenca) {
+            $outro = Candidato::factory()->estagiario()->create(array_merge([
+                'nome' => 'Talento excluído', 'area' => Area::Desenvolvimento, 'experiencia_na_area' => true,
+            ], $diferenca));
+            $outro->competencias()->attach([$python->id, $avancado->id], ['origem' => 'curriculo']);
+        }
+        $parcial = Candidato::factory()->estagiario()->create([
+            'nome' => 'Talento parcial', 'area' => Area::Desenvolvimento, 'experiencia_na_area' => true,
+        ]);
+        $parcial->competencias()->attach($python->id, ['origem' => 'curriculo']);
+        $url = route('candidatos.index', [
+            'competencias' => [$python->id, $basico->id], 'tipo' => 'estagiario',
+            'area' => 'desenvolvimento', 'experiencia' => 1, 'busca' => 'Talento', 'page' => $pagina,
+        ]);
+        $this->actingAs(User::factory()->create());
+
+        $html = $this->get($url)->assertOk()->assertSee($presente)->assertDontSee($ausente)
+            ->assertSee('13 talentos encontrados')->assertHeader('Cache-Control', 'no-store, private');
+        $json = $this->getJson($url)->assertOk()->assertJsonPath('message', null)->assertJsonPath('redirect', null)
+            ->assertJsonCount(1, 'fragments')->assertHeader('Cache-Control', 'no-store, private');
+        $fragmento = $json->json('fragments.resultados-candidatos');
+
+        $this->assertIsString($fragmento);
+        $this->assertStringContainsString($fragmento, $html->getContent());
+        $this->assertStringContainsString($presente, $fragmento);
+        $this->assertStringContainsString('13 talentos encontrados', $fragmento);
+        $this->assertStringContainsString('tipo=estagiario', $fragmento);
+        $this->assertStringContainsString('experiencia=1', $fragmento);
+        $this->assertStringContainsString('competencias%5B0%5D=', $fragmento);
+        foreach ([$ausente, 'Talento excluído', 'Talento parcial', 'CAND-', '<html', '<form', '<script'] as $proibido) {
+            $this->assertStringNotContainsString($proibido, $fragmento);
+        }
+    }
+
+    public function test_busca_json_vazia_oferece_link_real_e_escapa_identidade_nos_cards(): void
+    {
+        $candidato = Candidato::factory()->create(['nome' => '<script>alert(1)</script>']);
+        $this->actingAs(User::factory()->create());
+
+        $vazio = $this->getJson(route('candidatos.index', ['busca' => 'Inexistente']))->assertOk()
+            ->json('fragments.resultados-candidatos');
+        $this->assertIsString($vazio);
+        $this->assertStringContainsString('0 talentos encontrados', $vazio);
+        $this->assertStringContainsString('Remover filtros', $vazio);
+        $this->assertStringContainsString('href="'.route('candidatos.index').'"', $vazio);
+        $fragmento = $this->getJson(route('candidatos.index'))->assertOk()->json('fragments.resultados-candidatos');
+        $this->assertStringContainsString(e($candidato->nome), $fragmento);
+        $this->assertStringNotContainsString($candidato->nome, $fragmento);
+    }
+
+    public function test_visitante_json_recebe_401_sem_redirecionar_e_recurso_ausente_recebe_404(): void
+    {
+        $this->getJson(route('candidatos.index'))->assertUnauthorized()
+            ->assertExactJson(['message' => 'Sua sessão expirou. Entre novamente para continuar.'])
+            ->assertHeaderMissing('Location');
+        $this->get(route('candidatos.index'))->assertRedirect(route('login'));
+        $this->actingAs(User::factory()->create())->getJson('/candidatos/999999')->assertNotFound()
+            ->assertExactJson(['message' => 'O recurso solicitado não foi encontrado.']);
     }
 
     public function test_perfil_mostra_secoes_origens_cpf_mascarado_e_nao_exibe_codigo(): void

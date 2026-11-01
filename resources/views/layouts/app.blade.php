@@ -77,6 +77,9 @@
             </header>
 
             <main id="conteudo" class="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-6 py-8">
+                <div data-ajax-anuncios role="status" aria-live="polite" aria-atomic="true" class="empty:hidden rounded-lg border border-borda bg-superficie p-3 text-sm"></div>
+                <a data-ajax-login href="{{ route('login') }}" target="_blank" rel="noopener" hidden class="text-sm font-semibold text-primaria-700 underline">Abrir login em outra aba (seus campos serão preservados)</a>
+                <a data-ajax-conferir href="{{ url()->full() }}" target="_blank" rel="noopener" hidden class="text-sm font-semibold text-primaria-700 underline">Conferir estado em outra aba antes de repetir a operação</a>
                 @if (session('status'))
                     <x-alerta tipo="sucesso">{{ session('status') }}</x-alerta>
                 @endif

@@ -2,3 +2,4 @@
 import './modulos/formularios.js';
 import './modulos/chips.js';
 import './modulos/kanban.js';
+import './modulos/busca.js';

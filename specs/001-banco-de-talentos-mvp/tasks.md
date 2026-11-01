@@ -264,18 +264,18 @@ migration entre histórias.
 - [X] T043 Criar `routes/candidatos.php` e `routes/vagas.php` (só com `<?php` e `use Illuminate\Support\Facades\Route;`) e reescrever `routes/web.php`, incluindo os dois arquivos com `require` **dentro** do grupo `auth`. Cada história adiciona suas rotas no arquivo do módulo, em um bloco com comentário próprio (`// USn — ...`), para as trilhas não editarem as mesmas linhas. Em `routes/web.php`: grupo `guest` com `GET /login` (`login`) e `POST /login` (`login.store`, middleware `throttle:5,1`); grupo `auth` com `POST /logout` (`logout`) e `GET /` (`painel`, temporariamente `Route::view('/', 'painel.index')` com `resources/views/painel/index.blade.php` provisória, substituída em T057). Remover a rota `welcome`
 - [X] T044 Criar `tests/Feature/AutenticacaoTest.php`: visitante em `/` é redirecionado para `/login`; login válido do usuário da factory redireciona para `painel`; login inválido volta com erro e continua visitante; logout encerra a sessão
 
-### Complemento pendente — fundação AJAX (FR-041/FR-042)
+### Complemento — fundação AJAX (FR-041/FR-042)
 
-- [ ] T149 Criar `tests/js/ajax.test.js` com o runner nativo do Node e mocks de `fetch`/DOM mínimos, sem dependências: resposta JSON válida, 422 com erros por campo, 401/419/403/404/413/503, rede e HTML inesperado; nenhuma repetição automática de escrita; controles liberados após falha; bloqueio de envio duplicado; recusa de `redirect` de outra origem. Escrever antes de T150 e executar com `node --test tests/js/ajax.test.js`
-- [ ] T150 Criar `resources/js/modulos/ajax.js` para `fetch` de mesma origem e contrato de `contracts/rotas-web.md`; integrar em `resources/js/modulos/formularios.js` por `data-ajax`, com delegação de eventos, serialização antes de bloquear controles, `_token`/`_method`, erros locais, confirmação, loading e proteção contra duplo envio. Não reenviar escritas automaticamente nem aplicar atualização otimista. Preservar submit tradicional nos formulários não marcados/sem suporte; impedir que `data-autosubmit` dispare um segundo envio. Em `resources/js/app.js`, registrar também `./modulos/busca.js`, criado como placeholder para T154. Depende de T149
-- [ ] T151 Ajustar `bootstrap/app.php` para erros JSON controlados quando `Accept: application/json` (401, 403, 404, 419, 413 e 503), sem alterar o comportamento HTML já implementado, inclusive a página 413; manter o 422 padrão de Form Requests e não desabilitar proteção CSRF. Em `resources/views/layouts/app.blade.php` e `resources/views/components/campo.blade.php`, preparar região persistente de anúncios `aria-live`, resumo e erros por campo, `aria-invalid`/`aria-describedby` e foco no primeiro erro. Definir em `ajax.js` o mapa fechado de regiões do contrato; validar o envelope inteiro antes de aplicar fragmentos. Depende de T150; os testes HTTP serão acrescentados em T152 e nas histórias seguintes
+- [X] T149 Criar `tests/js/ajax.test.js` com o runner nativo do Node e mocks de `fetch`/DOM mínimos, sem dependências: resposta JSON válida, 422 com erros por campo, 401/419/403/404/413/503, rede e HTML inesperado; nenhuma repetição automática de escrita; controles liberados após falha; bloqueio de envio duplicado; recusa de `redirect` de outra origem. Escrever antes de T150 e executar com `node --test tests/js/ajax.test.js`
+- [X] T150 Criar `resources/js/modulos/ajax.js` para `fetch` de mesma origem e contrato de `contracts/rotas-web.md`; integrar em `resources/js/modulos/formularios.js` por `data-ajax`, com delegação de eventos, serialização antes de bloquear controles, `_token`/`_method`, erros locais, confirmação, loading e proteção contra duplo envio. Não reenviar escritas automaticamente nem aplicar atualização otimista. Preservar submit tradicional nos formulários não marcados/sem suporte; impedir que `data-autosubmit` dispare um segundo envio. Em `resources/js/app.js`, registrar também `./modulos/busca.js`, criado como placeholder para T154. Depende de T149
+- [X] T151 Ajustar `bootstrap/app.php` para erros JSON controlados quando `Accept: application/json` (401, 403, 404, 419, 413 e 503), sem alterar o comportamento HTML já implementado, inclusive a página 413; manter o 422 padrão de Form Requests e não desabilitar proteção CSRF. Em `resources/views/layouts/app.blade.php` e `resources/views/components/campo.blade.php`, preparar região persistente de anúncios `aria-live`, resumo e erros por campo, `aria-invalid`/`aria-describedby` e foco no primeiro erro. Definir em `ajax.js` o mapa fechado de regiões do contrato; validar o envelope inteiro antes de aplicar fragmentos. Depende de T150; os testes HTTP serão acrescentados em T152 e nas histórias seguintes
 
 **Checkpoint**: `php artisan migrate:fresh --seed` roda sem erros; o login funciona e mostra o
 layout; `php artisan test` passa.
 
-**Gate adicional da revisão AJAX**: T149–T151 pendentes; concluir e compartilhar o transporte
-antes das integrações. Não refazer o esquema nem considerar as verificações históricas abaixo
-como evidência de AJAX implementado.
+**Gate adicional da revisão AJAX**: T149–T151 implementadas e cobertas por testes de
+transporte/formulários e erros HTTP. Não foi necessário refazer o esquema. As verificações
+históricas abaixo continuam separadas da validação do complemento AJAX.
 
 **Notas da implementação da Phase 2 (2026-10-31):** as duas trilhas (A e B) foram feitas por uma
 pessoa só. O relatório completo está em
@@ -354,16 +354,33 @@ candidatos com todos os critérios, a contagem correta e os cards (quickstart, c
 - [X] T061 [US1] Criar `resources/views/candidatos/show.blade.php`: cabeçalho (nome, `x-badge-tipo`, área, idade se houver, e-mail, telefone, CPF mascarado `***.***.***-NN`); seções Formação, Experiências, Competências (separadas em hard e soft, cada `x-tag-competencia` com a origem), Projetos, Links e Currículo original (botão "Abrir PDF" para `candidatos.curriculo`); listas vazias mostram "Não informado no currículo" (nunca "não possui"); as seções de outras histórias entram por `@include` de três *partials* criados agora como placeholders ("Em breve"): `resources/views/candidatos/partials/_secao-anotacoes.blade.php` (US5), `_secao-lgpd.blade.php` (US6) e `_secao-energia.blade.php` (US7). As outras histórias editam só o *partial* delas, nunca o `show.blade.php`
 - [X] T062 [US1] Em `resources/js/modulos/chips.js`, implementar o filtro de *chips*: um input com `data-filtrar-chips="#alvo"` oculta os *chips* cujo texto (sem acento, minúsculo) não contém o termo digitado
 
-### Complemento pendente — AJAX da US1
+### Complemento — AJAX da US1
 
-- [ ] T152 [US1] Ampliar `tests/Feature/BuscaCandidatosTest.php` antes de T153: mesmos filtros/contagens/paginação em HTML e JSON; JSON 200 com `resultados-candidatos` sem layout completo e sem códigos CAND; query de paginação preservada, estado vazio, 422 em filtro inválido e 401 para visitante em JSON (HTML continua redirecionando). Criar `tests/js/busca.test.js` para debounce de 400 ms, invalidar resposta desde a edição, cancelamento de GET, descarte de respostas fora de ordem, reset de `page`, URL só confirmada com resultado, `popstate` e preservação do campo/foco. Depende de T149–T151
-- [ ] T153 [US1] Extrair contagem/cards/paginação/vazio de `resources/views/candidatos/index.blade.php` para `resources/views/candidatos/partials/_resultados.blade.php`, com região `resultados-candidatos` fora do formulário. Em `app/Http/Controllers/CandidatoController.php`, negociar JSON 200 com HTML desse partial ou página completa, usando o mesmo `CandidatoService`, filtros validados e paginação; resposta privada sem cache. Depende de T152; preservar T045–T062
-- [ ] T154 [US1] Implementar `resources/js/modulos/busca.js` e marcar o formulário/links em `resources/views/candidatos/index.blade.php` e `resources/views/candidatos/partials/_resultados.blade.php`: atualizar via AJAX ao filtrar, limpar ou paginar; texto com 400 ms e selects/checkboxes imediatos; invalidar consulta anterior antes do debounce, usar `AbortController` e sequência; manter foco/cursor e resultado anterior em falha; sincronizar URL com `replaceState` nos filtros e `pushState` na paginação, restaurando formulário/resultados em `popstate`. Manter botão Aplicar/links reais sem JS; anúncios e `aria-busy`. Depende de T153; executar os testes de T152 e cenário A/H do quickstart
+- [X] T152 [US1] Ampliar `tests/Feature/BuscaCandidatosTest.php` antes de T153: mesmos filtros/contagens/paginação em HTML e JSON; JSON 200 com `resultados-candidatos` sem layout completo e sem códigos CAND; query de paginação preservada, estado vazio, 422 em filtro inválido e 401 para visitante em JSON (HTML continua redirecionando). Criar `tests/js/busca.test.js` para debounce de 400 ms, invalidar resposta desde a edição, cancelamento de GET, descarte de respostas fora de ordem, reset de `page`, URL só confirmada com resultado, `popstate` e preservação do campo/foco. Depende de T149–T151
+- [X] T153 [US1] Extrair contagem/cards/paginação/vazio de `resources/views/candidatos/index.blade.php` para `resources/views/candidatos/partials/_resultados.blade.php`, com região `resultados-candidatos` fora do formulário. Em `app/Http/Controllers/CandidatoController.php`, negociar JSON 200 com HTML desse partial ou página completa, usando o mesmo `CandidatoService`, filtros validados e paginação; resposta privada sem cache. Depende de T152; preservar T045–T062
+- [X] T154 [US1] Implementar `resources/js/modulos/busca.js` e marcar o formulário/links em `resources/views/candidatos/index.blade.php` e `resources/views/candidatos/partials/_resultados.blade.php`: atualizar via AJAX ao filtrar, limpar ou paginar; texto com 400 ms e selects/checkboxes imediatos; invalidar consulta anterior antes do debounce, usar `AbortController` e sequência; manter foco/cursor e resultado anterior em falha; sincronizar URL com `replaceState` nos filtros e `pushState` na paginação, restaurando formulário/resultados em `popstate`. Manter botão Aplicar/links reais sem JS; anúncios e `aria-busy`. Depende de T153; executar os testes de T152 e cenário A/H do quickstart
 
 **Checkpoint**: cenário A do quickstart funciona; `BuscaCandidatosTest` e `PainelTest` passam.
 
-**Gate AJAX pendente**: T152–T154, SC-010 e cenário H. A implementação registrada abaixo
-comprova a busca tradicional, não a atualização parcial solicitada posteriormente.
+**Gate AJAX**: T152–T154 implementadas; validação manual dos cenários A/H e aceite de SC-010
+continuam pendentes por ausência de navegador neste ambiente. A implementação histórica abaixo
+comprova a busca tradicional; o complemento está registrado separadamente a seguir.
+
+**Complemento AJAX das Phases 2/3 (2026-10-31):** escopo restrito a T149–T154, sem novas
+dependências, migrations ou integrações das fases seguintes. Testes JS escritos antes do
+transporte, e testes HTTP/JS de busca antes da integração; falhas iniciais confirmadas.
+Transporte valida todo o envelope e destinos/regiões antes de aplicar HTML, preserva CSRF e
+method spoofing, bloqueia duplo envio e não repete escritas. Erros JSON controlados em
+português, com proteção de detalhes mesmo em debug; 422 padrão preservado e página HTML 413
+mantida. Busca compartilha o partial Blade entre HTML/JSON, com `private, no-store`,
+debounce de 400 ms, invalidação imediata, cancelamento/sequência, paginação e histórico.
+Campos ficam fora da região substituída; erros mantêm valores e focam o campo após desbloqueio.
+Validação automatizada: **71 testes PHP / 368 asserções e 25 testes JavaScript** (também em
+Node 22), `vendor/bin/pint --dirty --format agent` aprovado e build Vite concluído.
+Suítes, Pint e build são executados sem disponibilizar o `.env` aos comandos; o Vite usa
+`envDir` temporário vazio. **Gate manual pendente:** revisar A/H no navegador (teclado, foco,
+rede lenta, voltar/avançar, sem JS e sem internet com servidor local acessível); SC-010/SC-011
+não foram declarados aprovados. T155–T168 permanecem pendentes.
 
 **Implementação da Phase 3 (2026-10-31):** T045–T062 implementadas, sem avançar às fases
 seguintes. Interface de catálogo institucional com Instrument Sans, tokens e componentes da

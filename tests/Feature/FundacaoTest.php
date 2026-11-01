@@ -19,7 +19,10 @@ use App\Models\User;
 use App\Models\Vaga;
 use Database\Seeders\Support\GeradorPdfCurriculo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Middleware\ValidatePostSize;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
+use PHPUnit\Framework\Attributes\TestWith;
 use Smalot\PdfParser\Parser;
 use Tests\TestCase;
 
@@ -188,5 +191,37 @@ class FundacaoTest extends TestCase
         $html = $this->blade('<x-badge-tipo :tipo="$tipo" />', ['tipo' => TipoCandidato::Estagiario]);
 
         $html->assertSee('Estagiário');
+    }
+
+    #[TestWith([401, 'Sua sessão expirou. Entre novamente para continuar.'])]
+    #[TestWith([403, 'Você não tem permissão para acessar este recurso.'])]
+    #[TestWith([404, 'O recurso solicitado não foi encontrado.'])]
+    #[TestWith([419, 'Sua sessão expirou. Atualize a página antes de continuar.'])]
+    #[TestWith([413, 'O arquivo excede o limite de 10 MB.'])]
+    #[TestWith([503, 'Análise indisponível no momento.'])]
+    #[TestWith([500, 'Não foi possível concluir a operação. Tente consultar o estado antes de continuar.'])]
+    public function test_erros_json_sao_controlados_mesmo_com_debug(int $status, string $mensagem): void
+    {
+        config(['app.debug' => true]);
+        Route::get('/erro-controlado', function () use ($status): never {
+            abort($status, 'Detalhe privado que não pode aparecer.');
+        });
+
+        $this->getJson('/erro-controlado')->assertStatus($status)
+            ->assertExactJson(['message' => $mensagem])
+            ->assertHeader('Cache-Control', 'no-store, private');
+    }
+
+    public function test_limite_de_transporte_preserva_pagina_html_e_negocia_json(): void
+    {
+        Route::post('/upload-excedido', fn (): string => 'Não deve executar')
+            ->middleware(ValidatePostSize::class);
+        $tamanho = (int) ini_get('post_max_size') * 1024 * 1024 + 1;
+
+        $this->call('POST', '/upload-excedido', server: ['CONTENT_LENGTH' => $tamanho])
+            ->assertStatus(413)->assertSee('10 MB');
+        $this->call('POST', '/upload-excedido', server: [
+            'CONTENT_LENGTH' => $tamanho, 'HTTP_ACCEPT' => 'application/json',
+        ])->assertStatus(413)->assertExactJson(['message' => 'O arquivo excede o limite de 10 MB.']);
     }
 }

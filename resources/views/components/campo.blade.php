@@ -59,7 +59,5 @@
         <p id="{{ $id }}-ajuda" class="text-sm text-texto-suave">{{ $ajuda }}</p>
     @endif
 
-    @if ($temErro)
-        <p id="{{ $id }}-erro" class="text-sm font-medium text-red-700">{{ $errors->first($chaveErro) }}</p>
-    @endif
+    <p id="{{ $id }}-erro" data-erro-campo="{{ $chaveErro }}" @if (! $temErro) hidden @endif class="text-sm font-medium text-red-700">{{ $temErro ? $errors->first($chaveErro) : '' }}</p>
 </div>

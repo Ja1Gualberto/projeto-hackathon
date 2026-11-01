@@ -19,10 +19,11 @@
     @endif
 
     <div class="grid items-start gap-7 xl:grid-cols-[16rem_minmax(0,1fr)]">
-        <form method="GET" action="{{ route('candidatos.index') }}" data-autosubmit class="flex min-w-0 flex-col gap-5 rounded-card border border-borda bg-superficie p-5" aria-label="Filtrar talentos">
+        <form method="GET" action="{{ route('candidatos.index') }}" data-autosubmit data-busca-candidatos class="flex min-w-0 flex-col gap-5 rounded-card border border-borda bg-superficie p-5" aria-label="Filtrar talentos">
+            <div data-ajax-erros role="alert" tabindex="-1" hidden class="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800"></div>
             <div class="flex items-center justify-between gap-3">
                 <h2 class="text-lg font-semibold">Filtros</h2>
-                <a href="{{ route('candidatos.index') }}" class="text-sm font-medium text-primaria-700 underline underline-offset-4">Limpar</a>
+                <a href="{{ route('candidatos.index') }}" data-limpar-busca class="text-sm font-medium text-primaria-700 underline underline-offset-4">Limpar</a>
             </div>
 
             <x-campo nome="busca" rotulo="Nome ou e-mail" tipo="search" :valor="$filtro->busca" maxlength="100" placeholder="Quem você procura?" />
@@ -69,33 +70,8 @@
             <noscript><p class="text-sm text-texto-suave">Selecione os critérios e use “Aplicar filtros”.</p></noscript>
         </form>
 
-        <section aria-labelledby="resultados-titulo" class="flex min-w-0 flex-col gap-5">
-            <div class="flex flex-wrap items-baseline justify-between gap-3 border-b border-borda pb-4">
-                <h2 id="resultados-titulo" class="text-xl font-semibold tracking-tight">{{ $candidatos->total() }} talentos encontrados</h2>
-                <p class="text-sm text-texto-suave">Perfis ativos, em ordem alfabética</p>
-            </div>
-
-            @if ($filtro->competencias !== [])
-                <div class="flex flex-wrap items-center gap-2" aria-label="Competências selecionadas">
-                    <span class="text-sm text-texto-suave">Com todas:</span>
-                    @foreach (collect($catalogo)->flatten(1)->whereIn('id', $filtro->competencias) as $selecionada)
-                        <x-tag-competencia :nome="$selecionada->nome" />
-                    @endforeach
-                </div>
-            @endif
-
-            @if ($candidatos->isNotEmpty())
-                <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-                    @foreach ($candidatos as $candidato)
-                        @include('candidatos.partials._card', ['candidato' => $candidato])
-                    @endforeach
-                </div>
-                {{ $candidatos->links() }}
-            @else
-                <x-estado-vazio titulo="Nenhum talento com esses critérios" texto="Remova uma competência ou amplie a área e o tipo de candidato para tentar novamente.">
-                    <x-botao :href="route('candidatos.index')" variante="secundario">Remover filtros</x-botao>
-                </x-estado-vazio>
-            @endif
+        <section id="resultados-candidatos" aria-labelledby="resultados-titulo" class="flex min-w-0 flex-col gap-5">
+            @include('candidatos.partials._resultados')
         </section>
     </div>
 @endsection
