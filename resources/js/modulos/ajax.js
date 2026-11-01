@@ -101,6 +101,37 @@ export function aplicarFragmentos(dados, doc = document, base = doc.baseURI) {
     }
 }
 
+/**
+ * Inclui na região apenas os itens novos do fragmento (identificados por data-chave), no grupo
+ * correspondente (data-grupo). Itens existentes não são tocados, preservando o que o usuário
+ * marcou. Devolve as chaves incluídas.
+ */
+export function mesclarFragmento(dados, regiaoId, doc = document, base = doc.baseURI) {
+    validarEnvelope(dados, base);
+    const regiao = doc.getElementById(regiaoId);
+    const html = dados.fragments[regiaoId];
+    if (!regiao || typeof html !== 'string' || Object.keys(dados.fragments).length !== 1) {
+        throw new ErroAjax('O servidor enviou uma resposta inesperada.');
+    }
+    const modelo = doc.createElement('template');
+    modelo.innerHTML = html;
+    const existentes = new Set(Array.from(regiao.querySelectorAll('[data-chave]'), (item) => item.dataset.chave));
+    const grupos = new Map(Array.from(regiao.querySelectorAll('[data-grupo]'), (grupo) => [grupo.dataset.grupo, grupo]));
+    const novos = [];
+    for (const item of modelo.content.querySelectorAll('[data-chave]')) {
+        const grupo = grupos.get(item.closest('[data-grupo]')?.dataset.grupo);
+        const destino = grupo?.querySelector('[data-grupo-itens]');
+        if (existentes.has(item.dataset.chave) || !destino) {
+            continue;
+        }
+        destino.append(doc.importNode(item, true));
+        grupo.querySelector('[data-grupo-vazio]')?.remove();
+        existentes.add(item.dataset.chave);
+        novos.push(item.dataset.chave);
+    }
+    return novos;
+}
+
 export function anunciar(mensagem, doc = document) {
     const regiao = doc.querySelector('[data-ajax-anuncios]');
     if (regiao) {
@@ -146,20 +177,29 @@ export function mostrarErros(formulario, erro, { focar = true } = {}) {
     resumo.hidden = false;
     resumo.textContent = [erro.message, ...Object.values(erro.errors ?? {}).flat()].join(' ');
     let primeiro;
+    const avisosFixos = Array.from(formulario.querySelectorAll('[data-erro-campo]'));
+    // Rádios e checkboxes de um mesmo grupo compartilham um único aviso.
+    const avisosDeGrupo = new Map();
     for (const [nome, mensagens] of Object.entries(erro.errors ?? {})) {
+        const nomeBase = nome.replace(/\.\d+$/, '');
         const campos = Array.from(formulario.elements).filter((campo) => {
             const chave = (campo.name ?? '').replace(/\[([^\]]*)\]/g, '.$1').replace(/\.$/, '');
-            return chave === nome || chave === nome.replace(/\.\d+$/, '');
+            return chave === nome || chave === nomeBase;
         });
         for (const campo of campos) {
-            let aviso = Array.from(formulario.querySelectorAll('[data-erro-campo]'))
-                .find((elemento) => elemento.dataset.erroCampo === nome && elemento.id === `${campo.id}-erro`);
+            const agrupado = ['radio', 'checkbox'].includes(campo.type);
+            let aviso = agrupado ? avisosDeGrupo.get(nomeBase) : undefined;
+            aviso ??= avisosFixos.find((elemento) => [nome, nomeBase].includes(elemento.dataset.erroCampo)
+                && (agrupado || elemento.id === `${campo.id}-erro`));
             if (!aviso) {
                 aviso = doc.createElement('p');
                 aviso.id = `ajax-erro-${++numeroErro}`;
                 aviso.dataset.erroDinamico = '';
                 aviso.className = 'text-sm font-medium text-red-700';
                 campo.insertAdjacentElement('afterend', aviso);
+            }
+            if (agrupado) {
+                avisosDeGrupo.set(nomeBase, aviso);
             }
             aviso.hidden = false;
             aviso.textContent = mensagens.join(' ');

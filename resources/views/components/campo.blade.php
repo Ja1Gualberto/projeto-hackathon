@@ -14,7 +14,11 @@
     $chaveErro = trim(str_replace(['[]', '[', ']'], ['', '.', ''], $nome), '.');
     $valorAtual = old($chaveErro, $valor);
     $valorAtual = $valorAtual instanceof \BackedEnum ? $valorAtual->value : $valorAtual;
-    $temErro = isset($errors) && $errors->has($chaveErro);
+    // Listas editadas como textarea (um item por linha) voltam do old() como array.
+    $valorAtual = is_array($valorAtual) ? implode("\n", $valorAtual) : $valorAtual;
+    $valorAtual = $valorAtual instanceof \DateTimeInterface ? $valorAtual->format('Y-m-d') : $valorAtual;
+    $temErro = isset($errors) && ($errors->has($chaveErro) || $errors->has($chaveErro.'.*'));
+    $mensagemErro = $temErro ? ($errors->first($chaveErro) ?: $errors->first($chaveErro.'.*')) : '';
 
     $classesCampo = 'block w-full rounded-lg border bg-superficie px-3 py-2 text-texto shadow-xs placeholder:text-slate-400 focus:border-primaria-500 focus:ring-2 focus:ring-primaria-200 focus:outline-none '
         .($temErro ? 'border-red-600' : 'border-borda');
@@ -59,5 +63,5 @@
         <p id="{{ $id }}-ajuda" class="text-sm text-texto-suave">{{ $ajuda }}</p>
     @endif
 
-    <p id="{{ $id }}-erro" data-erro-campo="{{ $chaveErro }}" @if (! $temErro) hidden @endif class="text-sm font-medium text-red-700">{{ $temErro ? $errors->first($chaveErro) : '' }}</p>
+    <p id="{{ $id }}-erro" data-erro-campo="{{ $chaveErro }}" @if (! $temErro) hidden @endif class="text-sm font-medium text-red-700">{{ $mensagemErro }}</p>
 </div>

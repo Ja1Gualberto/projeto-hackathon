@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\DTOs\FiltroCandidatosDTO;
+use App\Enums\OrigemCompetencia;
 use App\Enums\TipoCandidato;
 use App\Models\Candidato;
 use App\Models\Competencia;
@@ -93,5 +94,38 @@ class CandidatoRepository implements CandidatoRepositoryInterface
                 $query->orWhere('cpf', $cpf);
             }
         })->orderBy('id')->first();
+    }
+
+    public function encontrar(int $id): ?Candidato
+    {
+        return Candidato::query()->find($id);
+    }
+
+    public function criar(array $atributos): Candidato
+    {
+        return Candidato::query()->create($atributos);
+    }
+
+    public function atualizar(Candidato $candidato, array $atributos): Candidato
+    {
+        $candidato->fill($atributos)->save();
+
+        return $candidato;
+    }
+
+    public function origensDasCompetencias(Candidato $candidato): array
+    {
+        return $candidato->competencias()->get()
+            ->mapWithKeys(fn (Competencia $competencia): array => [
+                $competencia->id => OrigemCompetencia::from($competencia->pivot->origem),
+            ])->all();
+    }
+
+    public function sincronizarCompetencias(Candidato $candidato, array $origens): void
+    {
+        $candidato->competencias()->sync(array_map(
+            fn (OrigemCompetencia $origem): array => ['origem' => $origem->value],
+            $origens,
+        ));
     }
 }

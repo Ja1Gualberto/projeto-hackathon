@@ -1,4 +1,4 @@
-import { anunciar, aplicarFragmentos, limparErros, mesmaOrigem, mostrarErros, solicitar } from './ajax.js';
+import { anunciar, aplicarFragmentos, limparErros, mesclarFragmento, mesmaOrigem, mostrarErros, solicitar } from './ajax.js';
 
 const pendentes = new WeakSet();
 const temporizadores = new WeakMap();
@@ -41,8 +41,12 @@ export async function enviarFormulario(formulario, botao = null, confirmar = (te
         formulario.setAttribute('aria-busy', 'true');
         anunciar('Processando…', formulario.ownerDocument);
         const resposta = await solicitar(url, { method, body: dados, base: formulario.ownerDocument.baseURI });
-        aplicarFragmentos(resposta, formulario.ownerDocument);
+        // data-ajax-mesclar="regiao": inclui só itens novos, sem apagar o que já foi editado na página.
+        const novos = formulario.dataset.ajaxMesclar
+            ? mesclarFragmento(resposta, formulario.dataset.ajaxMesclar, formulario.ownerDocument)
+            : (aplicarFragmentos(resposta, formulario.ownerDocument), []);
         anunciar(resposta.message ?? 'Operação concluída.', formulario.ownerDocument);
+        formulario.dispatchEvent?.(new CustomEvent('ajax:sucesso', { bubbles: true, detail: { resposta, novos } }));
         if (resposta.redirect) {
             globalThis.location.assign(mesmaOrigem(resposta.redirect, formulario.ownerDocument.baseURI).href);
         }

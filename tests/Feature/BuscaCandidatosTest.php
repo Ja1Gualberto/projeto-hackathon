@@ -276,7 +276,10 @@ class BuscaCandidatosTest extends TestCase
 
     public function test_rota_de_perfil_aceita_apenas_id_numerico(): void
     {
-        $this->actingAs(User::factory()->create())->get('/candidatos/importar')->assertNotFound();
+        $this->actingAs(User::factory()->create());
+
+        $this->get('/candidatos/ana-lima')->assertNotFound();
+        $this->get('/candidatos/importar')->assertOk()->assertSee('Ler currículo');
     }
 
     public function test_demo_tem_24_perfis_com_pdf_e_sete_estagiarios_com_python_e_sql(): void

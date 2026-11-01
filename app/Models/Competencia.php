@@ -28,7 +28,7 @@ class Competencia extends Model
     {
         static::creating(function (Competencia $competencia): void {
             if (blank($competencia->slug)) {
-                $competencia->slug = static::gerarSlug($competencia->nome);
+                $competencia->slug = static::slugDisponivel(static::gerarSlug($competencia->nome) ?: 'competencia');
             }
         });
     }
@@ -39,6 +39,22 @@ class Competencia extends Model
     public static function gerarSlug(string $nome): string
     {
         return Str::slug(str_replace(['#', '+'], [' sharp', ' plus'], $nome));
+    }
+
+    /**
+     * Nomes diferentes podem gerar o mesmo slug (ex.: incluídos pelo recrutador); acrescenta um sufixo.
+     */
+    private static function slugDisponivel(string $base): string
+    {
+        $slug = $base;
+        $sufixo = 2;
+
+        while (static::query()->where('slug', $slug)->exists()) {
+            $slug = "{$base}-{$sufixo}";
+            $sufixo++;
+        }
+
+        return $slug;
     }
 
     /**

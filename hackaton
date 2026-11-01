@@ -8,6 +8,9 @@ set -euo pipefail
 
 PROJECT_DIR="$(cd -- "$(dirname -- "$(readlink -f -- "${BASH_SOURCE[0]}")")" && pwd)"
 SERVICE="app"
+# Usuário do Apache. Artisan roda como ele para que os arquivos criados em storage (logs, cache,
+# PDFs do seeder) continuem graváveis pela aplicação.
+APP_USER="www-data"
 COMPOSE_BIN=()
 
 # "comando|descrição" — usado na listagem de ajuda.
@@ -84,14 +87,20 @@ ensure_running() {
 }
 
 # Agentes e CI executam sem TTY; terminais interativos preservam o TTY.
+# CONTAINER_USER (opcional) troca o usuário; sem ele, o comando roda como root.
 run_in_container() {
     ensure_running
-    local tty_flags=()
+    local exec_flags=()
     if [[ ! -t 0 || ! -t 1 ]]; then
-        tty_flags=(-T)
+        exec_flags+=(-T)
     fi
-    compose exec "${tty_flags[@]}" "$SERVICE" "$@"
+    if [[ -n "${CONTAINER_USER:-}" ]]; then
+        exec_flags+=(--user "$CONTAINER_USER")
+    fi
+    compose exec "${exec_flags[@]}" "$SERVICE" "$@"
 }
+
+run_as_app() { CONTAINER_USER="$APP_USER" run_in_container "$@"; }
 
 BANNER_ARTS=(
 '   _   _    _    ____ _  __    _  _____ ___  _   _
@@ -126,6 +135,7 @@ cmd_help() {
     printf '%s\n' \
         'O build instala Composer/npm e compila os assets; Node não está na imagem final.' \
         'O código é copiado para a imagem: após alterações locais, execute ./hackaton dev.' \
+        'artisan e tinker rodam como www-data (usuário do Apache); shell e exec rodam como root.' \
         'Composer e Pint no container não alteram os arquivos do projeto no host.' \
         'Atenção: down --volumes apaga os dados persistidos, incluindo o banco.'
 }
@@ -145,8 +155,8 @@ cmd_status() { compose ps "$@"; }
 cmd_ps() { cmd_status "$@"; }
 cmd_logs() { compose logs --follow --tail=100 "$@"; }
 
-cmd_artisan() { run_in_container php artisan "$@"; }
-cmd_tinker() { run_in_container php artisan tinker "$@"; }
+cmd_artisan() { run_as_app php artisan "$@"; }
+cmd_tinker() { run_as_app php artisan tinker "$@"; }
 cmd_composer() { run_in_container composer "$@"; }
 cmd_php() { run_in_container php "$@"; }
 cmd_pint() { run_in_container vendor/bin/pint "$@"; }
@@ -161,13 +171,16 @@ cmd_exec() {
 cmd_setup() {
     cmd_dev "$@"
     if ! grep -qE "^APP_KEY=['\"]?[^'\"[:space:]#]+" "$PROJECT_DIR/.env"; then
-        cmd_artisan key:generate --no-interaction
+        # Grava o .env montado do host; continua como root.
+        run_in_container php artisan key:generate --no-interaction
     fi
     info "Ambiente configurado. Execute ./hackaton artisan migrate --no-interaction quando necessário."
 }
 
 cmd_demo() {
     cmd_setup "$@"
+    # Devolve ao Apache arquivos criados como root por versões anteriores deste script.
+    run_in_container chown -R "$APP_USER:$APP_USER" storage
     cmd_artisan migrate:fresh --seed --force --no-interaction
     info "Demonstração pronta. Acesse com recrutador@setic.demo / demo1234."
 }

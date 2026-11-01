@@ -7,6 +7,9 @@ $PSNativeCommandUseErrorActionPreference = $false
 
 $ProjectDirectory = $PSScriptRoot
 $Service = 'app'
+# Usuario do Apache. Artisan roda como ele para que os arquivos criados em storage (logs, cache,
+# PDFs do seeder) continuem gravaveis pela aplicacao.
+$AppUser = 'www-data'
 $ComposeExecutable = 'docker'
 $ComposePrefix = @('compose')
 $Commands = [ordered]@{
@@ -95,8 +98,9 @@ function Invoke-Development {
     Write-Info 'Acompanhe os logs com .\hackaton.ps1 logs.'
 }
 
+# Sem -User, o comando roda como root.
 function Invoke-InContainer {
-    param([string[]]$ContainerArguments)
+    param([string[]]$ContainerArguments, [string]$User)
 
     Initialize-Environment
     $containerIds = @(Invoke-Compose @('ps', '--status', 'running', '-q', $Service))
@@ -106,12 +110,16 @@ function Invoke-InContainer {
         Invoke-Compose @('up', '-d', $Service)
     }
 
-    $ttyArguments = @()
+    $execArguments = @()
     if ([Console]::IsInputRedirected -or [Console]::IsOutputRedirected) {
-        $ttyArguments = @('-T')
+        $execArguments += '-T'
     }
 
-    Invoke-Compose (@('exec') + $ttyArguments + @($Service) + $ContainerArguments)
+    if ($User) {
+        $execArguments += @('--user', $User)
+    }
+
+    Invoke-Compose (@('exec') + $execArguments + @($Service) + $ContainerArguments)
 }
 
 function Invoke-Setup {
@@ -120,6 +128,7 @@ function Invoke-Setup {
     Invoke-Development $CommandArguments
 
     if (-not (Select-String -LiteralPath (Join-Path $ProjectDirectory '.env') -Pattern '^APP_KEY=[''"]?[^''"\s#]+' -Quiet)) {
+        # Grava o .env montado do host; continua como root.
         Invoke-InContainer @('php', 'artisan', 'key:generate', '--no-interaction')
     }
 
@@ -130,7 +139,9 @@ function Invoke-Demo {
     param([string[]]$CommandArguments)
 
     Invoke-Setup $CommandArguments
-    Invoke-InContainer @('php', 'artisan', 'migrate:fresh', '--seed', '--force', '--no-interaction')
+    # Devolve ao Apache arquivos criados como root por versoes anteriores deste script.
+    Invoke-InContainer @('chown', '-R', "${AppUser}:${AppUser}", 'storage')
+    Invoke-InContainer @('php', 'artisan', 'migrate:fresh', '--seed', '--force', '--no-interaction') -User $AppUser
     Write-Info 'Demonstracao pronta. Acesse com recrutador@setic.demo / demo1234.'
 }
 
@@ -154,6 +165,7 @@ function Show-Help {
     Write-Output ''
     Write-Output 'O build instala Composer/npm e compila os assets; Node nao esta na imagem final.'
     Write-Output 'O codigo e copiado para a imagem: apos alteracoes locais, execute .\hackaton.ps1 dev.'
+    Write-Output 'artisan e tinker rodam como www-data (usuario do Apache); shell e exec rodam como root.'
     Write-Output 'Composer e Pint no container nao alteram os arquivos do projeto no host.'
     Write-Output 'Atencao: down --volumes apaga os dados persistidos, incluindo o banco.'
 }
@@ -193,8 +205,8 @@ try {
         }
         { $_ -in @('status', 'ps') } { Invoke-Compose (@('ps') + $commandArguments) }
         'logs' { Invoke-Compose (@('logs', '--follow', '--tail=100') + $commandArguments) }
-        'artisan' { Invoke-InContainer (@('php', 'artisan') + $commandArguments) }
-        'tinker' { Invoke-InContainer (@('php', 'artisan', 'tinker') + $commandArguments) }
+        'artisan' { Invoke-InContainer (@('php', 'artisan') + $commandArguments) -User $AppUser }
+        'tinker' { Invoke-InContainer (@('php', 'artisan', 'tinker') + $commandArguments) -User $AppUser }
         'composer' { Invoke-InContainer (@('composer') + $commandArguments) }
         'php' { Invoke-InContainer (@('php') + $commandArguments) }
         'pint' { Invoke-InContainer (@('vendor/bin/pint') + $commandArguments) }

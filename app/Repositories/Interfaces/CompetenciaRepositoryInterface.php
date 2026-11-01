@@ -2,6 +2,7 @@
 
 namespace App\Repositories\Interfaces;
 
+use App\Enums\CategoriaCompetencia;
 use App\Models\Competencia;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -18,4 +19,7 @@ interface CompetenciaRepositoryInterface
      * @return Collection<int, Competencia>
      */
     public function buscarPorIds(array $ids): Collection;
+
+    /** @param array{nome: string, categoria: CategoriaCompetencia, sinonimos: list<string>} $atributos */
+    public function criar(array $atributos): Competencia;
 }

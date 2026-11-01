@@ -35,4 +35,9 @@ class CompetenciaRepository implements CompetenciaRepositoryInterface
     {
         return Competencia::query()->whereIn('id', $ids)->orderBy('nome')->get();
     }
+
+    public function criar(array $atributos): Competencia
+    {
+        return Competencia::query()->create($atributos);
+    }
 }

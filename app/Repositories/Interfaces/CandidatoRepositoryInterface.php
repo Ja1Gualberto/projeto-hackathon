@@ -3,6 +3,7 @@
 namespace App\Repositories\Interfaces;
 
 use App\DTOs\FiltroCandidatosDTO;
+use App\Enums\OrigemCompetencia;
 use App\Models\Candidato;
 use App\Models\Competencia;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -22,4 +23,22 @@ interface CandidatoRepositoryInterface
     public function topCompetencias(int $limite = 8): Collection;
 
     public function encontrarPorEmailOuCpf(?string $email, ?string $cpf): ?Candidato;
+
+    public function encontrar(int $id): ?Candidato;
+
+    /** @param array<string, mixed> $atributos */
+    public function criar(array $atributos): Candidato;
+
+    /** @param array<string, mixed> $atributos */
+    public function atualizar(Candidato $candidato, array $atributos): Candidato;
+
+    /** @return array<int, OrigemCompetencia> Origem atual de cada competência do candidato, por id. */
+    public function origensDasCompetencias(Candidato $candidato): array;
+
+    /**
+     * Deixa o candidato exatamente com as competências informadas, cada uma com a sua origem.
+     *
+     * @param  array<int, OrigemCompetencia>  $origens
+     */
+    public function sincronizarCompetencias(Candidato $candidato, array $origens): void;
 }
