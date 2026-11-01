@@ -3,9 +3,11 @@
 namespace App\Repositories\Interfaces;
 
 use App\DTOs\FiltroCandidatosDTO;
+use App\Enums\MotivoExclusao;
 use App\Enums\OrigemCompetencia;
 use App\Models\Candidato;
 use App\Models\Competencia;
+use App\Models\User;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -18,6 +20,10 @@ interface CandidatoRepositoryInterface
 
     /** @return array{servidores: int, estagiarios: int} */
     public function contarAtivosPorTipo(): array;
+
+    public function contarRetencaoVencida(): int;
+
+    public function excluir(Candidato $candidato, MotivoExclusao $motivo, User $responsavel): void;
 
     /** @return Collection<int, Competencia> */
     public function topCompetencias(int $limite = 8): Collection;

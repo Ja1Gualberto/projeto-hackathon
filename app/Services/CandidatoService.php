@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\DTOs\FiltroCandidatosDTO;
+use App\Enums\StatusCandidato;
 use App\Models\Candidato;
 use App\Models\Competencia;
 use App\Repositories\Interfaces\CandidatoRepositoryInterface;
@@ -33,6 +34,16 @@ class CandidatoService
     public function detalhar(Candidato $candidato): Candidato
     {
         return $this->candidatos->detalhar($candidato);
+    }
+
+    public function alterarStatus(Candidato $candidato, StatusCandidato $status): Candidato
+    {
+        return $this->candidatos->atualizar($candidato, ['status' => $status]);
+    }
+
+    public function contarRetencaoVencida(): int
+    {
+        return $this->candidatos->contarRetencaoVencida();
     }
 
     /** @return array{hard: Collection<int, Competencia>, soft: Collection<int, Competencia>} */

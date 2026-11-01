@@ -1,6 +1,6 @@
 <div class="flex flex-wrap items-baseline justify-between gap-3 border-b border-borda pb-4">
     <h2 id="resultados-titulo" tabindex="-1" class="text-xl font-semibold tracking-tight">{{ $candidatos->total() }} talentos encontrados</h2>
-    <p class="text-sm text-texto-suave">Perfis ativos, em ordem alfabética</p>
+    <p class="text-sm text-texto-suave">{{ match ($filtro->situacao) { 'desativados' => 'Perfis desativados', 'retencao' => 'Perfis ativos com retenção pendente', default => 'Perfis ativos' } }}, em ordem alfabética</p>
 </div>
 
 @if ($filtro->competencias !== [])

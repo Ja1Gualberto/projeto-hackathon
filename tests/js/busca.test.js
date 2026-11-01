@@ -33,6 +33,7 @@ function montar(t) {
     }
     const busca = campo('busca', 'search', 'Ana');
     const tipo = campo('tipo', 'select-one', 'estagiario');
+    const situacao = { ...campo('situacao', 'select-one', 'ativos'), dataset: { valorPadrao: 'ativos' } };
     const experiencia = campo('experiencia', 'checkbox', '1');
     const competencia = campo('competencias[]', 'checkbox', '7');
     const semNome = campo('', 'search', 'Python');
@@ -43,7 +44,7 @@ function montar(t) {
         addEventListener: (nome, fn) => { docEventos[nome] = fn; },
     };
     const form = {
-        action: 'https://banco.test/candidatos', elements: [busca, tipo, experiencia, competencia, semNome],
+        action: 'https://banco.test/candidatos', elements: [busca, tipo, situacao, experiencia, competencia, semNome],
         ownerDocument: doc, dataset: {},
         addEventListener: (nome, fn) => { eventos[nome] = (evento) => fn({ type: nome, ...evento }); },
         querySelectorAll: () => [], querySelector: () => resumo,
@@ -86,7 +87,7 @@ function montar(t) {
         };
         return docEventos.click({ button: 0, target: { closest: () => link }, preventDefault() {} });
     }
-    return { eventos, janelaEventos, doc, form, busca, tipo, experiencia, competencia, regiao, aviso, resumo, atributos, chamadas, resolver, janela, historico, clicar };
+    return { eventos, janelaEventos, doc, form, busca, tipo, situacao, experiencia, competencia, regiao, aviso, resumo, atributos, chamadas, resolver, janela, historico, clicar };
 }
 
 test('debounce de 400 ms, reset de page e URL confirmada somente no sucesso sem perder campo/foco/cursor', async (t) => {
@@ -108,6 +109,29 @@ test('debounce de 400 ms, reset de page e URL confirmada somente no sucesso sem 
     assert.equal(ui.busca.value, 'Ana Li');
     assert.equal(ui.busca.selectionStart, 2);
     assert.equal(ui.atributos.has('aria-busy'), false);
+});
+
+test('situação usa a busca existente, mantém URL e volta a Ativos ao limpar ou voltar à URL sem filtro', async (t) => {
+    const ui = montar(t);
+    ui.situacao.value = 'retencao';
+    ui.eventos.change({ target: ui.situacao });
+    assert.equal(ui.chamadas.length, 1);
+    assert.equal(ui.chamadas[0].url.searchParams.get('situacao'), 'retencao');
+    ui.resolver(0);
+    await esperar();
+    assert.match(ui.janela.location.href, /situacao=retencao/);
+
+    ui.clicar('https://banco.test/candidatos', true);
+    ui.resolver(1);
+    await esperar();
+    assert.equal(ui.situacao.value, 'ativos');
+
+    ui.situacao.value = 'desativados';
+    ui.janela.location.href = 'https://banco.test/candidatos';
+    ui.janelaEventos.popstate();
+    ui.resolver(2);
+    await esperar();
+    assert.equal(ui.situacao.value, 'ativos');
 });
 
 test('edição invalida e cancela GET antes do debounce e descarta respostas fora de ordem', async (t) => {

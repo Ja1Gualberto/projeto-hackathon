@@ -22,7 +22,7 @@ class PainelService
             ...$totais,
             'vagasAbertas' => $this->painel->contarVagasAbertas(),
             'topCompetencias' => $this->candidatos->topCompetencias(),
-            'retencaoPendente' => 0,
+            'retencaoPendente' => $this->candidatos->contarRetencaoVencida(),
         ];
     }
 }

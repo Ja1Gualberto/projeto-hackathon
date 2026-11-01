@@ -47,6 +47,9 @@
         </section>
 
         <aside aria-label="Ações e orientações" class="flex flex-col gap-7">
+            <a href="{{ route('candidatos.index', ['situacao' => 'retencao']) }}" class="rounded-card focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primaria-600">
+                <x-cartao-estatistica rotulo="Retenção pendente" :valor="$retencaoPendente" detalhe="Cadastros ativos que precisam de revisão" />
+            </a>
             <section class="border-l-2 border-primaria-600 pl-5">
                 <h2 class="text-xl font-semibold tracking-tight">Busque pela combinação certa</h2>
                 <p class="mt-3 leading-relaxed text-texto-suave">Combine competências, área e tipo de candidato. O resultado reúne quem atende a todos os critérios.</p>

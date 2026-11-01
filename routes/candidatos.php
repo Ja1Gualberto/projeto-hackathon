@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AnotacaoController;
 use App\Http\Controllers\CandidatoController;
+use App\Http\Controllers\CandidatoStatusController;
 use App\Http\Controllers\CompetenciaController;
 use App\Http\Controllers\ConfirmacaoImportacaoController;
 use App\Http\Controllers\CurriculoController;
@@ -40,3 +41,13 @@ Route::post('/competencias', [CompetenciaController::class, 'store'])->name('com
 // US5 — anotações
 Route::post('/candidatos/{candidato}/anotacoes', [AnotacaoController::class, 'store'])
     ->whereNumber('candidato')->name('candidatos.anotacoes.store');
+
+// US6 — LGPD
+Route::get('/candidatos/{candidato}/editar', [CandidatoController::class, 'edit'])
+    ->whereNumber('candidato')->name('candidatos.edit');
+Route::put('/candidatos/{candidato}', [CandidatoController::class, 'update'])
+    ->whereNumber('candidato')->name('candidatos.update');
+Route::patch('/candidatos/{candidato}/status', [CandidatoStatusController::class, 'update'])
+    ->whereNumber('candidato')->name('candidatos.status');
+Route::delete('/candidatos/{candidato}', [CandidatoController::class, 'destroy'])
+    ->whereNumber('candidato')->name('candidatos.destroy');

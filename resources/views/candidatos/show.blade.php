@@ -12,6 +12,7 @@
             <div><x-badge-tipo :tipo="$candidato->tipo" class="normal-case tracking-normal" /></div>
             <h1 class="text-3xl leading-tight font-semibold tracking-tight sm:text-4xl">{{ $candidato->nome }}</h1>
             <p class="text-texto-suave">{{ $candidato->area->rotulo() }}@if ($candidato->idade !== null)<span class="ml-3">{{ $candidato->idade }} anos</span>@endif</p>
+            <div id="situacao-candidato">@include('candidatos.partials._situacao')</div>
         </div>
         @if ($candidato->curriculo_arquivo)
             <x-botao :href="route('candidatos.curriculo', $candidato)" variante="secundario" target="_blank" rel="noopener">Abrir PDF<span class="sr-only"> em nova aba</span></x-botao>
@@ -52,7 +53,7 @@
             </section>
 
             @include('candidatos.partials._secao-anotacoes')
-            @include('candidatos.partials._secao-lgpd')
+            <div id="secao-lgpd">@include('candidatos.partials._secao-lgpd')</div>
             @include('candidatos.partials._secao-energia')
         </div>
 

@@ -26,8 +26,11 @@ export function configurarBusca(formulario, janela = window) {
             }
             if (['checkbox', 'radio'].includes(campo.type)) {
                 campo.checked = valores.includes(campo.value);
-            } else if (campo.value !== (valores[0] ?? '')) {
-                campo.value = valores[0] ?? '';
+            } else {
+                const valor = valores[0] ?? campo.dataset?.valorPadrao ?? '';
+                if (campo.value !== valor) {
+                    campo.value = valor;
+                }
             }
         }
     }

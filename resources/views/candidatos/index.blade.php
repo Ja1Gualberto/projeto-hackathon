@@ -27,6 +27,7 @@
             </div>
 
             <x-campo nome="busca" rotulo="Nome ou e-mail" tipo="search" :valor="$filtro->busca" maxlength="100" placeholder="Quem você procura?" />
+            <x-campo nome="situacao" rotulo="Situação" tipo="select" :valor="$filtro->situacao" data-valor-padrao="ativos" :opcoes="['ativos' => 'Ativos', 'desativados' => 'Desativados', 'retencao' => 'Retenção pendente']" />
             <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-1">
                 <x-campo nome="tipo" rotulo="Tipo de candidato" tipo="select" :valor="$filtro->tipo" vazio="Todos os tipos" :opcoes="collect(\App\Enums\TipoCandidato::cases())->mapWithKeys(fn ($tipo) => [$tipo->value => $tipo->rotulo()])->all()" />
                 <x-campo nome="area" rotulo="Área de atuação" tipo="select" :valor="$filtro->area" vazio="Todas as áreas" :opcoes="collect(\App\Enums\Area::cases())->mapWithKeys(fn ($area) => [$area->value => $area->rotulo()])->all()" />

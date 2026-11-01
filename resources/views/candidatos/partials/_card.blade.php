@@ -8,6 +8,12 @@
         <p class="text-sm text-texto-suave">{{ $candidato->area->rotulo() }}</p>
     </div>
     <p class="text-sm text-texto-suave">Experiência na área: {{ $candidato->experiencia_na_area ? 'sim' : 'não informado' }}</p>
+    @if ($candidato->status === \App\Enums\StatusCandidato::Desativado)
+        <div><x-badge>Desativado</x-badge></div>
+    @endif
+    @if ($candidato->retencao_vencida)
+        <div><x-badge cor="aviso">revisão de retenção pendente</x-badge></div>
+    @endif
     <div class="mt-auto flex flex-wrap items-center gap-2 border-t border-borda pt-4">
         @forelse ($candidato->competencias->take(5) as $competencia)
             <x-tag-competencia :nome="$competencia->nome" />

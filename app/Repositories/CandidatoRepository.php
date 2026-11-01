@@ -3,10 +3,14 @@
 namespace App\Repositories;
 
 use App\DTOs\FiltroCandidatosDTO;
+use App\Enums\MotivoExclusao;
 use App\Enums\OrigemCompetencia;
+use App\Enums\StatusCandidato;
 use App\Enums\TipoCandidato;
 use App\Models\Candidato;
 use App\Models\Competencia;
+use App\Models\RegistroExclusao;
+use App\Models\User;
 use App\Repositories\Interfaces\CandidatoRepositoryInterface;
 use App\Repositories\Interfaces\CompetenciaRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -20,9 +24,19 @@ class CandidatoRepository implements CandidatoRepositoryInterface
 
     public function buscar(FiltroCandidatosDTO $filtro, int $porPagina = 12): LengthAwarePaginator
     {
-        $consulta = Candidato::query()->ativos()->with([
+        $consulta = Candidato::query()->with([
             'competencias' => fn (BelongsToMany $query): BelongsToMany => $query->orderBy('nome'),
         ]);
+
+        if ($filtro->situacao === 'desativados') {
+            $consulta->where('status', StatusCandidato::Desativado);
+        } else {
+            $consulta->ativos();
+
+            if ($filtro->situacao === 'retencao') {
+                $consulta->comRetencaoVencida();
+            }
+        }
 
         foreach ($filtro->competencias as $id) {
             $ids = $filtro->competenciasEquivalentes[$id] ?? $this->competencias->idsQueAtendem($id);
@@ -57,6 +71,7 @@ class CandidatoRepository implements CandidatoRepositoryInterface
             'anotacoes.autor',
             'anotacoes.vaga',
             'perfilEnergia',
+            'consentimentoRegistradoPor',
         ]);
     }
 
@@ -77,6 +92,22 @@ class CandidatoRepository implements CandidatoRepositoryInterface
             'candidatos as total' => fn (Builder $query) => $query->ativos(),
         ])->whereHas('candidatos', fn (Builder $query) => $query->ativos())
             ->orderByDesc('total')->orderBy('nome')->limit($limite)->get();
+    }
+
+    public function contarRetencaoVencida(): int
+    {
+        return Candidato::query()->ativos()->comRetencaoVencida()->count();
+    }
+
+    public function excluir(Candidato $candidato, MotivoExclusao $motivo, User $responsavel): void
+    {
+        $candidato->delete();
+
+        RegistroExclusao::query()->create([
+            'user_id' => $responsavel->id,
+            'motivo' => $motivo,
+            'excluido_em' => now(),
+        ]);
     }
 
     public function encontrarPorEmailOuCpf(?string $email, ?string $cpf): ?Candidato
