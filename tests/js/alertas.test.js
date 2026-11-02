@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { mostrarAlerta, registrarAlertas } from '../../resources/js/modulos/alertas.js';
 import { anunciar, mostrarErros } from '../../resources/js/modulos/ajax.js';
 
-function montar(t, { inicial = false, modal = false, hidden = false } = {}) {
+function montar(t, { inicial = false, modal = false, hidden = false, movimentoReduzido = false } = {}) {
     t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 0 });
     const doc = { hidden, activeElement: null };
     function elemento(dataset = {}) {
@@ -43,7 +43,7 @@ function montar(t, { inicial = false, modal = false, hidden = false } = {}) {
         };
     }
     function criarAlerta(tipo) {
-        const alerta = elemento({ alerta: '', alertaTipo: tipo, alertaDuracao: ['erro', 'aviso'].includes(tipo) ? '10000' : '7000' });
+        const alerta = elemento({ alerta: '', alertaTipo: tipo, alertaDuracao: '4500' });
         alerta.append(elemento({ alertaMensagem: '' }));
         alerta.append(elemento({ alertaFechar: '' }));
         alerta.cloneNode = () => criarAlerta(tipo);
@@ -69,6 +69,7 @@ function montar(t, { inicial = false, modal = false, hidden = false } = {}) {
     };
     let observar;
     doc.defaultView = {
+        matchMedia: () => ({ matches: movimentoReduzido }),
         MutationObserver: class {
             constructor(fn) { observar = fn; }
             observe() {}
@@ -78,8 +79,8 @@ function montar(t, { inicial = false, modal = false, hidden = false } = {}) {
     return { doc, central, anuncios, origem, dialogo, modelos, iniciais, criarAlerta, elemento, inserir: (no) => observar([{ addedNodes: [no] }]) };
 }
 
-for (const [tipo, duracao] of [['sucesso', 7000], ['info', 7000], ['erro', 10000], ['aviso', 10000]]) {
-    test(`${tipo} aparece sem roubar foco e fecha automaticamente após ${duracao / 1000} segundos`, (t) => {
+for (const tipo of ['sucesso', 'info', 'erro', 'aviso']) {
+    test(`${tipo} aparece sem roubar foco e inicia o fade após 4,5 segundos`, (t) => {
         const ui = montar(t);
 
         const alerta = mostrarAlerta('Mensagem da operação.', ui.doc, tipo);
@@ -87,12 +88,46 @@ for (const [tipo, duracao] of [['sucesso', 7000], ['info', 7000], ['erro', 10000
         assert.equal(ui.central.children[0], alerta);
         assert.equal(alerta.dataset.alertaTipo, tipo);
         assert.equal(ui.doc.activeElement, ui.origem);
-        t.mock.timers.tick(duracao - 1);
+        t.mock.timers.tick(4499);
         assert.equal(ui.central.children.length, 1);
+        assert.equal(alerta.dataset.alertaSaindo, undefined);
+        t.mock.timers.tick(1);
+        assert.equal(alerta.dataset.alertaSaindo, '');
+        assert.equal(alerta.getAttribute('inert'), '');
+        assert.equal(alerta.isConnected, true);
+        t.mock.timers.tick(299);
+        assert.equal(alerta.isConnected, true);
         t.mock.timers.tick(1);
         assert.equal(ui.central.children.length, 0);
     });
 }
+
+test('alerta sem duração explícita também inicia o fade após 4,5 segundos', (t) => {
+    const ui = montar(t);
+    const alerta = ui.criarAlerta('info');
+    delete alerta.dataset.alertaDuracao;
+    registrarAlertas(ui.doc);
+
+    ui.inserir(alerta);
+
+    t.mock.timers.tick(4499);
+    assert.equal(alerta.dataset.alertaSaindo, undefined);
+    t.mock.timers.tick(1);
+    assert.equal(alerta.dataset.alertaSaindo, '');
+    t.mock.timers.tick(300);
+    assert.equal(alerta.isConnected, false);
+});
+
+test('preferência por movimento reduzido fecha sem aguardar animação', (t) => {
+    const ui = montar(t, { movimentoReduzido: true });
+    const alerta = mostrarAlerta('Informação.', ui.doc);
+
+    t.mock.timers.tick(4499);
+
+    assert.equal(alerta.isConnected, true);
+    t.mock.timers.tick(1);
+    assert.equal(alerta.isConnected, false);
+});
 
 test('X fecha somente o alerta escolhido e devolve o foco ao controle anterior', (t) => {
     const ui = montar(t);
@@ -103,9 +138,13 @@ test('X fecha somente o alerta escolhido e devolve o foco ao controle anterior',
 
     fechar.emitir('click');
 
-    assert.deepEqual(ui.central.children, [segundo]);
+    assert.equal(primeiro.dataset.alertaSaindo, '');
+    assert.equal(segundo.dataset.alertaSaindo, undefined);
     assert.equal(ui.doc.activeElement, ui.origem);
-    t.mock.timers.tick(7000);
+    t.mock.timers.tick(300);
+    assert.deepEqual(ui.central.children, [segundo]);
+    t.mock.timers.tick(4200);
+    t.mock.timers.tick(300);
     assert.equal(ui.central.children.length, 0);
 });
 
@@ -122,9 +161,12 @@ test('mouse e foco pausam a contagem independentemente e retomam somente o tempo
 
     alerta.emitir('focusout', { relatedTarget: ui.origem });
 
-    t.mock.timers.tick(4999);
+    t.mock.timers.tick(2499);
     assert.equal(alerta.isConnected, true);
+    assert.equal(alerta.dataset.alertaSaindo, undefined);
     t.mock.timers.tick(1);
+    assert.equal(alerta.dataset.alertaSaindo, '');
+    t.mock.timers.tick(300);
     assert.equal(alerta.isConnected, false);
 });
 
@@ -137,9 +179,12 @@ test('aba oculta não consome o período de leitura do alerta', (t) => {
     ui.doc.hidden = false;
     ui.doc.emitir('visibilitychange');
 
-    t.mock.timers.tick(6999);
+    t.mock.timers.tick(4499);
     assert.equal(alerta.isConnected, true);
+    assert.equal(alerta.dataset.alertaSaindo, undefined);
     t.mock.timers.tick(1);
+    assert.equal(alerta.dataset.alertaSaindo, '');
+    t.mock.timers.tick(300);
     assert.equal(alerta.isConnected, false);
 });
 
@@ -153,9 +198,10 @@ test('alertas iniciais e de fragmentos AJAX vão para a central sem duplicar ini
     ui.inserir(dinamico);
 
     assert.deepEqual(ui.central.children, [ui.iniciais[0], dinamico]);
-    t.mock.timers.tick(7000);
-    assert.deepEqual(ui.central.children, [ui.iniciais[0]]);
-    t.mock.timers.tick(3000);
+    t.mock.timers.tick(4500);
+    assert.equal(ui.iniciais[0].dataset.alertaSaindo, '');
+    assert.equal(dinamico.dataset.alertaSaindo, '');
+    t.mock.timers.tick(300);
     assert.equal(ui.central.children.length, 0);
 });
 
@@ -166,7 +212,9 @@ test('alerta de formulário modal fica dentro do diálogo para continuar acessí
 
     assert.equal(ui.central.children.length, 0);
     assert.equal(ui.dialogo.contains(alerta), true);
-    t.mock.timers.tick(10000);
+    t.mock.timers.tick(4500);
+    assert.equal(alerta.dataset.alertaSaindo, '');
+    t.mock.timers.tick(300);
     assert.equal(alerta.isConnected, false);
 });
 

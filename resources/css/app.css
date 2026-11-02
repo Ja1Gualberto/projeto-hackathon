@@ -87,7 +87,7 @@
 
 @layer components {
     .central-alertas {
-        @apply pointer-events-none fixed top-4 right-4 z-[100] flex w-[438px] max-w-[calc(100%_-_2rem)] flex-col gap-3;
+        @apply pointer-events-none fixed top-4 right-4 z-[100] flex w-[340px] max-w-[calc(100%_-_2rem)] flex-col gap-2;
         max-height: calc(100dvh - 2rem);
         overflow-y: auto;
         scrollbar-width: thin;
@@ -99,10 +99,10 @@
 
     .alerta {
         --alerta-fundo: #b8b5ff;
-        --alerta-topo: clamp(0px, calc((100vw - 2rem) * 0.09589), 42px);
-        @apply pointer-events-auto relative isolate w-[438px] max-w-full shrink-0;
-        min-height: 174px;
-        padding: calc(var(--alerta-topo) + 24px) 48px 24px clamp(80px, 24vw, 104px);
+        --alerta-topo: clamp(0px, calc((100vw - 2rem) * 0.09589), 32.6px);
+        @apply pointer-events-auto relative isolate w-full max-w-full shrink-0 transition-opacity duration-300 ease-out;
+        min-height: 136px;
+        padding: calc(var(--alerta-topo) + 14px) 40px 16px clamp(64px, 18vw, 80px);
         color: #27234d;
         filter: drop-shadow(0 8px 12px rgb(23 32 51 / 0.14));
     }
@@ -112,7 +112,7 @@
         position: absolute;
         z-index: -1;
         inset: var(--alerta-topo) 0 0;
-        border-radius: 32px;
+        border-radius: 24px;
         background: var(--alerta-fundo);
     }
 
@@ -136,8 +136,8 @@
     }
 
     .alerta-fechar {
-        @apply absolute right-3 flex size-9 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-black/10;
-        top: calc(var(--alerta-topo) + 8px);
+        @apply absolute right-2 flex size-8 cursor-pointer items-center justify-center rounded-full transition-colors hover:bg-black/10;
+        top: calc(var(--alerta-topo) + 6px);
     }
 
     .alerta-fechar:focus-visible {
@@ -146,6 +146,11 @@
 
     [data-alerta-ativo] {
         animation: alerta-entrada 180ms ease-out;
+    }
+
+    [data-alerta-saindo] {
+        @apply pointer-events-none opacity-0;
+        animation: none;
     }
 }
 
@@ -157,5 +162,6 @@
 @media (prefers-reduced-motion: reduce) {
     [data-alerta-ativo] {
         animation: none;
+        transition: none;
     }
 }

@@ -11,10 +11,10 @@ class AlertasTest extends TestCase
 {
     use RefreshDatabase;
 
-    #[TestWith(['sucesso', 'success.svg', 'status', 7000])]
-    #[TestWith(['erro', 'fail.svg', 'alert', 10000])]
-    #[TestWith(['aviso', 'warning.svg', 'alert', 10000])]
-    #[TestWith(['info', 'help.svg', 'status', 7000])]
+    #[TestWith(['sucesso', 'success.svg', 'status', 4500])]
+    #[TestWith(['erro', 'fail.svg', 'alert', 4500])]
+    #[TestWith(['aviso', 'warning.svg', 'alert', 4500])]
+    #[TestWith(['info', 'help.svg', 'status', 4500])]
     public function test_alerta_usa_a_arte_do_tipo_e_permite_fechamento(string $tipo, string $arquivo, string $papel, int $duracao): void
     {
         $view = $this->blade('<x-alerta :tipo="$tipo">Mensagem da operação.</x-alerta>', compact('tipo'));

@@ -17,11 +17,11 @@
         </div>
     </header>
 
-    <div {{ $alertaErros }} data-alerta-tipo="erro" data-alerta-duracao="10000" role="alert" aria-atomic="true" class="alerta alerta--erro">
+    <div {{ $alertaErros }} data-alerta-tipo="erro" data-alerta-duracao="4500" role="alert" aria-atomic="true" class="alerta alerta--erro">
         <img src="{{ $urlArteErro }}" alt="" aria-hidden="true" width="438" height="174" class="alerta-arte">
-        <div class="relative flex min-w-0 flex-col gap-2">
-            <p class="text-base leading-tight font-bold" data-alerta-titulo>Não foi possível concluir</p>
-            <div class="text-sm leading-relaxed wrap-anywhere" data-alerta-mensagem>
+        <div class="relative flex min-w-0 flex-col gap-1">
+            <p class="text-sm leading-tight font-bold" data-alerta-titulo>Não foi possível concluir</p>
+            <div class="text-xs leading-normal wrap-anywhere" data-alerta-mensagem>
                 <p class="font-semibold">Revise os filtros para continuar.</p>
                 <ul class="mt-2 list-inside list-disc">{{ $errosFiltros }}</ul>
             </div>

@@ -30,7 +30,7 @@ export function registrarAlertas(doc = document) {
         }
         destino.append(alerta);
         alerta.dataset.alertaAtivo = '';
-        let restante = Number(alerta.dataset.alertaDuracao) || 7000;
+        let restante = Number(alerta.dataset.alertaDuracao) || 4500;
         let inicio;
         let temporizador;
         let fechado = false;
@@ -48,7 +48,13 @@ export function registrarAlertas(doc = document) {
                     ? focoAnterior : doc.getElementById('conteudo');
                 retorno?.focus();
             }
-            alerta.remove();
+            alerta.dataset.alertaSaindo = '';
+            alerta.setAttribute('inert', '');
+            if (doc.defaultView?.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches) {
+                alerta.remove();
+            } else {
+                setTimeout(() => alerta.remove(), 300);
+            }
         }
 
         function continuar() {
@@ -59,6 +65,9 @@ export function registrarAlertas(doc = document) {
         }
 
         function pausar(motivo) {
+            if (fechado) {
+                return;
+            }
             if (pausas.size === 0) {
                 clearTimeout(temporizador);
                 restante = Math.max(0, restante - (Date.now() - inicio));
