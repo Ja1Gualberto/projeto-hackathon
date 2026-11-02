@@ -116,6 +116,7 @@ final class ApresentacaoCandidatosService
 
         return $this->renderizar('candidatos.partials._resultados', [
             'total' => $candidatos->total(),
+            'rotuloTotal' => $candidatos->total() === 1 ? 'talento encontrado' : 'talentos encontrados',
             'situacao' => match ($filtro->situacao) {
                 'desativados' => 'Perfis desativados',
                 'retencao' => 'Perfis ativos com retenção pendente',
@@ -126,7 +127,7 @@ final class ApresentacaoCandidatosService
             'cards' => $this->juntar($cards),
             'estadoVazio' => $estadoVazio,
             'atributosVazio' => new ComponentAttributeBag(['hidden' => $cards !== []]),
-            'paginacao' => $cards === [] ? new HtmlString : new HtmlString($candidatos->links()->toHtml()),
+            'paginacao' => $cards === [] ? new HtmlString : new HtmlString($candidatos->links('components.paginacao')->toHtml()),
             'atributosPaginacao' => new ComponentAttributeBag(['hidden' => $cards === []]),
         ]);
     }

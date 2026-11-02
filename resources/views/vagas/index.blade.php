@@ -15,7 +15,7 @@
         <ul class="grid gap-4 md:grid-cols-2 xl:grid-cols-3" aria-label="Vagas cadastradas">
             @foreach ($vagas as $vaga)
                 @php($totalElegiveis = $elegiveis[$vaga->id] ?? 0)
-                <li @class(['flex flex-col gap-4 rounded-card border border-borda bg-superficie p-5', 'opacity-80' => ! $vaga->estaAberta()])>
+                <li @class(['flex flex-col gap-4 rounded-card border border-borda p-5 transition-shadow hover:shadow-sm motion-reduce:transition-none', 'bg-superficie' => $vaga->estaAberta(), 'border-dashed bg-fundo' => ! $vaga->estaAberta()])>
                     <div class="flex flex-col gap-1">
                         <h2 class="text-xl leading-snug font-semibold tracking-tight">
                             <a href="{{ route('vagas.show', $vaga) }}" class="hover:text-primaria-700 hover:underline focus-visible:text-primaria-700">{{ $vaga->titulo }}</a>

@@ -25,7 +25,7 @@
 
         <div data-menu-conteudo class="flex min-h-screen min-w-0 flex-col lg:pl-20">
             <header class="flex min-h-20 items-center gap-4 border-b border-borda bg-superficie px-4 sm:px-6">
-                <a href="#menu-lateral" data-menu-abrir hidden aria-controls="menu-lateral" aria-expanded="false" aria-haspopup="dialog" aria-label="Abrir navegação do Banco de Talentos" title="Abrir navegação" class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primaria-900 text-sm font-bold tracking-tight text-white lg:hidden">BT</a>
+                <a href="#menu-lateral" data-menu-abrir hidden aria-controls="menu-lateral" aria-expanded="false" aria-haspopup="dialog" aria-label="BT Abrir navegação do Banco de Talentos" title="Abrir navegação" class="flex size-11 shrink-0 items-center justify-center rounded-xl bg-primaria-900 text-sm font-bold tracking-tight text-white lg:hidden">BT</a>
                 <div class="flex min-w-0 items-center gap-3 text-sm">
                     <span class="hidden border-r border-borda pr-3 font-semibold text-texto-suave sm:block">SETIC</span>
                     <span class="truncate font-semibold">@yield('titulo', 'Painel')</span>

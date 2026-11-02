@@ -7,6 +7,7 @@ use App\Http\Requests\ImportarCurriculoRequest;
 use App\Services\Curriculo\ImportacaoCurriculoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
 use stdClass;
@@ -36,11 +37,13 @@ class ImportacaoCurriculoController extends Controller
         return redirect()->to($destino);
     }
 
-    public function show(string $importacao): Response
+    public function show(Request $request, string $importacao): Response
     {
         $dados = $this->importacoes->obter($importacao);
 
         if ($dados === null) {
+            abort_if($request->expectsJson(), 404);
+
             return response()->view('importacoes.expirada', [], 404)->header('Cache-Control', 'private, no-store');
         }
 

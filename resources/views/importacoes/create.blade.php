@@ -65,7 +65,7 @@
                 <x-icone nome="cadeado" class="mt-0.5 size-4" />
                 O PDF fica em área privada. Nada vai para o banco antes da sua revisão e do registro do consentimento.
             </p>
-            <x-botao type="submit" tamanho="lg" class="shrink-0">
+            <x-botao type="submit" tamanho="lg" class="shrink-0" data-carregando>
                 <x-icone nome="documento" class="size-5" />Ler currículo
             </x-botao>
         </div>

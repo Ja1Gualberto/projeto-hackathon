@@ -1,6 +1,40 @@
-# Projeto Hackathon
+# Banco de Talentos SETIC
 
-Laravel 13 com estrutura MVC + Services + Repositories, DTOs e Laravel Boost instalado.
+Sistema para encontrar talentos por competência e conduzir seleções com triagem anônima. Laravel 13
+com estrutura MVC + Services + Repositories, DTOs e Laravel Boost instalado.
+
+## Demonstração
+
+Requer Docker. Prepara tudo do zero, com dados fictícios: recrutador, catálogo, 24 candidatos com
+PDF e 3 vagas.
+
+```powershell
+.\hackaton.ps1 demo      # Windows (PowerShell)
+```
+
+```bash
+./hackaton demo          # Linux
+```
+
+Acesse `http://localhost:8000` com **`recrutador@setic.demo`** / **`demo1234`**. O comando `status`
+mostra as portas efetivas.
+
+> **Rode o `demo` com internet.** Quando o código muda, a imagem é reconstruída e precisa baixar
+> dependências e a fonte. Depois de pronto, o sistema funciona sem internet, e o Wi-Fi pode ser
+> desligado. O container `vite` precisa continuar no ar: parado, as telas ficam sem estilo ou
+> respondem erro 500. Atenção: `demo` executa `migrate:fresh` e **apaga os dados do banco local**.
+
+| Comando | Para quê |
+|---|---|
+| `php artisan demo:curriculos` | Gera novamente os PDFs de exemplo em `database/seeders/curriculos` |
+| `php artisan energia:analisar` | Analisa o padrão de energia de quem ainda não tem perfil; `--todos` reanalisa os de origem IA, nunca os revisados por humano |
+
+No Docker, use `.\hackaton.ps1 artisan <comando>` ou `./hackaton artisan <comando>`. A análise de
+energia é opcional e exige internet, `ENERGIA_IA_HABILITADA=true` e `ANTHROPIC_API_KEY` no seu
+`.env`. Sem isso, o sistema mostra "Análise indisponível" e todo o resto funciona normalmente.
+
+Roteiro completo do pitch e cenários de validação:
+[`specs/001-banco-de-talentos-mvp/quickstart.md`](specs/001-banco-de-talentos-mvp/quickstart.md).
 
 ## Estrutura
 
@@ -19,8 +53,9 @@ app/
     └── RepositoryServiceProvider.php
 resources/views/
 ├── layouts/                    # Layouts Blade
-└── welcome.blade.php           # Página inicial padrão do Laravel
-routes/web.php                  # Rotas web
+├── components/                 # Design system (x-botao, x-campo, x-modal...)
+└── {módulo}/                   # Telas e partials de cada módulo
+routes/                         # web.php e um arquivo por módulo
 database/migrations/            # Estrutura do banco
 ```
 
@@ -151,6 +186,8 @@ php artisan boost:install
 composer validate --strict
 vendor/bin/pint --format agent
 php artisan route:list --except-vendor
+php artisan test
+node --test tests/js/*.test.js
 ```
 
 Laravel é distribuído sob a licença MIT.

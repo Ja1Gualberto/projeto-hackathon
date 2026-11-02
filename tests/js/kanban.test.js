@@ -251,8 +251,27 @@ function montarMovimentacao() {
     });
     registrarQuadro(doc);
     globalThis.FormData = class { constructor() { return new formDataOriginal(); } };
-    return { docEventos, regiao, atributos, alvos, colunas, aviso, focados, formulario, evento, elementoEm };
+    return { doc, docEventos, regiao, atributos, alvos, colunas, aviso, focados, formulario, evento, elementoEm };
 }
+
+test('cada movimentação fecha a mensagem anterior antes de enviar: o nome não sobra ao voltar à triagem', async () => {
+    const quadro = montarMovimentacao();
+    const ordem = [];
+    const alertaComNome = {
+        querySelector: (seletor) => seletor === '[data-alerta-fechar]' ? { click: () => ordem.push('fechou') } : null,
+        remove: () => ordem.push('removeu'),
+    };
+    quadro.doc.querySelectorAll = (seletor) => seletor === '[data-alerta-ativo][data-alerta-tipo="sucesso"]' ? [alertaComNome] : [];
+    globalThis.fetch = async () => {
+        ordem.push('enviou');
+        return resposta(envelope({ 'quadro-vaga': 'quadro novo' }, 'CAND-0042 está agora em Triagem.'));
+    };
+
+    await quadro.docEventos.submit(quadro.evento(quadro.formulario().form, { submitter: { name: 'etapa', value: 'triagem' } }));
+
+    // Sai do documento antes do envio, sem esperar o fade: nada do nome pode restar quando a resposta chegar.
+    assert.deepEqual(ordem, ['fechou', 'removeu', 'enviou']);
+});
 
 test('mover por botão bloqueia o quadro enquanto pendente e só aplica o HTML do servidor', async () => {
     const quadro = montarMovimentacao();

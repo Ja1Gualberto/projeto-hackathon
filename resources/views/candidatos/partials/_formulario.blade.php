@@ -59,7 +59,7 @@
         </p>
         <div data-sem-autoenvio>
             <label for="filtrar-competencias" class="mb-1.5 block text-sm font-medium">Filtrar competências</label>
-            <input id="filtrar-competencias" type="search" data-filtrar-chips="#catalogo-competencias" placeholder="Ex.: Python" class="w-full max-w-sm rounded-lg border border-borda px-3 py-2 text-sm">
+            <input id="filtrar-competencias" type="search" data-filtrar-chips="#catalogo-competencias" placeholder="Ex.: Python" class="w-full max-w-sm rounded-lg border border-borda-campo px-3 py-2 text-sm">
         </div>
         <div id="catalogo-competencias" class="max-h-96 overflow-y-auto p-1">
             @include('candidatos.partials._catalogo-competencias')

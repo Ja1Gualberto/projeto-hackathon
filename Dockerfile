@@ -16,7 +16,8 @@ RUN apt-get update \
     && a2enconf laravel \
     && rm -rf /var/lib/apt/lists/*
 
-RUN printf 'upload_max_filesize=12M\npost_max_size=13M\n' \
+# Sem display_errors=Off, o aviso de corpo acima do post_max_size sai antes do Laravel e impede a resposta 413.
+RUN printf 'upload_max_filesize=12M\npost_max_size=13M\ndisplay_errors=Off\ndisplay_startup_errors=Off\nlog_errors=On\n' \
     > /usr/local/etc/php/conf.d/uploads.ini
 
 COPY --from=composer:2 /usr/bin/composer /usr/local/bin/composer

@@ -1,4 +1,4 @@
-<a href="{{ $urlPerfil }}" class="group flex h-full min-w-0 flex-col gap-1 rounded-card border border-borda bg-superficie p-3 transition-colors hover:border-primaria-400 focus-visible:border-primaria-600">
+<a href="{{ $urlPerfil }}" class="group flex h-full min-w-0 flex-col gap-1 rounded-card border border-borda bg-superficie p-3 transition-[border-color,box-shadow] hover:border-primaria-400 hover:shadow-sm focus-visible:border-primaria-600 motion-reduce:transition-none">
     <div class="flex flex-wrap items-center justify-between gap-3">
         {{ $tipo }}
         <span class="text-sm text-texto-suave group-hover:text-primaria-700">Ver perfil</span>

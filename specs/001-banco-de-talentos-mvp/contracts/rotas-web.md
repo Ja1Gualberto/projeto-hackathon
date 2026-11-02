@@ -45,7 +45,9 @@ AJAX progressivo, com HTML renderizado pelo Blade. Não há API JSON pública no
 | 419 | Token/sessão inválido; pedir atualização consciente da página; não reenviar a escrita |
 | 403 | Acesso negado ou origem recusada; mensagem amigável, sem dados protegidos |
 | 404 | Recurso inexistente/importação expirada; oferecer retorno ou novo envio, preservando o preenchimento quando possível |
+| 405 | Método não disponível para o recurso; mensagem em português, sem detalhes do servidor |
 | 413 | PDF acima do limite de transporte; mensagem em português mesmo se a resposta não for JSON |
+| 429 | Muitas tentativas seguidas (login); mensagem em português, sem repetir o envio |
 | 503 | IA indisponível; `{message: "Análise indisponível no momento."}`; manter perfil anterior e permitir ajuste manual |
 | 5xx, rede ou resposta inesperada | Preservar formulário e estado confirmado, liberar controles e informar falha; nunca inserir HTML de erro/login como fragmento |
 
@@ -169,5 +171,7 @@ na área e, se houver, proximidade de energia como selo separado. Botão "Mover 
 | Visitante em rota protegida | 302 → `/login` |
 | PDF ou anotação no contexto da vaga com candidato em triagem | 403 com página amigável ("Identidade protegida na triagem anônima") |
 | Código de candidato inexistente | 404 |
-| Arquivo acima do `post_max_size` | 302 de volta com "O arquivo excede o limite de 10 MB." |
+| Arquivo acima do `post_max_size` | 413 com a página "O arquivo excede o limite de 10 MB." (a sessão ainda não foi iniciada, sem *flash*) |
+| Token inválido sem prova de mesma origem | 419 com página amigável; nada é gravado |
+| Excesso de tentativas de login | 429 com página amigável |
 | Importação expirada (UUID fora da sessão) | 404 com link "Enviar novamente" |

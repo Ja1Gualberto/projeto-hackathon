@@ -13,7 +13,7 @@
 
 <aside id="menu-lateral" aria-label="Menu do Banco de Talentos" class="z-50 flex flex-col overflow-hidden border-b border-primaria-800 bg-primaria-900 text-white transition-[width,translate,box-shadow] duration-200 ease-out motion-reduce:transition-none max-lg:group-data-[menu-pronto]/menu:fixed max-lg:group-data-[menu-pronto]/menu:inset-y-0 max-lg:group-data-[menu-pronto]/menu:left-0 max-lg:group-data-[menu-pronto]/menu:w-72 max-lg:group-data-[menu-pronto]/menu:max-w-[calc(100vw-3rem)] max-lg:group-data-[menu-aberto=false]/menu:-translate-x-full max-lg:group-data-[menu-aberto=true]/menu:translate-x-0 lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 lg:border-r lg:border-b-0 lg:group-data-[menu-recolhido=false]/menu:shadow-[12px_0_32px_-16px_rgb(21_47_87/0.4)] lg:group-data-[menu-recolhido=true]/menu:w-20 lg:group-data-[menu-recolhido=true]/menu:cursor-pointer">
     <div class="flex min-h-24 shrink-0 items-center px-4">
-        <a href="{{ route('painel') }}" data-menu-identidade aria-label="Banco de Talentos — início" title="Banco de Talentos — início" class="flex min-w-0 items-center gap-3 rounded-xl">
+        <a href="{{ route('painel') }}" data-menu-identidade aria-label="BT Banco de Talentos SETIC — início" title="Banco de Talentos SETIC — início" class="flex min-w-0 items-center gap-3 rounded-xl">
             <span class="flex size-12 shrink-0 items-center justify-center rounded-xl border border-primaria-300/30 bg-primaria-800 text-lg font-bold tracking-tight text-white">BT</span>
             <span class="min-w-0 whitespace-nowrap leading-tight lg:group-data-[menu-recolhido=true]/menu:sr-only">
                 <span class="block text-sm font-bold">Banco de Talentos</span>

@@ -142,7 +142,7 @@ class BuscaCandidatosTest extends TestCase
             'area' => 'dados', 'experiencia' => 1, 'competencias' => [$competencia->id],
         ]));
 
-        $resposta->assertOk()->assertSee('1 talentos encontrados')->assertSee($candidato->nome)
+        $resposta->assertOk()->assertSee('1 talento encontrado')->assertSee($candidato->nome)
             ->assertSee('Perfis ativos com retenção pendente')->assertSee('Com todas:')
             ->assertSee('xl:grid-cols-[15rem_minmax(0,1fr)]', false)
             ->assertSee('grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3', false);

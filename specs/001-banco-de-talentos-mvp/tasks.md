@@ -817,18 +817,67 @@ regressões de perfil/anonimato e dois testes JS de integração da energia.
 
 **Purpose**: acabamento visual, acessibilidade, verificação final e ensaio do pitch.
 
-- [ ] T142 Revisar todas as telas em `resources/views/` quanto aos estados vazio, de erro e de carregamento (botões de envio com `data-carregando` desabilitados e mostrando "Processando…" no envio do PDF e na análise de IA, implementado em `resources/js/modulos/formularios.js`) e às microinterações leves (transições Tailwind em hover/foco e no surgimento de alertas)
-- [ ] T143 [P] Verificar o contraste WCAG 2.1 AA dos pares de cor definidos em `resources/css/app.css` (texto sobre `servidor`, `estagiario`, `primaria` e faixas de score), o foco visível em todos os elementos interativos, os `label`s dos campos e a navegação do quadro por teclado (botões de movimentação)
-- [ ] T144 [P] Rodar `npm run build` sem internet e verificar se a fonte Instrument Sans configurada em `vite.config.js` fica empacotada em `public/build`; se depender de CDN, garantir que a pilha `ui-sans-serif, system-ui` em `resources/css/app.css` mantenha a aparência aceitável offline
-- [ ] T145 [P] Atualizar `README.md` com a seção "Demonstração" (comando `demo`, credenciais `recrutador@setic.demo` / `demo1234`, `php artisan demo:curriculos`, `php artisan energia:analisar` e o link para `specs/001-banco-de-talentos-mvp/quickstart.md`)
-- [ ] T146 Rodar `vendor/bin/pint --format agent` e corrigir o que for apontado em `app/`, `database/`, `routes/` e `tests/`
-- [ ] T147 Rodar `php artisan test` (suítes Unit e Feature) e garantir que todos os testes passam, em especial `CalculadoraAderenciaTest`, `RankingVagaTest`, `TriagemAnonimaTest` e `CurriculoProtegidoTest` (gates da constituição)
+- [X] T142 Revisar todas as telas em `resources/views/` quanto aos estados vazio, de erro e de carregamento (botões de envio com `data-carregando` desabilitados e mostrando "Processando…" no envio do PDF e na análise de IA, implementado em `resources/js/modulos/formularios.js`) e às microinterações leves (transições Tailwind em hover/foco e no surgimento de alertas)
+- [X] T143 [P] Verificar o contraste WCAG 2.1 AA dos pares de cor definidos em `resources/css/app.css` (texto sobre `servidor`, `estagiario`, `primaria` e faixas de score), o foco visível em todos os elementos interativos, os `label`s dos campos e a navegação do quadro por teclado (botões de movimentação)
+- [X] T144 [P] Rodar `npm run build` sem internet e verificar se a fonte Instrument Sans configurada em `vite.config.js` fica empacotada em `public/build`; se depender de CDN, garantir que a pilha `ui-sans-serif, system-ui` em `resources/css/app.css` mantenha a aparência aceitável offline
+- [X] T145 [P] Atualizar `README.md` com a seção "Demonstração" (comando `demo`, credenciais `recrutador@setic.demo` / `demo1234`, `php artisan demo:curriculos`, `php artisan energia:analisar` e o link para `specs/001-banco-de-talentos-mvp/quickstart.md`)
+- [X] T146 Rodar `vendor/bin/pint --format agent` e corrigir o que for apontado em `app/`, `database/`, `routes/` e `tests/`
+- [X] T147 Rodar `php artisan test` (suítes Unit e Feature) e garantir que todos os testes passam, em especial `CalculadoraAderenciaTest`, `RankingVagaTest`, `TriagemAnonimaTest` e `CurriculoProtegidoTest` (gates da constituição)
 - [ ] T148 Executar os cenários A a G de `specs/001-banco-de-talentos-mvp/quickstart.md` a partir de um ambiente limpo (`demo`) e fazer o ensaio cronometrado (≤ 5 min, SC-005) duas vezes: com internet e com o Wi-Fi desligado (SC-007). Registrar os problemas encontrados como novas tarefas neste arquivo
 
 ### Validação transversal AJAX — antes do ensaio T148
 
-- [ ] T167 Criar `tests/Feature/AjaxSegurancaTest.php` para contrato transversal nas rotas já implementadas: 401 JSON versus redirect HTML, proteção contra requisição forjada efetivamente habilitada nos testes (não confiar no bypass padrão do ambiente de teste), 419/403 conforme origem/token, 404 JSON e respostas privadas sem cache; preservar validação/anonimização em fragmentos. Usar factories, sem alterar `.env` ou adicionar dependências. Executar também as suítes ampliadas T152/T155/T157/T159/T161/T163 e T165 se US7 incluída. Depende das integrações entregues e T151
-- [ ] T168 Completar `tests/js/ajax.test.js` e `tests/js/busca.test.js` com regressões das integrações (delegação após substituir HTML, falha ambígua sem replay, limpeza somente após sucesso e resposta obsoleta descartada); executar `node --test tests/js/*.test.js`. Validar e registrar o resultado do cenário H em `specs/001-banco-de-talentos-mvp/quickstart.md`: foco/teclado, histórico, rede lenta, erros, duplo clique, anonimato após retorno à triagem e fluxo sem JS, além de sem internet com servidor local acessível. Depende de T167 e das histórias incluídas; antes de T148; se não houver navegador disponível, registrar gate manual pendente, não declarar SC-010/SC-011 aprovados
+- [X] T167 Criar `tests/Feature/AjaxSegurancaTest.php` para contrato transversal nas rotas já implementadas: 401 JSON versus redirect HTML, proteção contra requisição forjada efetivamente habilitada nos testes (não confiar no bypass padrão do ambiente de teste), 419/403 conforme origem/token, 404 JSON e respostas privadas sem cache; preservar validação/anonimização em fragmentos. Usar factories, sem alterar `.env` ou adicionar dependências. Executar também as suítes ampliadas T152/T155/T157/T159/T161/T163 e T165 se US7 incluída. Depende das integrações entregues e T151
+- [X] T168 Completar `tests/js/ajax.test.js` e `tests/js/busca.test.js` com regressões das integrações (delegação após substituir HTML, falha ambígua sem replay, limpeza somente após sucesso e resposta obsoleta descartada); executar `node --test tests/js/*.test.js`. Validar e registrar o resultado do cenário H em `specs/001-banco-de-talentos-mvp/quickstart.md`: foco/teclado, histórico, rede lenta, erros, duplo clique, anonimato após retorno à triagem e fluxo sem JS, além de sem internet com servidor local acessível. Depende de T167 e das histórias incluídas; antes de T148; se não houver navegador disponível, registrar gate manual pendente, não declarar SC-010/SC-011 aprovados
+
+### Problemas encontrados na validação — registrados conforme T148
+
+- [X] T169 Corrigir a exposição do nome após voltar à triagem: o alerta "Nome está agora em Entrevista." ficava até 7 s ao lado de "CAND-NNNN está agora em Triagem.", associando nome e código, e mover vários candidatos empilhava alertas sobre o quadro. `kanban.js` fecha a mensagem anterior a cada movimentação e `fecharAlertas` (`alertas.js`) a retira do documento na hora, sem esperar o fade. Regressão em `tests/js/kanban.test.js`
+- [X] T170 Corrigir PDF acima do `post_max_size` no Docker: sem `display_errors=Off`, o aviso do PHP saía antes do Laravel e a resposta virava 200 em HTML, com o aviso na tela, em vez de 413. Ajustado no `Dockerfile`. Só aparece em servidor real: os testes automatizados simulam o `CONTENT_LENGTH`
+- [X] T171 Traduzir a interface que ainda vinha do framework: paginação com `pagination.previous` e "Showing results" (novo `components/paginacao.blade.php`, sem variantes de tema escuro) e páginas de erro 419, 429, 500 e 503. "1 talentos encontrados" corrigido. Respostas JSON 405 e 429 agora têm mensagem própria, sem detalhes mesmo com debug; importação expirada responde 404 em JSON
+- [X] T172 Corrigir acessibilidade e consistência medidas em navegador: placeholder (2,56:1 → 4,76:1), contorno de campo (1,30:1 → 3,51:1, token `borda-campo`), anel de foco, `opacity` em cards de desativado e vaga encerrada, marcador ✓/+ dos chips da busca sem atualizar por AJAX, nome acessível do logo do menu (WCAG 2.5.3) e alinhamento dos cartões do painel. Fuso de `UTC` para `America/Porto_Velho` (`APP_TIMEZONE`), pois histórico e o limite "hoje" das datas saíam adiantados. Removido o código morto de "disponível na próxima etapa". `tests/js/contraste.test.js` trava os pares de cor
+- [ ] T173 Decidir como o `demo` deve rodar sem depender do Vite. No `compose.yaml` atual, `./public` encobre o `public/build` da imagem: com o container `vite` parado, as telas ficam sem estilo, porque o `public/hot` permanece, e sem esse arquivo respondem 500. O ambiente de desenvolvimento com atualização automática funciona; a dúvida é só o risco no pitch. Opção a avaliar: `vite` em perfil do Compose, mantendo o `public/build` no `demo`
+
+**Implementação da Phase 10 (2026-11-01):** T142–T147, T167–T168 e T169–T172 concluídas. **T148
+continua aberta:** falta o ensaio humano cronometrado e o `demo` real, ambos do usuário.
+
+- **Ambiente da validação:** imagem gerada pelo `Dockerfile` real, sem `.env`, com MySQL 8.4 e
+  seed novo em containers descartáveis, sem portas publicadas e sem tocar no ambiente do
+  usuário. Navegador: Chromium headless 156 (Playwright fora do projeto, sem dependência nova),
+  em 1280×720 e 390×780, acessando `http://localhost` para receber os cabeçalhos `Sec-Fetch-*`.
+- **Resultado sem internet** (rede Docker interna, acesso externo conferido como indisponível):
+  cenários A–G 39/39 passos; cenário H e sem JavaScript 14/14; nenhum pedido externo; axe-core
+  (WCAG 2.0/2.1 A e AA) sem violações em todas as telas, modais e estados de erro; foco visível
+  em 186 elementos percorridos com Tab em seis telas. O roteiro do SC-005 consome **2,8 s de
+  sistema, sem pausas**; isso mede o sistema, **não** o tempo de apresentação. Estes resultados
+  são do código já integrado à refatoração da listagem e ao fade dos alertas, usando os assets
+  compilados da imagem.
+- **Pilha com o container `vite` (`compose.yaml` atual):** verificada só no carregamento do login,
+  sem repetir A–H. Subindo com internet e desligando depois, estilo e fonte continuam, inclusive
+  se o Vite reiniciar. Subindo do zero sem internet, funciona com a fonte do sistema. Em todos os
+  casos, sem pedido externo. Com o Vite parado, ver T173.
+- **IA ligada, com chave fictícia e sem internet:** 503 amigável em 147 ms, perfil anterior
+  preservado, restante funcionando e log só com `{"motivo":"conexao"}`. A API real não foi chamada.
+  Conferido antes da integração, que não alterou esse fluxo.
+- **T144:** na imagem, a fonte fica empacotada em `public/build`, sem referência a CDN, e a execução
+  não depende de internet. O build reaproveita o cache de fontes; **frio e sem internet ele falha**
+  (`getaddrinfo fonts.bunny.net`), assim como `composer install` e `npm ci`. Portanto o `demo`
+  precisa de internet sempre que a imagem tiver de ser reconstruída: preparar antes de desligar
+  o Wi-Fi. A pilha `ui-sans-serif, system-ui` continua como reserva.
+- **T167:** `AjaxSegurancaTest` liga a proteção real contra forja saindo do ambiente `testing`,
+  sem subclasse nem desligar nada, e confere as 15 rotas de escrita. Em navegador, `Sec-Fetch-Site:
+  same-origin` dispensa o token (padrão do Laravel 13): sessão expirada responde 401, e 419 fica
+  para quem não prova a origem, como requisição forjada.
+- **Contraste medido:** servidor-800/100 8,13:1; estagiario-800/100 6,37:1; branco/primaria-600
+  7,52:1; score-alto 5,02:1, médio 5,02:1 e baixo 4,76:1 sobre branco; foco 3,66:1 e 3,64:1 sobre o menu.
+- **Validação final:** 353 testes PHP / 2147 asserções, 126 testes JS, Pint aprovado e
+  `git diff --check` limpo. Sem dependências ou migrations novas.
+- **Limites, sem aceite declarado:** o `demo` não foi executado porque lê o `.env`; não houve
+  teste em projetor, leitor de tela real, Chrome/Edge com interface, Firefox ou API real. SC-005,
+  SC-006 e o aceite visual dependem da conferência humana em T148.
+- **Decisão a confirmar:** no menu recolhido, o primeiro clique só expande (última entrega do
+  menu, mantida). No pitch, deixar o menu expandido (a preferência fica salva) ou usar os botões
+  da página, como "Explorar talentos", para não gastar um clique a mais diante da banca.
 
 ---
 

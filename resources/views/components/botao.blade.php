@@ -19,7 +19,7 @@
         'lg' => 'px-5 py-3 text-base',
     ];
 
-    $classes = 'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 '
+    $classes = 'inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors duration-150 motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60 '
         .($variantes[$variante] ?? $variantes['primario']).' '
         .($tamanhos[$tamanho] ?? $tamanhos['md']);
 @endphp

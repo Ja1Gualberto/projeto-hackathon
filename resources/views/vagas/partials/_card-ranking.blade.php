@@ -14,9 +14,10 @@
 @endphp
 
 <article data-codigo="{{ $item->codigo }}" @if ($podeMover) draggable="true" @endif aria-labelledby="card-{{ $item->codigo }}" @class([
-    'flex flex-col gap-3 rounded-card border border-borda bg-superficie p-4 shadow-xs',
+    'flex flex-col gap-3 rounded-card border border-borda p-4 shadow-xs transition-shadow hover:shadow-md motion-reduce:transition-none',
     'cursor-grab active:cursor-grabbing' => $podeMover,
-    'opacity-60' => $item->desativado,
+    'bg-superficie' => ! $item->desativado,
+    'border-dashed border-slate-400 bg-slate-50' => $item->desativado,
 ])>
     <div class="flex items-start gap-3">
         @isset($posicao)

@@ -8,10 +8,10 @@
     </x-cabecalho-pagina>
 
     <section aria-label="Resumo do banco" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <x-cartao-estatistica rotulo="Talentos" :valor="$totalTalentos" detalhe="Cadastros ativos" />
+        <x-cartao-estatistica rotulo="Talentos" :valor="$totalTalentos" detalhe="Cadastros ativos" class="border-t-2 border-transparent" />
         <x-cartao-estatistica rotulo="Servidores" :valor="$servidores" detalhe="Experiência no serviço público" class="border-t-2 border-servidor-700" />
         <x-cartao-estatistica rotulo="Estagiários" :valor="$estagiarios" detalhe="Talentos em formação" class="border-t-2 border-estagiario-700" />
-        <x-cartao-estatistica rotulo="Vagas abertas" :valor="$vagasAbertas" detalhe="Processos em andamento" />
+        <x-cartao-estatistica rotulo="Vagas abertas" :valor="$vagasAbertas" detalhe="Processos em andamento" class="border-t-2 border-transparent" />
     </section>
 
     <div class="grid items-start gap-8 xl:grid-cols-[minmax(0,1fr)_18rem]">
@@ -57,15 +57,12 @@
             </section>
             <section class="flex flex-col gap-3 border-t border-borda pt-6">
                 <h2 class="font-semibold">Organize as próximas seleções</h2>
-                <x-botao :href="Route::has('importacoes.create') ? route('importacoes.create') : null" variante="secundario" :disabled="! Route::has('importacoes.create')">
+                <x-botao :href="route('importacoes.create')" variante="secundario">
                     <x-icone nome="upload" class="size-4" />Importar currículo
                 </x-botao>
-                <x-botao :href="Route::has('vagas.create') ? route('vagas.create') : null" variante="secundario" :disabled="! Route::has('vagas.create')">
+                <x-botao :href="route('vagas.create')" variante="secundario">
                     <x-icone nome="vaga" class="size-4" />Nova vaga
                 </x-botao>
-                @if (! Route::has('importacoes.create') || ! Route::has('vagas.create'))
-                    <p class="text-sm text-texto-suave">As ações desabilitadas estarão disponíveis nas próximas etapas.</p>
-                @endif
             </section>
         </aside>
     </div>

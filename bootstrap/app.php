@@ -38,8 +38,10 @@ return Application::configure(basePath: dirname(__DIR__))
                 401 => 'Sua sessão expirou. Entre novamente para continuar.',
                 403 => 'Você não tem permissão para acessar este recurso.',
                 404 => 'O recurso solicitado não foi encontrado.',
+                405 => 'Esta ação não está disponível para este recurso.',
                 419 => 'Sua sessão expirou. Atualize a página antes de continuar.',
                 413 => 'O arquivo excede o limite de 10 MB.',
+                429 => 'Muitas tentativas seguidas. Aguarde um minuto e tente novamente.',
                 503 => 'Análise indisponível no momento.',
             ];
 

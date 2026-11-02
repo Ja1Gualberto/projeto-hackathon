@@ -31,7 +31,8 @@ export function registrarMenu(doc = document, janela = window) {
         fundo.hidden = !modal;
         identidade.setAttribute('aria-expanded', String(desktop.matches ? !recolhido : aberto));
         const acao = desktop.matches ? (recolhido ? 'Expandir' : 'Recolher') : 'Fechar';
-        const rotulo = `${acao} navegação do Banco de Talentos`;
+        // O nome acessível começa pelo texto visível do logo (WCAG 2.5.3, rótulo no nome).
+        const rotulo = `BT Banco de Talentos SETIC — ${acao} navegação`;
         identidade.setAttribute('aria-label', rotulo);
         identidade.title = rotulo;
         abrir.setAttribute('aria-expanded', String(modal));

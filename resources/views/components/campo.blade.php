@@ -20,8 +20,8 @@
     $temErro = isset($errors) && ($errors->has($chaveErro) || $errors->has($chaveErro.'.*'));
     $mensagemErro = $temErro ? ($errors->first($chaveErro) ?: $errors->first($chaveErro.'.*')) : '';
 
-    $classesCampo = 'block w-full rounded-lg border bg-superficie px-3 py-2 text-texto shadow-xs placeholder:text-slate-400 focus:border-primaria-500 focus:ring-2 focus:ring-primaria-200 focus:outline-none '
-        .($temErro ? 'border-red-600' : 'border-borda');
+    $classesCampo = 'block w-full rounded-lg border bg-superficie px-3 py-2 text-texto shadow-xs transition-colors focus:border-primaria-600 focus:ring-2 focus:ring-primaria-400 focus:outline-none motion-reduce:transition-none '
+        .($temErro ? 'border-red-600' : 'border-borda-campo');
 
     $atributosCampo = $attributes->except('id')->merge(['class' => $classesCampo]);
     $descricao = trim(($ajuda ? $id.'-ajuda ' : '').($temErro ? $id.'-erro' : ''));

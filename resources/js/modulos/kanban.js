@@ -1,4 +1,5 @@
 import { anunciar, aplicarFragmentos, ErroAjax, solicitar } from './ajax.js';
+import { fecharAlertas } from './alertas.js';
 import { enviarFormulario, suportaAjax } from './formularios.js';
 
 /**
@@ -26,6 +27,9 @@ export function registrarQuadro(doc = document) {
         const codigo = formulario.closest('[data-codigo]')?.dataset.codigo;
         pendente = true;
         regiao.setAttribute('aria-busy', 'true');
+        // A mensagem anterior pode citar um nome revelado: cada movimentação a substitui, para o nome
+        // não sobrar ao lado do código depois de uma volta à triagem nem empilhar alertas sobre o quadro.
+        fecharAlertas(doc);
         try {
             await enviarFormulario(formulario, botao);
         } finally {

@@ -225,3 +225,64 @@ test('limpar é delegado, não repete autoenvio e limpa campos só na confirmaç
     assert.equal(ui.historico.at(-1)[0], 'replaceState');
     assert.equal(ui.chamadas.length, 1);
 });
+
+test('regressão: substituir os resultados mantém paginação e limpar delegados, sem listeners novos', async (t) => {
+    const ui = montar(t);
+    for (let pagina = 2; pagina <= 4; pagina++) {
+        ui.clicar(`https://banco.test/candidatos?tipo=estagiario&page=${pagina}`);
+        ui.resolver(pagina - 2, `página ${pagina}`);
+        await esperar();
+        assert.equal(ui.regiao.innerHTML, `página ${pagina}`);
+    }
+    assert.equal(ui.chamadas.length, 3);
+    assert.deepEqual(ui.historico.map(([metodo]) => metodo), ['pushState', 'pushState', 'pushState']);
+    ui.clicar('https://banco.test/candidatos', true);
+    ui.resolver(3, 'sem filtros');
+    await esperar();
+    assert.equal(ui.chamadas.length, 4);
+    assert.equal(ui.regiao.innerHTML, 'sem filtros');
+});
+
+test('regressão: resposta obsoleta de paginação não sobrescreve busca mais nova nem a URL', async (t) => {
+    const ui = montar(t);
+    ui.clicar('https://banco.test/candidatos?tipo=estagiario&page=2');
+    ui.eventos.change({ target: ui.tipo });
+    assert.equal(ui.chamadas[0].options.signal.aborted, true);
+    ui.resolver(1, 'filtro novo');
+    await esperar();
+    ui.resolver(0, 'página antiga');
+    await esperar();
+    assert.equal(ui.regiao.innerHTML, 'filtro novo');
+    assert.deepEqual(ui.historico.map(([metodo]) => metodo), ['replaceState']);
+    assert.doesNotMatch(ui.janela.location.href, /page=/);
+});
+
+test('regressão: falha seguida de nova edição recupera a busca sem repetir a requisição que falhou', async (t) => {
+    const ui = montar(t);
+    ui.eventos.change({ target: ui.tipo });
+    ui.chamadas[0].reject(new TypeError('offline'));
+    await esperar();
+    assert.equal(ui.chamadas.length, 1);
+    assert.equal(ui.regiao.innerHTML, 'resultado anterior');
+
+    ui.eventos.change({ target: ui.experiencia });
+    assert.equal(ui.chamadas.length, 2);
+    ui.resolver(1, 'recuperado');
+    await esperar();
+    assert.equal(ui.regiao.innerHTML, 'recuperado');
+    assert.equal(ui.atributos.has('aria-busy'), false);
+});
+
+test('regressão: erros 401 e 419 na busca não inserem página nem mexem nos resultados', async (t) => {
+    for (const status of [401, 419]) {
+        const ui = montar(t);
+        const anterior = ui.janela.location.href;
+        ui.eventos.change({ target: ui.tipo });
+        ui.chamadas[0].resolve(new Response(JSON.stringify({ message: 'x' }), { status, headers: { 'Content-Type': 'application/json' } }));
+        await esperar();
+        assert.equal(ui.regiao.innerHTML, 'resultado anterior');
+        assert.equal(ui.janela.location.href, anterior);
+        assert.match(ui.aviso.textContent, /sessão/i);
+        t.mock.timers.reset();
+    }
+});

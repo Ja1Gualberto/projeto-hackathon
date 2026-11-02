@@ -127,6 +127,17 @@ export function registrarAlertas(doc = document) {
     return ativar;
 }
 
+/**
+ * Fecha os alertas ativos de um tipo pelo próprio botão, que já cuida de temporizador e foco, e os
+ * retira na hora, sem o fade: a mensagem pode citar um nome que não pode continuar no documento.
+ */
+export function fecharAlertas(doc = document, tipo = 'sucesso') {
+    doc.querySelectorAll(`[data-alerta-ativo][data-alerta-tipo="${tipo}"]`).forEach((alerta) => {
+        alerta.querySelector('[data-alerta-fechar]').click();
+        alerta.remove();
+    });
+}
+
 export function mostrarAlerta(mensagem, doc = document, tipo = 'info') {
     if (!mensagem) {
         return null;

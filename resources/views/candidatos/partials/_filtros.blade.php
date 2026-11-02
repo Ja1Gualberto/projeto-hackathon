@@ -23,7 +23,7 @@
         </div>
         <div data-sem-autoenvio>
             <label for="filtrar-competencias" class="mb-1.5 block text-sm font-medium">Filtrar competências</label>
-            <input id="filtrar-competencias" type="search" data-filtrar-chips="#catalogo-competencias" placeholder="Ex.: Python" class="w-full rounded-lg border border-borda px-3 py-2 text-sm">
+            <input id="filtrar-competencias" type="search" data-filtrar-chips="#catalogo-competencias" placeholder="Ex.: Python" class="w-full rounded-lg border border-borda-campo px-3 py-2 text-sm">
         </div>
         <div id="catalogo-competencias" class="flex max-h-80 flex-col gap-5 overflow-y-auto p-1" aria-describedby="regra-competencias">
             <fieldset class="min-w-0">
@@ -42,7 +42,7 @@
             </fieldset>
         </div>
     </div>
-    <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-lg font-semibold transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-60 bg-primaria-600 text-white shadow-sm hover:bg-primaria-700 px-4 py-2 text-sm">
+    <button type="submit" class="inline-flex w-full items-center justify-center gap-2 rounded-lg font-semibold transition-colors duration-150 motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60 bg-primaria-600 text-white shadow-sm hover:bg-primaria-700 px-4 py-2 text-sm">
         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.75" stroke="currentColor" aria-hidden="true" focusable="false" class="size-5 shrink-0 size-4"><path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" /></svg>
         Aplicar filtros
     </button>

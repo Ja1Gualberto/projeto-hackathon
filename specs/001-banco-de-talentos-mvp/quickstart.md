@@ -43,6 +43,14 @@ O comando `demo` faz o `setup` (build, serviços e APP_KEY, se faltar) e
 `migrate:fresh --seed --force`, carregando o recrutador, o catálogo, 24 candidatos fictícios com
 PDF e 3 vagas. A aplicação fica em `http://localhost:8000` (`status` mostra as portas).
 
+**Rode com internet:** quando o código muda, o `demo` reconstrói a imagem, e `composer install`,
+`npm ci` e o download da fonte precisam de rede. Depois de pronto, o sistema funciona sem internet e
+nenhuma tela faz pedido externo.
+
+**Mantenha o container `vite` no ar:** no Docker, é ele que serve CSS, JavaScript e fonte. Parado,
+as telas ficam sem estilo ou respondem erro 500. Antes do pitch, confira com `status`. Se ele subir
+do zero sem internet, tudo funciona, mas com a fonte do sistema.
+
 **Sem Docker** (com `.env` e APP_KEY já configurados):
 
 ```bash
@@ -66,15 +74,16 @@ demonstração segue offline depois disso.
 ```bash
 php artisan test                         # ou: ./hackaton artisan test
 vendor/bin/pint --dirty --format agent   # ou: ./hackaton check
-node --test tests/js/*.test.js           # após implementar T149–T154; sem pacotes adicionais
+node --test tests/js/*.test.js           # sem pacotes adicionais
 ```
 
 Esperado: todos os testes passando, em especial `CalculadoraAderenciaTest`,
 `RankingVagaTest`, `TriagemAnonimaTest` e `CurriculoProtegidoTest` (gates da constituição).
 
-Na revisão AJAX (2026-10-31), as suítes de cada história também verificam o modo JSON interno,
-422 de validação e HTML de fallback; `AjaxSegurancaTest` cobre as proteções transversais.
-Os critérios abaixo são **planejados**, não evidência de implementação já concluída.
+As suítes de cada história também verificam o modo JSON interno, 422 de validação e HTML de
+fallback; `AjaxSegurancaTest` cobre as proteções transversais com a proteção contra forja ligada,
+e `tests/js/contraste.test.js` trava os pares de cor. O resultado da execução dos cenários abaixo
+está no fim da seção 4.
 
 ## 4. Cenários de validação manual (roteiro do pitch)
 
@@ -222,15 +231,33 @@ Executar em cada história entregue e repetir integralmente antes de T148:
 8. **Sem internet:** desligue o acesso externo mantendo o servidor local acessível; A–F
    continuam funcionando também via AJAX. Falha da IA não bloqueia o restante do sistema.
 
-**Registro da revisão 2026-10-31:** gates AJAX pendentes de implementação e execução;
-T149–T168 em `tasks.md`. Registrar resultados reais por fase, navegador e limitações; não
-considerar os testes históricos das Phases 2/3 como comprovação destes cenários.
+**Registro da execução em 2026-11-01:** Chromium headless 156 (Playwright fora do projeto), em
+1280×720 e 390×780, com a imagem do `Dockerfile` e seus assets compilados, MySQL 8.4, seed novo e
+rede sem internet. A pilha com o container `vite` foi conferida só no carregamento do login. Na
+sessão expirada, a escrita em navegador responde 401; 419 foi conferido em envio sem prova de origem.
+
+| Item | Resultado |
+|---|---|
+| A–G | 39/39 passos aprovados; quadro aberto dentro da meta de 3 s; IA desligada em G4 |
+| H1–H6, celular | Aprovados: só a última busca vale, um único envio no duplo clique, sem retry após queda, foco previsível, Tab preso em modal e menu |
+| H7 — sem JavaScript | Aprovado: importação, filtros, paginação, vaga, mover, anotação, encerrar, status, ajuste manual e exclusão pelo bloco `noscript` |
+| H8 — sem internet | Aprovado: nenhum pedido externo; com IA ligada, 503 amigável em 147 ms e perfil preservado |
+| Acessibilidade | axe-core sem violações WCAG 2.0/2.1 A e AA; foco visível em 186 elementos percorridos com Tab |
+
+**Fora desta execução, a cargo do usuário (T148):** `demo` real, API real da Anthropic, Chrome ou
+Edge com interface, Firefox, leitor de tela real e revisão visual em projetor.
 
 ## 5. Ensaio cronometrado (SC-005)
 
 Painel → envio de PDF → busca → vaga → triagem anônima → entrevista → anotação, sem erros, em
 até 5 minutos. Repita com o Wi-Fi desligado para confirmar o funcionamento offline.
 
-Antes deste ensaio, concluir o cenário H das histórias incluídas e os testes T167/T168.
 Quando o navegador acessar um servidor em outra máquina, manter a rede local disponível;
 o requisito offline é ausência de internet, não ausência de comunicação com o servidor.
+
+**Dica para o pitch:** deixe o menu lateral expandido antes de começar (a preferência fica salva).
+Recolhido, o primeiro clique só expande o menu. Os botões da página, como "Explorar talentos",
+navegam direto.
+
+O roteiro executado sem pausas consome 2,8 s de sistema; o ensaio humano continua necessário para
+o SC-005.

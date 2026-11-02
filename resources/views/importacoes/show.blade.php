@@ -94,7 +94,7 @@
                                     <input type="hidden" name="nome" value="{{ $sugestao }}">
                                     <input type="hidden" name="importacao" value="{{ $uuid }}">
                                     <label for="categoria-sugestao-{{ $loop->index }}" class="sr-only">Categoria de {{ $sugestao }}</label>
-                                    <select id="categoria-sugestao-{{ $loop->index }}" name="categoria" class="rounded-lg border border-borda bg-superficie px-2 py-1.5 text-sm">
+                                    <select id="categoria-sugestao-{{ $loop->index }}" name="categoria" class="rounded-lg border border-borda-campo bg-superficie px-2 py-1.5 text-sm">
                                         @foreach (\App\Enums\CategoriaCompetencia::cases() as $categoria)
                                             <option value="{{ $categoria->value }}">{{ $categoria === \App\Enums\CategoriaCompetencia::Hard ? 'Técnica' : 'Comportamental' }}</option>
                                         @endforeach

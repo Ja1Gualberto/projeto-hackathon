@@ -12,6 +12,7 @@ const MENSAGENS = {
     413: 'O arquivo excede o limite de 10 MB.',
     419: 'Sua sessão ou token expirou. Atualize a página conscientemente antes de continuar.',
     422: 'Revise os campos indicados para continuar.',
+    429: 'Muitas tentativas seguidas. Aguarde um minuto e tente novamente.',
     503: 'Análise indisponível no momento.',
 };
 

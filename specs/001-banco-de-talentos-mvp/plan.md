@@ -41,10 +41,10 @@ SPA, API pública, dependência nova ou camada paralela de regras de negócio (R
 
 ## Andamento e validação registrados — 2026-11-01
 
-**158 de 168 tarefas marcadas como concluídas (94,0%)**. As Phases 2–9 têm toda a
-implementação marcada, inclusive AJAX; isso **não equivale ao aceite final das histórias**.
-Continuam pendentes os gates manuais de navegador, acessibilidade e revisão visual previstos
-na constituição. T012 também permanece como ação exclusiva do usuário.
+**170 de 173 tarefas marcadas como concluídas (98,3%)**. Faltam T012 e T148, ambas do usuário, e
+a decisão T173. Os cenários A–H foram validados em Chromium headless, sem internet; isso **não equivale ao
+aceite final das histórias**: continuam pendentes o ensaio humano cronometrado, o `demo` real e
+a revisão visual em projetor previstos na constituição.
 
 | Phase | Escopo / tarefas | Marcação | Evidência registrada |
 |---|---|---|---|
@@ -57,12 +57,11 @@ na constituição. T012 também permanece como ação exclusiva do usuário.
 | 7 — US5: anotações | T113–T121, T161–T162 | 11/11 | 240 testes PHP / 1296 asserções, 44 JS, Pint, build e fumaça HTTP E |
 | 8 — US6: LGPD | T122–T129, T163–T164 | 10/10 | 262 testes PHP / 1517 asserções, 47 JS (também Node 22), Pint, rotas, `git diff --check` e build |
 | 9 — US7: energia (opcional, incluída) | T130–T141, T165–T166 | 14/14 | 311 testes PHP / 1731 asserções, 61 JS (Node 22, inclui menu paralelo), Pint, rotas e build; API simulada; cenário G/manual ainda sem aceite |
-| 10 — Polimento e validação final | T142–T148, T167–T168 | 0/9 | Segurança transversal, revisão manual, offline e ensaio ainda pendentes |
+| 10 — Polimento e validação final | T142–T148, T167–T173 | 12/14 | 353 testes PHP / 2147 asserções, 126 JS, Pint; A–H em Chromium headless sem internet e axe sem violações; T148 (ensaio humano e `demo` real) e T173 (dependência do Vite no `demo`) pendentes |
 
 Os totais de testes são fotografias **cumulativas** de cada checkpoint, não devem ser somados.
-A evidência mais recente é a da Phase 9. Testes de fumaça HTTP B–E não substituem a execução
-em navegador; não há registro equivalente de fumaça HTTP F nas notas da Phase 8. As validações
-registram execução isolada sem disponibilizar o `.env` aos comandos.
+A evidência mais recente é a da Phase 10, nas notas de `tasks.md`. As validações registram
+execução isolada sem disponibilizar o `.env` aos comandos.
 
 **Fontes**: [tasks.md](./tasks.md) (notas das Phases 1–9 e complemento AJAX das Phases 2/3),
 [fundação](../implementacoes/fase-2-fundacao.md),
@@ -76,19 +75,14 @@ notas de `tasks.md`, assim como a da Phase 9.
 
 1. **T012 — usuário**: confirmar localmente a configuração prevista no quickstart. A IA não
    consulta nem altera o `.env`; a tarefa não pode ser marcada por inferência.
-2. **Aceite manual das entregas existentes**: executar os cenários A–H em navegador real,
-   com e sem JS, teclado/foco, histórico, rede lenta, duplo envio e conferência dos fragmentos
-   ao voltar à triagem; revisar visual em projetor. SC-010/SC-011 continuam sem aceite.
-3. **US7 incluída e implementada a pedido do responsável**: T130–T141 e T165–T166 concluídas
-   com cliente HTTP nativo, sem SDK recusado. Validar G/H manualmente; a API real não foi
-   chamada. Habilitação/chave ficam a cargo do usuário, sem acesso da IA ao `.env`.
-4. **Phase 10**: concluir T142–T147 e T167–T168 para o escopo incluído; segurança transversal
-   T167 → validação AJAX/manual T168 → ensaio T148. Reexecutar os gates finais mesmo com
-   checkpoints anteriores aprovados. Comandos de `demo`/setup que possam alterar o `.env`
-   são executados somente pelo usuário.
-5. **T148**: ensaiar o fluxo completo em ≤ 5 minutos, com e sem internet mantendo o servidor
-   local acessível. SC-005/SC-006/SC-007 não estão aprovados pelos registros atuais; builds
-   anteriores não concluem automaticamente T144 nem substituem esse ensaio.
+2. **T148 — usuário**: rodar `.\hackaton.ps1 demo` (com internet, pois reconstrói a imagem) e
+   ensaiar o fluxo completo em ≤ 5 minutos, com e sem internet, em Chrome ou Edge, com revisão
+   visual em projetor. SC-005 e SC-006 dependem desse ensaio. SC-007, SC-010 e SC-011 têm
+   evidência automatizada em Chromium headless, registrada em `tasks.md`, sem aceite humano.
+3. **T173 — decisão**: o `demo` depende do container `vite` no ar; parado, as telas ficam sem estilo
+   ou respondem 500. Definir antes do pitch se isso muda.
+4. **API real (opcional)**: a IA foi validada só com analisador falso, `Http::fake` e falha de
+   conexão real. Habilitação e chave ficam a cargo do usuário, sem acesso da IA ao `.env`.
 
 ### Ajuste de organização solicitado após a Phase 3
 
@@ -425,7 +419,7 @@ demonstrável e passa pelos gates (testes, Pint, fluxo manual, revisão visual).
 Esta tabela complementa os incrementos acima e usa a numeração **Phase** de `tasks.md`
 (não a numeração de incrementos 0–8). Preservar T001–T148 e seus estados; as novas tarefas
 T149–T168 foram distribuídas nas fases, em ordem de dependência. No estado atual,
-T149–T166 estão implementadas; T167–T168 continuam pendentes.
+T149–T168 estão implementadas.
 
 | Phase / incremento | Entrega AJAX | Tarefas / estado em 2026-11-01 | Critério adicional de pronto |
 |---|---|---|---|
@@ -438,12 +432,11 @@ T149–T166 estão implementadas; T167–T168 continuam pendentes.
 | 7 / US5 | Registrar anotação e atualizar histórico/competências, limpando somente após sucesso | T161–T162 — implementadas | Cenário E no banco e na vaga revelada; triagem continua 403 |
 | 8 / US6 | Correção com erros locais; desativar/reativar parcial; excluir confirmado com navegação após sucesso | T163–T164 — implementadas | Cenário F; filtros de retenção continuam no fluxo AJAX da US1 |
 | 9 / US7 | Analisar/ajustar energia no perfil do banco, com loading e indisponibilidade sem bloquear a tela | T165–T166 — implementadas | Cenário G; falha mantém perfil anterior e ranking principal; gate manual pendente |
-| 10 / polimento | Segurança, falhas, acessibilidade, sem JS e ensaio completo | T167–T168 — pendentes | SC-010/SC-011; nenhuma escrita repetida automaticamente |
+| 10 / polimento | Segurança, falhas, acessibilidade, sem JS e ensaio completo | T167–T168 — implementadas | SC-010/SC-011 com evidência automatizada; nenhuma escrita repetida automaticamente; ensaio T148 pendente |
 
-**Retomada atual**: não refazer T149–T166 nem as histórias US1–US7. Retomar pelos gates
-manuais pendentes e concluir Phase 10 conforme a seção
-de andamento. A instrução de antecipar T149–T154 foi atendida. A coluna de critérios continua
-representando o aceite exigido, não uma declaração de aprovação manual.
+**Retomada atual**: não refazer T149–T172 nem as histórias US1–US7. Resta o ensaio T148, a cargo
+do usuário, conforme a seção de andamento. A coluna de critérios continua representando o aceite
+exigido, não uma declaração de aprovação manual.
 
 **Limites**: navegação principal/login/logout/PDF continuam tradicionais. Sucesso de upload,
 confirmação, criação/edição e exclusão pode navegar por `redirect`; não é uma SPA. Ações locais

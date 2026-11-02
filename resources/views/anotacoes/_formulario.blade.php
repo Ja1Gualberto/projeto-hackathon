@@ -25,7 +25,7 @@
         <p class="text-sm text-texto-suave">Passam a constar no perfil como "observada em entrevista".</p>
         <div class="max-w-sm">
             <label for="filtrar-observadas" class="sr-only">Filtrar competências observadas</label>
-            <input id="filtrar-observadas" type="search" data-filtrar-chips="#competencias-observadas" placeholder="Filtrar competências" class="w-full rounded-lg border border-borda px-3 py-2 text-sm">
+            <input id="filtrar-observadas" type="search" data-filtrar-chips="#competencias-observadas" placeholder="Filtrar competências" class="w-full rounded-lg border border-borda-campo px-3 py-2 text-sm">
         </div>
         <div id="competencias-observadas" class="flex max-h-56 flex-col gap-4 overflow-y-auto p-1">
             @foreach (['soft' => 'Comportamentais', 'hard' => 'Técnicas'] as $categoria => $rotulo)

@@ -24,7 +24,7 @@
                 Manter conectado
             </label>
 
-            <x-botao type="submit" tamanho="lg" class="w-full">
+            <x-botao type="submit" tamanho="lg" class="w-full" data-carregando>
                 Entrar
                 <x-icone nome="seta" class="size-4" />
             </x-botao>

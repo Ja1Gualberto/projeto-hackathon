@@ -2,6 +2,7 @@ import { anunciar, aplicarFragmentos, limparErros, mesclarFragmento, mesmaOrigem
 
 const pendentes = new WeakSet();
 const temporizadores = new WeakMap();
+const botoesEmEnvio = new WeakMap();
 const SELETOR_TEXTO = 'input[type="text"], input[type="search"], textarea';
 
 /**
@@ -20,6 +21,38 @@ function focarRegiaoAtualizada(regioes, doc) {
 
 export function suportaAjax() {
     return typeof fetch === 'function' && typeof FormData === 'function' && typeof AbortController === 'function';
+}
+
+/**
+ * Formulário tradicional (login, ou navegador sem fetch): o botão data-carregando mostra
+ * "Processando…" até a próxima página. Só bloqueia depois do evento, senão o navegador deixaria
+ * de enviar o name/value do botão.
+ */
+function indicarEnvioTradicional(formulario) {
+    const botao = formulario.querySelector('[data-carregando]');
+    if (!botao) {
+        return;
+    }
+    const conteudo = Array.from(botao.childNodes);
+    setTimeout(() => {
+        botao.disabled = true;
+        botao.textContent = 'Processando…';
+    });
+    botoesEmEnvio.set(botao, conteudo);
+}
+
+/**
+ * Ao voltar pelo histórico, o navegador pode restaurar a página como estava: libera os botões.
+ */
+function restaurarBotoesEmEnvio(doc) {
+    doc.querySelectorAll('[data-carregando]').forEach((botao) => {
+        const conteudo = botoesEmEnvio.get(botao);
+        if (conteudo) {
+            botao.disabled = false;
+            botao.replaceChildren(...conteudo);
+            botoesEmEnvio.delete(botao);
+        }
+    });
 }
 
 export async function enviarFormulario(formulario, botao = null, confirmar = (texto) => globalThis.confirm?.(texto) ?? false) {
@@ -104,8 +137,11 @@ export function registrarFormularios(doc = document) {
         }
         if (formulario.dataset.confirmar && !(globalThis.confirm?.(formulario.dataset.confirmar) ?? false)) {
             evento.preventDefault();
+            return undefined;
         }
+        return indicarEnvioTradicional(formulario);
     });
+    doc.defaultView?.addEventListener('pageshow', () => restaurarBotoesEmEnvio(doc));
 
     const autoenviar = (evento) => {
         const campo = evento.target;

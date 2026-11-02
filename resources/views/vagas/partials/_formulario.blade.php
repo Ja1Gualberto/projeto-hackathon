@@ -47,7 +47,7 @@
 
     <div class="max-w-sm">
         <label for="filtrar-competencias-vaga" class="mb-1.5 block text-sm font-medium">Filtrar competências</label>
-        <input id="filtrar-competencias-vaga" type="search" data-filtrar-chips="#competencias-vaga" placeholder="Ex.: Python" class="w-full rounded-lg border border-borda px-3 py-2 text-sm">
+        <input id="filtrar-competencias-vaga" type="search" data-filtrar-chips="#competencias-vaga" placeholder="Ex.: Python" class="w-full rounded-lg border border-borda-campo px-3 py-2 text-sm">
     </div>
 
     <div id="competencias-vaga" class="flex flex-col gap-6">
@@ -66,7 +66,7 @@
                             {{-- A linha fica destacada enquanto um peso estiver escolhido, também sem recarregar. --}}
                             <div class="flex items-center justify-between gap-3 rounded-lg border border-borda px-3 py-2 has-[option:checked:not([value=''])]:border-primaria-600 has-[option:checked:not([value=''])]:bg-primaria-50">
                                 <label for="{{ $idCampo }}" class="min-w-0 text-sm font-medium wrap-anywhere">{{ $competencia->nome }}</label>
-                                <select id="{{ $idCampo }}" name="competencias[{{ $competencia->id }}][peso]" @if ($erro) aria-invalid="true" aria-describedby="{{ $idCampo }}-erro" @endif class="shrink-0 rounded-md border border-borda bg-superficie py-1 pr-7 pl-2 text-sm focus:border-primaria-500 focus:ring-2 focus:ring-primaria-200 focus:outline-none">
+                                <select id="{{ $idCampo }}" name="competencias[{{ $competencia->id }}][peso]" @if ($erro) aria-invalid="true" aria-describedby="{{ $idCampo }}-erro" @endif class="shrink-0 rounded-md border border-borda-campo bg-superficie py-1 pr-7 pl-2 text-sm focus:border-primaria-600 focus:ring-2 focus:ring-primaria-400 focus:outline-none">
                                     <option value="">Não usar</option>
                                     @foreach (\App\Enums\PesoCompetencia::cases() as $peso)
                                         <option value="{{ $peso->value }}" @selected($pesoAtual === (string) $peso->value)>{{ $peso->value }} · {{ $peso->rotulo() }}</option>

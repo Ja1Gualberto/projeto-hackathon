@@ -1,6 +1,5 @@
 @import 'tailwindcss';
 
-@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
 @source '../**/*.blade.php';
 @source '../**/*.js';
@@ -12,7 +11,9 @@
  * - texto e texto-suave sobre superfície/fundo;
  * - servidor-800 sobre servidor-100 e estagiario-800 sobre estagiario-100;
  * - branco sobre primaria-600/700;
- * - score-alto, score-medio e score-baixo sobre branco (≥ 4.5:1).
+ * - score-alto, score-medio e score-baixo sobre branco (≥ 4.5:1);
+ * - borda-campo sobre branco e fundo, e o foco primaria-400 (≥ 3:1, componentes de interface).
+ * `borda` é só decorativa, para separar áreas: contorno de campo usa `borda-campo`.
  */
 @theme {
     --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
@@ -59,6 +60,7 @@
     --color-superficie: #ffffff;
     --color-fundo: #f4f6fa;
     --color-borda: #dbe2ec;
+    --color-borda-campo: #7b8aa0;
     --color-texto: #172033;
     --color-texto-suave: #4b5568;
 
@@ -80,8 +82,17 @@
         outline-offset: 2px;
     }
 
+    ::placeholder {
+        color: #64748b;
+        opacity: 1;
+    }
+
     dialog::backdrop {
         background-color: rgb(15 23 42 / 0.55);
+    }
+
+    dialog[open] {
+        animation: alerta-entrada 150ms ease-out;
     }
 }
 
@@ -160,7 +171,8 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    [data-alerta-ativo] {
+    [data-alerta-ativo],
+    dialog[open] {
         animation: none;
         transition: none;
     }
