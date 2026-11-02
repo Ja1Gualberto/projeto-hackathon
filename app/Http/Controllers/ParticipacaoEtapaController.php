@@ -8,8 +8,10 @@ use App\Models\Vaga;
 use App\Services\Selecao\SelecaoService;
 use App\Services\Selecao\VisibilidadeCandidatoService;
 use App\Services\VagaService;
+use App\Services\VagaTelaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use stdClass;
 
 class ParticipacaoEtapaController extends Controller
 {
@@ -17,11 +19,12 @@ class ParticipacaoEtapaController extends Controller
         private SelecaoService $selecao,
         private VisibilidadeCandidatoService $visibilidade,
         private VagaService $vagas,
+        private VagaTelaService $tela,
     ) {}
 
     /**
-     * Move o candidato e, em AJAX, devolve a região inteira já no estado posterior à movimentação
-     * (`quadro-vaga` ou `perfil-na-vaga`), para nada revelado sobrar na tela ao voltar à triagem.
+     * Move o candidato e devolve os dados do quadro ou o fragmento do perfil no estado final,
+     * para nada revelado sobrar na tela ao voltar à triagem.
      */
     public function update(MoverEtapaRequest $request, Vaga $vaga, Candidato $candidato): RedirectResponse|JsonResponse
     {
@@ -30,13 +33,12 @@ class ParticipacaoEtapaController extends Controller
         $mensagem = $this->selecao->mensagemDeMovimentacao($candidato, $etapa);
 
         if ($request->expectsJson()) {
-            $fragmento = $request->vemDoPerfil()
-                ? ['perfil-na-vaga' => view('participacoes.partials._perfil', $this->visibilidade->telaDoPerfil($vaga, $candidato))->render()]
-                : ['quadro-vaga' => view('vagas.partials._quadro', $this->vagas->quadro($vaga))->render()];
-
             return response()->json([
                 'message' => $mensagem,
-                'fragments' => $fragmento,
+                'fragments' => $request->vemDoPerfil()
+                    ? ['perfil-na-vaga' => view('participacoes.partials._perfil', $this->visibilidade->telaDoPerfil($vaga, $candidato))->render()]
+                    : new stdClass,
+                ...($request->vemDoPerfil() ? [] : ['data' => ['quadro-vaga' => $this->tela->quadro($this->vagas->quadro($vaga))]]),
                 'redirect' => null,
             ])->header('Cache-Control', 'private, no-store');
         }

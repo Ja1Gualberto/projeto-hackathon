@@ -174,10 +174,11 @@ class PerfilEnergiaTest extends TestCase
         $this->assertSame($antes->pluck('codigo')->all(), $depois->pluck('codigo')->all());
         $this->assertSame([100, 0], $depois->map(fn ($item): int => $item->resultado->percentual)->all());
         $this->assertSame([83, 100], $depois->pluck('proximidadeEnergia')->all());
-        $this->actingAs(User::factory()->create())->get(route('vagas.show', $vaga))->assertOk()->assertSee('Energia: 83% de proximidade');
-        $html = $this->getJson(route('vagas.show', $vaga))->assertOk()->json('fragments.quadro-vaga');
-        $this->assertStringContainsString('Energia: 83% de proximidade', $html);
-        $this->assertStringNotContainsString($primeiro->nome, $html);
+        $this->actingAs(User::factory()->create())->get(route('vagas.show', $vaga))->assertOk()
+            ->assertViewHas('dadosTela', fn (string $json): bool => json_decode($json, true)['colunas']['triagem'][0]['proximidadeEnergia'] === 83);
+        $this->getJson(route('vagas.show', $vaga))->assertOk()
+            ->assertJsonPath('data.quadro-vaga.colunas.triagem.0.proximidadeEnergia', 83)
+            ->assertJsonPath('data.quadro-vaga.colunas.triagem.0.nome', null);
     }
 
     #[TestWith([['dinamico_analitico' => 2], ['energia.individual_equipe', 'energia.execucao_planejamento']])]

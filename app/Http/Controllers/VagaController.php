@@ -5,28 +5,29 @@ namespace App\Http\Controllers;
 use App\Http\Requests\SalvarVagaRequest;
 use App\Models\Vaga;
 use App\Services\VagaService;
+use App\Services\VagaTelaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Js;
 use Illuminate\View\View;
 use stdClass;
 
 class VagaController extends Controller
 {
-    public function __construct(private VagaService $vagas) {}
+    public function __construct(private VagaService $vagas, private VagaTelaService $tela) {}
 
     public function index(): View
     {
-        return view('vagas.index', $this->vagas->listar());
+        return view('vagas.index', ['dadosTela' => $this->jsonInicial($this->tela->lista($this->vagas->listar()))]);
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
         return view('vagas.create', [
-            'vaga' => new Vaga,
-            'catalogo' => $this->vagas->catalogo(),
-            'pesos' => [],
+            'dadosTela' => $this->dadosFormulario($request, new Vaga, []),
         ]);
     }
 
@@ -37,26 +38,27 @@ class VagaController extends Controller
         return $this->navegarParaQuadro($request, $vaga, 'Vaga criada.');
     }
 
-    /**
-     * Quadro da vaga. Em AJAX ("Atualizar quadro") devolve só a região `quadro-vaga`, com a
-     * mesma leitura e ordenação da página completa.
-     */
+    /** O HTML é estático; a leitura inicial e as atualizações usam os mesmos dados. */
     public function show(Request $request, Vaga $vaga): Response|JsonResponse
     {
-        $quadro = $this->vagas->quadro($vaga);
+        $quadro = $this->tela->quadro($this->vagas->quadro($vaga));
 
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => null,
-                'fragments' => ['quadro-vaga' => view('vagas.partials._quadro', $quadro)->render()],
+                'fragments' => new stdClass,
+                'data' => ['quadro-vaga' => $quadro],
                 'redirect' => null,
             ])->header('Cache-Control', 'private, no-store');
         }
 
-        return response()->view('vagas.show', $quadro)->header('Cache-Control', 'private, no-store');
+        return response()->view('vagas.show', [
+            'vaga' => $vaga,
+            'dadosTela' => $this->jsonInicial([...$quadro, 'errors' => $request->session()->get('errors')?->getBag('default')->messages() ?? []]),
+        ])->header('Cache-Control', 'private, no-store');
     }
 
-    public function edit(Vaga $vaga): View|RedirectResponse
+    public function edit(Request $request, Vaga $vaga): View|RedirectResponse
     {
         if (! $vaga->estaAberta()) {
             return redirect()->route('vagas.show', $vaga)->withErrors(['vaga' => VagaService::MENSAGEM_VAGA_ENCERRADA]);
@@ -64,8 +66,7 @@ class VagaController extends Controller
 
         return view('vagas.edit', [
             'vaga' => $vaga,
-            'catalogo' => $this->vagas->catalogo(),
-            'pesos' => $this->vagas->pesosAtuais($vaga),
+            'dadosTela' => $this->dadosFormulario($request, $vaga, $this->vagas->pesosAtuais($vaga)),
         ]);
     }
 
@@ -89,5 +90,21 @@ class VagaController extends Controller
         }
 
         return redirect()->to($destino)->with('status', $mensagem);
+    }
+
+    /** @param array<int, int> $pesos */
+    private function dadosFormulario(Request $request, Vaga $vaga, array $pesos): string
+    {
+        return $this->jsonInicial([
+            ...$this->tela->formulario($vaga, $this->vagas->catalogo(), $pesos),
+            'oldInput' => $request->session()->hasOldInput() ? Arr::only($request->session()->getOldInput(), ['titulo', 'area', 'tipo_candidato', 'descricao', 'competencias', 'energia']) : null,
+            'errors' => $request->session()->get('errors')?->getBag('default')->messages() ?? [],
+        ]);
+    }
+
+    /** @param array<string, mixed> $dados */
+    private function jsonInicial(array $dados): string
+    {
+        return Js::encode($dados, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 }

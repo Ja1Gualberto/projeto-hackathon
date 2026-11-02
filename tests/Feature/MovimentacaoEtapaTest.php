@@ -157,16 +157,13 @@ class MovimentacaoEtapaTest extends TestCase
         $this->mover('entrevista', $emEntrevista);
         $this->mover('aprovado', $aprovado);
 
-        $html = $this->get(route('vagas.show', $this->vaga))->assertOk()->getContent();
-
-        $this->assertMatchesRegularExpression('/data-etapa="triagem".*'.$this->candidato->codigo.'.*data-etapa="entrevista".*Joana Prates.*data-etapa="aprovado".*Caio Teles/s', $html);
-        $this->assertStringContainsString('Mover para Entrevista', $html);
-        $this->assertStringContainsString('Aprovar', $html);
-        $this->assertStringContainsString('Voltar para Triagem', $html);
-        $this->assertStringContainsString('Voltar para Entrevista', $html);
-        $this->assertStringContainsString('draggable="true"', $html);
-        $this->assertStringContainsString(route('vagas.candidatos.show', [$this->vaga, $this->candidato->codigo]), $html);
-        $this->assertStringContainsString('3 candidatos elegíveis', $html);
+        $this->getJson(route('vagas.show', $this->vaga))->assertOk()
+            ->assertJsonPath('data.quadro-vaga.colunas.triagem.0.codigo', $this->candidato->codigo)
+            ->assertJsonPath('data.quadro-vaga.colunas.entrevista.0.nome', 'Joana Prates')
+            ->assertJsonPath('data.quadro-vaga.colunas.aprovado.0.nome', 'Caio Teles')
+            ->assertJsonPath('data.quadro-vaga.colunas.triagem.0.elegivel', true)
+            ->assertJsonPath('data.quadro-vaga.colunas.triagem.0.perfilUrl', route('vagas.candidatos.show', [$this->vaga, $this->candidato->codigo]))
+            ->assertJsonPath('data.quadro-vaga.totalElegiveis', 3);
     }
 
     public function test_desativado_com_participacao_continua_visivel_esmaecido_e_sem_acoes(): void
@@ -174,11 +171,10 @@ class MovimentacaoEtapaTest extends TestCase
         $this->mover('entrevista');
         $this->candidato->update(['status' => 'desativado']);
 
-        $html = $this->get(route('vagas.show', $this->vaga))->assertOk()->getContent();
-
-        $this->assertMatchesRegularExpression('/data-etapa="entrevista".*'.preg_quote($this->candidato->nome, '/').'.*Desativado/s', $html);
-        $this->assertStringNotContainsString('Aprovar', $html);
-        $this->assertStringNotContainsString('draggable="true"', $html);
+        $this->getJson(route('vagas.show', $this->vaga))->assertOk()
+            ->assertJsonPath('data.quadro-vaga.colunas.entrevista.0.nome', $this->candidato->nome)
+            ->assertJsonPath('data.quadro-vaga.colunas.entrevista.0.desativado', true)
+            ->assertJsonPath('data.quadro-vaga.colunas.entrevista.0.elegivel', false);
 
         $this->mover('aprovado')->assertSessionHasErrors('etapa');
     }
@@ -221,17 +217,15 @@ class MovimentacaoEtapaTest extends TestCase
             ->assertJsonPath('message', $this->candidato->nome.' está agora em Entrevista.')
             ->assertJsonPath('redirect', null);
 
-        $this->assertSame(['quadro-vaga'], array_keys($resposta->json('fragments')));
-        $this->assertMatchesRegularExpression(
-            '/data-etapa="entrevista".*'.preg_quote($this->candidato->nome, '/').'/s',
-            $resposta->json('fragments.quadro-vaga'),
-        );
+        $this->assertSame(['quadro-vaga'], array_keys($resposta->json('data')));
+        $resposta->assertJsonPath('fragments', [])
+            ->assertJsonPath('data.quadro-vaga.colunas.entrevista.0.nome', $this->candidato->nome);
         $this->assertSame(1, MovimentacaoEtapa::query()->count());
     }
 
     public function test_sem_contexto_o_json_devolve_o_quadro_e_com_perfil_devolve_o_perfil(): void
     {
-        $this->mover('entrevista', json: true)->assertOk()->assertJsonStructure(['fragments' => ['quadro-vaga']]);
+        $this->mover('entrevista', json: true)->assertOk()->assertJsonStructure(['data' => ['quadro-vaga']]);
 
         $perfil = $this->mover('aprovado', extra: ['contexto' => 'perfil'], json: true)->assertOk();
 

@@ -6,3 +6,4 @@ import './modulos/kanban.js';
 import './modulos/busca.js';
 import './modulos/importacao.js';
 import './modulos/menu.js';
+import './modulos/vagas.js';

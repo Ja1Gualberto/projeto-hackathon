@@ -87,7 +87,7 @@ class RankingVagaTest extends TestCase
             ->assertSee($estagiario->codigo)
             ->assertSee($servidor->codigo)
             ->assertDontSee($desativado->codigo)
-            ->assertSee('2 candidatos elegíveis');
+            ->assertViewHas('dadosTela', fn (string $json): bool => json_decode($json, true)['totalElegiveis'] === 2);
     }
 
     public function test_ordem_segue_percentual_peso_essencial_data_de_cadastro_e_id(): void
@@ -144,7 +144,7 @@ class RankingVagaTest extends TestCase
 
         foreach ($ranking as $item) {
             $resposta->assertSee($item->resultado->explicacao());
-            $resposta->assertSee('Aderência de '.$item->resultado->percentual.'%');
+            $this->quadroJson($vaga)->assertJsonPath('data.quadro-vaga.colunas.triagem', fn (array $itens): bool => collect($itens)->firstWhere('codigo', $item->codigo)['percentual'] === $item->resultado->percentual);
         }
 
         $resposta->assertSee('100% — tem todas as 3 competências')
@@ -196,7 +196,7 @@ class RankingVagaTest extends TestCase
         $vaga = $this->vaga(['Python' => 3]);
 
         $html = $this->get(route('vagas.show', $vaga))->assertOk()->assertSee($candidato->codigo)->getContent();
-        $fragmento = $this->quadroJson($vaga)->assertOk()->json('fragments.quadro-vaga');
+        $fragmento = json_encode($this->quadroJson($vaga)->assertOk()->json('data.quadro-vaga'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
         foreach ([$html, $fragmento] as $conteudo) {
             $this->assertStringContainsString($candidato->codigo, $conteudo);
@@ -222,10 +222,9 @@ class RankingVagaTest extends TestCase
             ->assertJsonPath('message', null)
             ->assertJsonPath('redirect', null);
 
-        $this->assertSame(['quadro-vaga'], array_keys($resposta->json('fragments')));
-        $fragmento = $resposta->json('fragments.quadro-vaga');
-        $this->assertStringNotContainsString('<html', $fragmento);
-        $this->assertStringNotContainsString('Navegação principal', $fragmento);
+        $resposta->assertJsonPath('fragments', []);
+        $this->assertSame(['quadro-vaga'], array_keys($resposta->json('data')));
+        $itens = $resposta->json('data.quadro-vaga.colunas.triagem');
 
         $ranking = app(RankingVagaService::class)->ranquear($vaga);
         $ordem = $ranking->flatMap(fn (ItemRankingDTO $item): array => [$item->codigo, $item->resultado->explicacao()])->all();
@@ -235,10 +234,7 @@ class RankingVagaTest extends TestCase
             $ranking->map(fn (ItemRankingDTO $item): string => $item->codigo)->all(),
         );
         $this->get(route('vagas.show', $vaga))->assertSeeInOrder($ordem)->assertHeader('Cache-Control', 'no-store, private');
-        $this->assertMatchesRegularExpression(
-            '/'.implode('.*', array_map(fn (string $trecho): string => preg_quote(e($trecho), '/'), $ordem)).'/s',
-            $fragmento,
-        );
+        $this->assertSame($ordem, collect($itens)->flatMap(fn (array $item): array => [$item['codigo'], $item['explicacao']])->all());
     }
 
     public function test_visitante_nao_acessa_o_quadro_em_html_nem_em_json(): void
@@ -287,7 +283,7 @@ class RankingVagaTest extends TestCase
 
         $this->get(route('vagas.show', $vaga))
             ->assertOk()
-            ->assertSee('12 candidatos elegíveis')
+            ->assertViewHas('dadosTela', fn (string $json): bool => json_decode($json, true)['totalElegiveis'] === 12)
             ->assertSeeInOrder($codigos)
             ->assertSee('80% — tem 4 de 5 competências; não identificado: Git (peso 2)')
             ->assertDontSee('Bruno Peixoto');

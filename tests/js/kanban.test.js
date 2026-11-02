@@ -2,12 +2,15 @@ import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 import { enviarFormulario } from '../../resources/js/modulos/formularios.js';
 import { registrarQuadro } from '../../resources/js/modulos/kanban.js';
+import { registrarRenderizador } from '../../resources/js/modulos/ajax.js';
 
 const fetchOriginal = globalThis.fetch;
 const formDataOriginal = globalThis.FormData;
+const confirmOriginal = globalThis.confirm;
 afterEach(() => {
     globalThis.fetch = fetchOriginal;
     globalThis.FormData = formDataOriginal;
+    globalThis.confirm = confirmOriginal;
 });
 
 function resposta(dados, status = 200) {
@@ -370,4 +373,48 @@ test('soltar na própria coluna ou sem arrastar um card não envia nada', async 
     assert.equal(mesma.prevenido, false);
     assert.equal(chamadas, 0);
     assert.equal(quadro.regiao.innerHTML, 'quadro anterior');
+});
+
+test('Atualizar quadro aceita dados JSON e monta a região no JavaScript, sem HTML do servidor', async () => {
+    const quadro = montarQuadro();
+    const dados = { vaga: { titulo: 'Atualizada' } };
+    registrarRenderizador('quadro-vaga', (recebido) => {
+        assert.deepEqual(recebido, dados);
+        return { textContent: recebido.vaga.titulo };
+    });
+    quadro.regiao.replaceChildren = (novo) => { quadro.regiao.innerHTML = novo.textContent; };
+    globalThis.fetch = async () => resposta({ ...envelope({}), data: { 'quadro-vaga': dados } });
+
+    await quadro.clicar().promessa;
+
+    assert.equal(quadro.regiao.innerHTML, 'Atualizada');
+    assert.deepEqual(quadro.focados, ['atualizar']);
+});
+
+test('encerramento usa uma confirmação e impede movimentações e atualização concorrentes', async () => {
+    const quadro = montarMovimentacao();
+    const { form } = quadro.formulario();
+    form.matches = (seletor) => seletor === 'form[data-encerrar-vaga]';
+    form.dataset.confirmar = 'Encerrar a vaga?';
+    let confirmacoes = 0;
+    globalThis.confirm = () => { confirmacoes++; return true; };
+    let chamadas = 0;
+    let liberar;
+    globalThis.fetch = () => {
+        chamadas++;
+        return new Promise((resolve) => { liberar = () => resolve(resposta({ ...envelope({}), data: { 'quadro-vaga': { encerrada: true } } })); });
+    };
+    registrarRenderizador('quadro-vaga', () => 'encerrada');
+    quadro.regiao.replaceChildren = (novo) => { quadro.regiao.innerHTML = novo; };
+
+    const envio = quadro.docEventos.submit(quadro.evento(form));
+    await quadro.docEventos.submit(quadro.evento(quadro.formulario('CAND-0077').form, { submitter: { name: 'etapa', value: 'entrevista' } }));
+    await quadro.docEventos.click(quadro.evento({ closest: () => ({ dentroDoQuadro: true }) }, { button: 0 }));
+    assert.equal(chamadas, 1);
+    liberar();
+    await envio;
+
+    assert.equal(confirmacoes, 1);
+    assert.equal(quadro.regiao.innerHTML, 'encerrada');
+    assert.equal(quadro.atributos.has('aria-busy'), false);
 });

@@ -344,9 +344,10 @@ class AjaxSegurancaTest extends TestCase
                 ->assertHeader('Content-Type', 'application/json');
             $envelope = $resposta->json();
 
-            $this->assertEqualsCanonicalizing(['message', 'fragments', 'redirect'], array_keys($envelope));
-            $this->assertNotSame([], $envelope['fragments']);
+            $this->assertEqualsCanonicalizing(isset($envelope['data']) ? ['message', 'fragments', 'redirect', 'data'] : ['message', 'fragments', 'redirect'], array_keys($envelope));
+            $this->assertNotSame([], [...array_keys($envelope['fragments']), ...array_keys($envelope['data'] ?? [])]);
             $this->assertSame([], array_diff(array_keys($envelope['fragments']), self::REGIOES));
+            $this->assertSame([], array_diff(array_keys($envelope['data'] ?? []), ['quadro-vaga']));
         }
     }
 
@@ -357,7 +358,8 @@ class AjaxSegurancaTest extends TestCase
         $envelope = $this->getJson(route('vagas.show', $this->vaga).'?regiao=secao-lgpd&fragments[]=secao-lgpd&view=candidatos.show')
             ->assertOk()->json();
 
-        $this->assertSame(['quadro-vaga'], array_keys($envelope['fragments']));
+        $this->assertSame([], $envelope['fragments']);
+        $this->assertSame(['quadro-vaga'], array_keys($envelope['data']));
     }
 
     public function test_validacao_em_json_responde_422_sem_html_nem_cache(): void

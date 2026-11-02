@@ -94,7 +94,7 @@ export async function enviarFormulario(formulario, botao = null, confirmar = (te
             ? mesclarFragmento(resposta, formulario.dataset.ajaxMesclar, formulario.ownerDocument)
             : (aplicarFragmentos(resposta, formulario.ownerDocument), []);
         if (formulario.isConnected === false) {
-            focarRegiaoAtualizada(Object.keys(resposta.fragments), formulario.ownerDocument);
+            focarRegiaoAtualizada([...Object.keys(resposta.fragments), ...Object.keys(resposta.data ?? {})], formulario.ownerDocument);
         }
         anunciar(resposta.message ?? 'Operação concluída.', formulario.ownerDocument, 'sucesso');
         formulario.dispatchEvent?.(new CustomEvent('ajax:sucesso', { bubbles: true, detail: { resposta, novos } }));
@@ -140,6 +140,9 @@ export function registrarFormularios(doc = document) {
 
     doc.addEventListener('submit', (evento) => {
         const formulario = evento.target;
+        if (formulario.matches('form[data-encerrar-vaga]') && suportaAjax()) {
+            return undefined;
+        }
         if (formulario.matches('form[data-ajax]') && suportaAjax()) {
             evento.preventDefault();
             clearTimeout(temporizadores.get(formulario));

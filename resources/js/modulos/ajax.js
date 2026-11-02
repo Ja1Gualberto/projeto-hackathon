@@ -4,6 +4,11 @@ const REGIOES = new Set([
     'resultados-candidatos', 'catalogo-competencias', 'quadro-vaga', 'perfil-na-vaga',
     'historico-anotacoes', 'competencias-candidato', 'situacao-candidato', 'secao-lgpd', 'secao-energia',
 ]);
+const renderizadores = new Map();
+
+export function registrarRenderizador(regiao, renderizar) {
+    renderizadores.set(regiao, renderizar);
+}
 
 const MENSAGENS = {
     401: 'Sua sessão expirou. Abra o login em outra aba e confira os dados antes de continuar.',
@@ -37,7 +42,7 @@ function objeto(valor) {
 }
 
 export function validarEnvelope(dados, base = globalThis.location?.href) {
-    if (!objeto(dados) || Object.keys(dados).length !== 3
+    if (!objeto(dados) || Object.keys(dados).length !== (Object.hasOwn(dados, 'data') ? 4 : 3)
         || !(dados.message === null || typeof dados.message === 'string')
         || !(dados.redirect === null || typeof dados.redirect === 'string') || !objeto(dados.fragments)) {
         throw new ErroAjax('O servidor enviou uma resposta inesperada.');
@@ -46,6 +51,10 @@ export function validarEnvelope(dados, base = globalThis.location?.href) {
         if (!REGIOES.has(regiao) || typeof html !== 'string') {
             throw new ErroAjax('O servidor enviou uma região inesperada.');
         }
+    }
+    if (Object.hasOwn(dados, 'data') && (!objeto(dados.data) || Object.entries(dados.data).some(([regiao, valor]) =>
+        regiao !== 'quadro-vaga' || !objeto(valor) || Object.hasOwn(dados.fragments, regiao)))) {
+        throw new ErroAjax('O servidor enviou dados inesperados.');
     }
     if (dados.redirect !== null) {
         mesmaOrigem(dados.redirect, base);
@@ -99,8 +108,19 @@ export function aplicarFragmentos(dados, doc = document, base = doc.baseURI) {
         }
         return [elemento, html];
     });
+    const atualizacoesDeDados = Object.entries(dados.data ?? {}).map(([id, valor]) => {
+        const elemento = doc.getElementById(id);
+        const renderizar = renderizadores.get(id);
+        if (!elemento || !renderizar) {
+            throw new ErroAjax('A região de atualização não está disponível nesta página.');
+        }
+        return [elemento, renderizar(valor, doc)];
+    });
     for (const [elemento, html] of atualizacoes) {
         elemento.innerHTML = html;
+    }
+    for (const [elemento, conteudo] of atualizacoesDeDados) {
+        elemento.replaceChildren(conteudo);
     }
 }
 
@@ -188,6 +208,11 @@ export function mostrarErros(formulario, erro, { focar = true } = {}) {
     // Rádios e checkboxes de um mesmo grupo compartilham um único aviso.
     const avisosDeGrupo = new Map();
     for (const [nome, mensagens] of Object.entries(erro.errors ?? {})) {
+        const avisoFixo = avisosFixos.find((elemento) => elemento.dataset.erroCampo === nome);
+        if (avisoFixo) {
+            avisoFixo.hidden = false;
+            avisoFixo.textContent = mensagens.join(' ');
+        }
         const nomeBase = nome.replace(/\.\d+$/, '');
         const campos = Array.from(formulario.elements).filter((campo) => {
             const chave = (campo.name ?? '').replace(/\[([^\]]*)\]/g, '.$1').replace(/\.$/, '');

@@ -88,7 +88,7 @@ class VagaTest extends TestCase
             ->assertSee('Competências técnicas (hard skills)')
             ->assertSee('Competências comportamentais (soft skills)')
             ->assertSeeInOrder(['Não usar', '1 · Desejável', '2 · Importante', '3 · Essencial'])
-            ->assertSee('name="competencias['.$python->id.'][peso]"', false)
+            ->assertViewHas('dadosTela', fn (string $json): bool => json_decode($json, true)['catalogo']['hard'][0]['id'] === $python->id)
             ->assertSee('data-filtrar-chips', false)
             ->assertSee('data-ajax', false);
     }
@@ -129,7 +129,7 @@ class VagaTest extends TestCase
         $this->from(route('vagas.create'))->followingRedirects()->post(route('vagas.store'), $dados)
             ->assertOk()
             ->assertSee(self::MENSAGEM_SEM_COMPETENCIAS)
-            ->assertSee('value="Estagiário de Desenvolvimento"', false);
+            ->assertViewHas('dadosTela', fn (string $json): bool => json_decode($json, true)['oldInput']['titulo'] === 'Estagiário de Desenvolvimento');
 
         $this->assertSame(0, Vaga::query()->count());
     }
@@ -184,20 +184,13 @@ class VagaTest extends TestCase
         $python = $this->competencia('Python');
         $git = $this->competencia('Git');
 
-        $html = $this->get(route('vagas.edit', $vaga))
+        $dados = json_decode($this->get(route('vagas.edit', $vaga))
             ->assertOk()
-            ->assertSee('value="Analista de Sistemas"', false)
-            ->getContent();
+            ->viewData('dadosTela'), true);
 
-        $this->assertStringContainsString('<option value="3" selected>', $this->selectDePeso($html, $python));
-        $this->assertStringNotContainsString('selected', $this->selectDePeso($html, $git));
-    }
-
-    private function selectDePeso(string $html, Competencia $competencia): string
-    {
-        $this->assertSame(1, preg_match('/<select[^>]*name="competencias\['.$competencia->id.'\]\[peso\]"[^>]*>(.*?)<\/select>/s', $html, $select));
-
-        return $select[1];
+        $this->assertSame('Analista de Sistemas', $dados['valores']['titulo']);
+        $this->assertSame(3, $dados['valores']['competencias'][$python->id]['peso']);
+        $this->assertArrayNotHasKey($git->id, $dados['valores']['competencias']);
     }
 
     public function test_edicao_atualiza_dados_competencias_e_pesos(): void
@@ -246,7 +239,7 @@ class VagaTest extends TestCase
             ->assertOk()
             ->assertSee('Vaga encerrada — somente consulta')
             ->assertSee($candidato->codigo)
-            ->assertDontSee('Encerrar vaga')
+            ->assertViewHas('dadosTela', fn (string $json): bool => json_decode($json, true)['vaga']['aberta'] === false)
             ->assertDontSee(route('vagas.edit', $vaga));
     }
 
@@ -287,10 +280,16 @@ class VagaTest extends TestCase
 
         $this->get(route('vagas.index'))
             ->assertOk()
-            ->assertViewHas('elegiveis', fn (array $elegiveis): bool => $elegiveis[$estagio->id] === 2)
-            ->assertSeeInOrder(['Vaga de estágio', 'Estagiários', '2 candidatos elegíveis'])
-            ->assertSeeInOrder(['Vaga para todos', 'Servidores e estagiários', '3 candidatos elegíveis'])
-            ->assertSeeInOrder(['Vaga encerrada', 'Encerrada', '1 candidato elegível'])
+            ->assertViewHas('dadosTela', function (string $json): bool {
+                $vagas = collect(json_decode($json, true)['vagas'])->keyBy('titulo');
+
+                return $vagas['Vaga de estágio']['totalElegiveis'] === 2
+                    && $vagas['Vaga para todos']['totalElegiveis'] === 3
+                    && $vagas['Vaga encerrada']['totalElegiveis'] === 1;
+            })
+            ->assertSeeInOrder(['Vaga de estágio', 'Estagiários'])
+            ->assertSeeInOrder(['Vaga para todos', 'Servidores e estagiários'])
+            ->assertSeeInOrder(['Vaga encerrada', 'Encerrada'])
             ->assertSee(route('vagas.show', $estagio))
             ->assertSee('Nova vaga');
     }
@@ -372,15 +371,65 @@ class VagaTest extends TestCase
             ->assertJsonPath('message', 'Vaga encerrada. O quadro fica disponível para consulta.')
             ->assertJsonPath('redirect', null);
 
-        $this->assertSame(['quadro-vaga'], array_keys($resposta->json('fragments')));
-        $fragmento = $resposta->json('fragments.quadro-vaga');
-        $this->assertStringContainsString('Vaga encerrada — somente consulta', $fragmento);
-        $this->assertStringContainsString($candidato->codigo, $fragmento);
-        $this->assertStringNotContainsString('Encerrar vaga', $fragmento);
-        $this->assertStringNotContainsString(route('vagas.edit', $vaga), $fragmento);
-        $this->assertStringNotContainsString('Otávio Brandão', $fragmento);
-        $this->assertStringNotContainsString('otavio@exemplo.com.br', $fragmento);
+        $resposta->assertJsonPath('fragments', [])
+            ->assertJsonPath('data.quadro-vaga.vaga.aberta', false)
+            ->assertJsonPath('data.quadro-vaga.vaga.editarUrl', null)
+            ->assertJsonPath('data.quadro-vaga.colunas.triagem.0.codigo', $candidato->codigo)
+            ->assertJsonPath('data.quadro-vaga.colunas.triagem.0.nome', null);
+        $this->assertStringNotContainsString('Otávio Brandão', $resposta->getContent());
+        $this->assertStringNotContainsString('otavio@exemplo.com.br', $resposta->getContent());
         $this->assertSame(StatusVaga::Encerrada, $vaga->refresh()->status);
+    }
+
+    public function test_dados_iniciais_e_atualizacao_do_quadro_tem_o_mesmo_contrato_sem_html(): void
+    {
+        $vaga = $this->vaga(['Python' => 3], ['tipo_candidato' => 'estagiario']);
+        Candidato::factory()->estagiario()->create();
+
+        $pagina = $this->get(route('vagas.show', $vaga))->assertOk();
+        $inicial = json_decode($pagina->viewData('dadosTela'), true);
+        unset($inicial['errors']);
+        $json = $this->getJson(route('vagas.show', $vaga))->assertOk()
+            ->assertJsonPath('fragments', [])
+            ->assertJsonPath('data.quadro-vaga', $inicial);
+
+        $this->assertStringNotContainsString('<article', $json->getContent());
+        $this->assertStringNotContainsString('<form', $json->getContent());
+    }
+
+    public function test_dados_iniciais_escapam_fechamento_de_script_sem_alterar_o_texto(): void
+    {
+        $ataque = '</script><script>alert("xss")</script>';
+        $vaga = $this->vaga(atributos: ['titulo' => $ataque, 'descricao' => $ataque]);
+
+        $pagina = $this->get(route('vagas.show', $vaga))->assertOk();
+        $dados = json_decode($pagina->viewData('dadosTela'), true);
+
+        $this->assertSame($ataque, $dados['vaga']['titulo']);
+        $this->assertSame($ataque, $dados['vaga']['descricao']);
+        $pagina->assertDontSee($ataque, false);
+        $this->assertStringNotContainsString('</script>', $pagina->viewData('dadosTela'));
+    }
+
+    public function test_formulario_recupera_apenas_campos_permitidos_apos_validacao(): void
+    {
+        $python = $this->competencia('Python');
+        $this->withSession(['_old_input' => [
+            '_token' => 'token-que-nao-deve-ir-para-o-json',
+            'titulo' => 'Tentativa de edição',
+            'competencias' => [$python->id => ['peso' => '']],
+            'energia' => ['dinamico_analitico' => ''],
+            'campo_extra' => 'nao-expor',
+        ]]);
+
+        $pagina = $this->get(route('vagas.create'))->assertOk();
+        $dados = json_decode($pagina->viewData('dadosTela'), true);
+
+        $this->assertSame('Tentativa de edição', $dados['oldInput']['titulo']);
+        $this->assertSame('', $dados['oldInput']['competencias'][$python->id]['peso']);
+        $this->assertSame('', $dados['oldInput']['energia']['dinamico_analitico']);
+        $this->assertArrayNotHasKey('_token', $dados['oldInput']);
+        $this->assertArrayNotHasKey('campo_extra', $dados['oldInput']);
     }
 
     public function test_seeder_cria_tres_vagas_abertas_sem_a_vaga_do_pitch(): void

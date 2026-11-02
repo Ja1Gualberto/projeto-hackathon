@@ -219,15 +219,16 @@ class TriagemAnonimaTest extends TestCase
 
         $resposta = $this->mover($this->vagaA, $this->candidato, 'entrevista', 'quadro', json: true)->assertOk();
         $this->assertStringContainsString(self::NOME, $resposta->json('message'));
-        $this->assertStringContainsString(self::NOME, $resposta->json('fragments.quadro-vaga'));
+        $this->assertStringContainsString(self::NOME, json_encode($resposta->json('data.quadro-vaga'), JSON_UNESCAPED_UNICODE));
 
         $volta = $this->mover($this->vagaA, $this->candidato, 'triagem', 'quadro', json: true)
             ->assertOk()
             ->assertHeader('Cache-Control', 'no-store, private');
-        $this->assertSame(['quadro-vaga'], array_keys($volta->json('fragments')));
+        $this->assertSame(['quadro-vaga'], array_keys($volta->json('data')));
         $this->assertStringContainsString($this->candidato->codigo, $volta->json('message'));
-        $this->assertSemIdentidade([$volta->json('message'), $volta->json('fragments.quadro-vaga')]);
-        $this->assertStringContainsString('Otávio Brandão', $volta->json('fragments.quadro-vaga'));
+        $quadro = json_encode($volta->json('data.quadro-vaga'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->assertSemIdentidade([$volta->json('message'), $quadro]);
+        $this->assertStringContainsString('Otávio Brandão', $quadro);
 
         $this->mover($this->vagaA, $this->candidato, 'entrevista', 'perfil', json: true);
         $perfil = $this->mover($this->vagaA, $this->candidato, 'triagem', 'perfil', json: true)->assertOk();
@@ -238,7 +239,7 @@ class TriagemAnonimaTest extends TestCase
         $this->assertStringNotContainsString('https://github.com/fernanda-demo', $fragmentoPerfil);
         $this->assertStringNotContainsString('Otávio Brandão', $fragmentoPerfil);
 
-        $quadroB = $this->getJson(route('vagas.show', $this->vagaB))->assertOk()->json('fragments.quadro-vaga');
+        $quadroB = json_encode($this->getJson(route('vagas.show', $this->vagaB))->assertOk()->json('data.quadro-vaga'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $this->assertSemIdentidade([$quadroB]);
         $this->assertSemIdentidade([$quadroB], $revelado);
     }

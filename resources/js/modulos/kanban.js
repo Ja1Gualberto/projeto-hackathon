@@ -8,9 +8,9 @@ import { enviarFormulario, suportaAjax } from './formularios.js';
  *   por ação explícita (sem polling).
  * - Os botões de etapa (form[data-mover-etapa]) usam o transporte comum de formularios.js. Enquanto
  *   uma ação está pendente, o quadro não aceita outra; nada é movido nem revelado antes da resposta
- *   do servidor, que devolve a região inteira já no estado final.
+ *   do servidor, que devolve os dados finais para o JavaScript montar o quadro.
  * - Arrastar e soltar (opcional, T111) envia o mesmo formulário do card com a etapa da coluna de destino.
- * Encerrar a vaga continua no formulário data-ajax comum.
+ * Encerrar compartilha o bloqueio do quadro com as movimentações e a atualização.
  */
 const MENSAGENS_PROPRIAS = new Set([401, 403, 404, 419]);
 const REGIOES_DE_MOVIMENTACAO = '#quadro-vaga, #perfil-na-vaga';
@@ -74,7 +74,8 @@ export function registrarQuadro(doc = document) {
         anunciar('Atualizando quadro…', doc);
         try {
             const dados = await solicitar(link.href, { base: doc.baseURI });
-            if (dados.redirect !== null || Object.keys(dados.fragments).length !== 1 || typeof dados.fragments['quadro-vaga'] !== 'string') {
+            const regioes = [...Object.keys(dados.fragments), ...Object.keys(dados.data ?? {})];
+            if (dados.redirect !== null || regioes.length !== 1 || regioes[0] !== 'quadro-vaga') {
                 throw new ErroAjax('O servidor enviou uma resposta inesperada.');
             }
             aplicarFragmentos(dados, doc);
@@ -95,7 +96,7 @@ export function registrarQuadro(doc = document) {
 
     doc.addEventListener('submit', (evento) => {
         const formulario = evento.target;
-        if (!formulario.matches?.('form[data-mover-etapa]')) {
+        if (!formulario.matches?.('form[data-mover-etapa]') && !formulario.matches?.('form[data-encerrar-vaga]')) {
             return undefined;
         }
         evento.preventDefault();
