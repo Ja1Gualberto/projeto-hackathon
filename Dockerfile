@@ -29,7 +29,7 @@ RUN COMPOSER_ALLOW_SUPERUSER=1 composer install \
     --no-progress \
     --optimize-autoloader
 
-FROM node:22-bookworm-slim AS assets
+FROM node:22-bookworm-slim AS frontend
 
 WORKDIR /app
 
@@ -40,6 +40,8 @@ COPY --from=dependencies /var/www/html/resources ./resources
 COPY --from=dependencies /var/www/html/public ./public
 COPY --from=dependencies /var/www/html/vendor ./vendor
 COPY vite.config.js ./
+
+FROM frontend AS assets
 
 RUN npm run build
 

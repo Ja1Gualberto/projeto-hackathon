@@ -16,6 +16,16 @@ services:
       DB_URL: ""
       DB_SOCKET: ""
     volumes:
+      # O código local fica disponível imediatamente, sem reconstruir a imagem.
+      - ./app:/var/www/html/app
+      - ./bootstrap/app.php:/var/www/html/bootstrap/app.php
+      - ./bootstrap/providers.php:/var/www/html/bootstrap/providers.php
+      - ./config:/var/www/html/config
+      - ./database:/var/www/html/database
+      - ./public:/var/www/html/public
+      - ./resources:/var/www/html/resources
+      - ./routes:/var/www/html/routes
+      - ./tests:/var/www/html/tests
       - type: bind
         source: ./.env
         target: /var/www/html/.env
@@ -25,6 +35,26 @@ services:
     depends_on:
       mysql:
         condition: service_healthy
+
+  vite:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend
+    init: true
+    command: ["npm", "run", "dev"]
+    ports:
+      - "127.0.0.1:${DOCKER_VITE_PORT:-5173}:${DOCKER_VITE_PORT:-5173}"
+    environment:
+      VITE_SERVER_HOST: 0.0.0.0
+      VITE_PORT: ${DOCKER_VITE_PORT:-5173}
+      VITE_HMR_HOST: localhost
+    volumes:
+      - ./app:/app/app:ro
+      - ./resources:/app/resources:ro
+      - ./routes:/app/routes:ro
+      - ./public:/app/public
+      - ./vite.config.js:/app/vite.config.js:ro
 
   mysql:
     image: mysql:8.4

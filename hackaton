@@ -15,7 +15,7 @@ COMPOSE_BIN=()
 
 # "comando|descrição" — usado na listagem de ajuda.
 COMMANDS=(
-    "dev|Compila as imagens e inicia os serviços em segundo plano"
+    "dev|Inicia a aplicação e o Vite com atualização automática em segundo plano"
     "stop|Para os containers (aceita serviços e opções do Compose)"
     "down|Remove containers e rede, preservando volumes por padrão"
     "restart|Reinicia os serviços existentes (aceita serviços e opções)"
@@ -133,10 +133,11 @@ cmd_help() {
     printf '  ./hackaton %s\n' 'setup' 'dev' 'artisan migrate --no-interaction' 'logs app' 'pint --test' 'exec ls -la'
     printf '\n'
     printf '%s\n' \
-        'O build instala Composer/npm e compila os assets; Node não está na imagem final.' \
-        'O código é copiado para a imagem: após alterações locais, execute ./hackaton dev.' \
+        'dev inicia o Vite (npm run dev); alterações locais aparecem sem reconstruir as imagens.' \
+        'O código local é compartilhado com a aplicação; as dependências ficam nas imagens.' \
+        'Após alterar composer.lock ou package-lock.json, execute ./hackaton dev novamente.' \
         'artisan e tinker rodam como www-data (usuário do Apache); shell e exec rodam como root.' \
-        'Composer e Pint no container não alteram os arquivos do projeto no host.' \
+        'Pint e outros comandos podem alterar os arquivos locais compartilhados com o container.' \
         'Atenção: down --volumes apaga os dados persistidos, incluindo o banco.'
 }
 
@@ -144,6 +145,8 @@ cmd_dev() {
     ensure_env
     compose up -d --build "$@"
     info "Serviços iniciados. Consulte as portas com ./hackaton status."
+    info "Vite acompanha as alterações automaticamente. Não é necessário executar dev a cada edição."
+    info "Acompanhe o frontend com ./hackaton logs vite."
     info "Acompanhe os logs com ./hackaton logs."
 }
 
