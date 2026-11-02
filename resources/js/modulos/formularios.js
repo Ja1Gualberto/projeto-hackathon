@@ -123,11 +123,21 @@ export async function enviarFormulario(formulario, botao = null, confirmar = (te
         formulario.reset();
         // reset() não dispara "input": os filtros de chips voltam a mostrar todas as opções.
         formulario.querySelectorAll('[data-filtrar-chips]').forEach((filtro) => filtro.dispatchEvent(new Event('input')));
-        formulario.querySelector('[data-foco-apos-limpar]')?.focus();
+        const regiao = formulario.hasAttribute('data-recolher-apos-sucesso') ? formulario.closest('[data-regiao-recolhivel]') : null;
+        if (regiao) {
+            regiao.hidden = true;
+            const controle = formulario.ownerDocument.querySelector(`[data-alternar-regiao="${regiao.id}"]`);
+            controle?.setAttribute('aria-expanded', 'false');
+            controle?.focus();
+        } else {
+            formulario.querySelector('[data-foco-apos-limpar]')?.focus();
+        }
     }
 }
 
 export function registrarFormularios(doc = document) {
+    doc.querySelectorAll?.('dialog[data-abrir-ao-carregar]').forEach((dialogo) => dialogo.showModal?.());
+
     doc.addEventListener('submit', (evento) => {
         const formulario = evento.target;
         if (formulario.matches('form[data-ajax]') && suportaAjax()) {
@@ -169,6 +179,19 @@ export function registrarFormularios(doc = document) {
             if (typeof dialogo?.showModal === 'function') {
                 evento.preventDefault();
                 dialogo.showModal();
+            }
+            return;
+        }
+        const alternar = evento.target.closest('[data-alternar-regiao]');
+        if (alternar) {
+            const regiao = doc.getElementById(alternar.dataset.alternarRegiao);
+            if (regiao) {
+                evento.preventDefault();
+                regiao.hidden = !regiao.hidden;
+                alternar.setAttribute('aria-expanded', String(!regiao.hidden));
+                if (!regiao.hidden) {
+                    regiao.querySelector('[data-foco-apos-limpar]')?.focus();
+                }
             }
             return;
         }

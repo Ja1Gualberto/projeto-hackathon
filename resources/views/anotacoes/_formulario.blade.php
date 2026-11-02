@@ -8,7 +8,7 @@
     $observadas = array_map('strval', (array) old('competencias_observadas', []));
 @endphp
 
-<form method="POST" action="{{ $acao }}" data-ajax data-limpar-apos-sucesso class="flex flex-col gap-4 rounded-card border border-borda bg-superficie p-5" aria-label="Registrar anotação de entrevista">
+<form method="POST" action="{{ $acao }}" data-ajax data-limpar-apos-sucesso data-recolher-apos-sucesso class="flex flex-col gap-4 rounded-card border border-borda bg-superficie p-5" aria-label="Registrar anotação de entrevista">
     @csrf
     <div data-ajax-erros role="alert" tabindex="-1" hidden class="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800"></div>
 

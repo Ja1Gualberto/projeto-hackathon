@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
-import { enviarFormulario } from '../../resources/js/modulos/formularios.js';
+import { enviarFormulario, registrarFormularios } from '../../resources/js/modulos/formularios.js';
 
 const fetchOriginal = globalThis.fetch;
 const formDataOriginal = globalThis.FormData;
@@ -88,6 +88,93 @@ test('erro de validação ou de rede mantém o rascunho e o histórico', async (
     assert.equal(anotacao.form.resetado, 0);
     assert.equal(anotacao.texto.value, 'Rascunho da entrevista');
     assert.match(anotacao.aviso.textContent, /Não foi possível confirmar a operação/);
+});
+
+test('anotação salva recolhe o formulário e devolve foco a adicionar sem fechar a modal do histórico', async () => {
+    const ui = montarAnotacao();
+    let focado = false;
+    const regiao = { id: 'nova-anotacao', hidden: false };
+    const atributos = new Map();
+    const controle = { focus: () => { focado = true; }, setAttribute: (nome, valor) => atributos.set(nome, valor) };
+    const consultar = ui.form.ownerDocument.querySelector;
+    ui.form.ownerDocument.querySelector = (seletor) => seletor === '[data-alternar-regiao="nova-anotacao"]' ? controle : consultar(seletor);
+    ui.form.hasAttribute = (nome) => ['data-limpar-apos-sucesso', 'data-recolher-apos-sucesso'].includes(nome);
+    ui.form.closest = (seletor) => seletor === '[data-regiao-recolhivel]' ? regiao : null;
+    globalThis.fetch = async () => resposta({
+        message: 'Anotação registrada.', fragments: { 'historico-anotacoes': 'Nova anotação' }, redirect: null,
+    });
+
+    await enviarFormulario(ui.form);
+
+    assert.equal(ui.regioes['historico-anotacoes'].innerHTML, 'Nova anotação');
+    assert.equal(ui.form.resetado, 1);
+    assert.equal(regiao.hidden, true);
+    assert.equal(atributos.get('aria-expanded'), 'false');
+    assert.equal(focado, true);
+    assert.equal(ui.texto.focado, false);
+});
+
+test('anotação inválida mantém formulário aberto e rascunho na modal', async () => {
+    const ui = montarAnotacao();
+    const regiao = { hidden: false };
+    ui.form.hasAttribute = () => true;
+    ui.form.closest = () => regiao;
+    globalThis.fetch = async () => resposta({ message: 'Revise.', errors: { texto: ['Texto inválido.'] } }, 422);
+
+    await enviarFormulario(ui.form);
+
+    assert.equal(regiao.hidden, false);
+    assert.equal(ui.form.resetado, 0);
+    assert.equal(ui.texto.value, 'Rascunho da entrevista');
+});
+
+test('modal de anotação com erros abre ao carregar e pode ser aberta e fechada pelos controles', () => {
+    const eventos = {};
+    let aberturas = 0;
+    let fechamentos = 0;
+    const dialogo = { showModal: () => { aberturas++; }, close: () => { fechamentos++; } };
+    registrarFormularios({
+        querySelectorAll: (seletor) => seletor === 'dialog[data-abrir-ao-carregar]' ? [dialogo] : [],
+        getElementById: (id) => id === 'anotacoes-entrevista' ? dialogo : null,
+        addEventListener: (nome, callback) => { eventos[nome] = callback; },
+    });
+
+    assert.equal(aberturas, 1);
+    eventos.click({
+        target: { closest: () => ({ dataset: { abrirModal: 'anotacoes-entrevista' } }) }, preventDefault() {},
+    });
+    assert.equal(aberturas, 2);
+    eventos.click({
+        target: { closest: (seletor) => ['[data-fechar-modal]', 'dialog'].includes(seletor) ? dialogo : null }, preventDefault() {},
+    });
+    assert.equal(fechamentos, 1);
+});
+
+test('botão no cabeçalho alterna o formulário de anotação e foca o campo ao abrir', () => {
+    const eventos = {};
+    let focos = 0;
+    const atributos = new Map();
+    const regiao = { hidden: true, querySelector: () => ({ focus: () => { focos++; } }) };
+    const botao = { dataset: { alternarRegiao: 'nova-anotacao' }, setAttribute: (nome, valor) => atributos.set(nome, valor) };
+    registrarFormularios({
+        getElementById: (id) => id === 'nova-anotacao' ? regiao : null,
+        addEventListener: (nome, callback) => { eventos[nome] = callback; },
+    });
+    const evento = {
+        target: { closest: (seletor) => seletor === '[data-alternar-regiao]' ? botao : null }, preventDefault() {},
+    };
+
+    eventos.click(evento);
+
+    assert.equal(regiao.hidden, false);
+    assert.equal(atributos.get('aria-expanded'), 'true');
+    assert.equal(focos, 1);
+
+    eventos.click(evento);
+
+    assert.equal(regiao.hidden, true);
+    assert.equal(atributos.get('aria-expanded'), 'false');
+    assert.equal(focos, 1);
 });
 
 test('status confirmado substitui as duas regiões LGPD e restaura foco sem limpar outros formulários', async () => {

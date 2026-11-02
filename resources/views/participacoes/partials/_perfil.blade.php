@@ -107,12 +107,14 @@
                         <h2 id="perfil-anotacoes" class="text-xl font-semibold tracking-tight">Anotações de entrevista</h2>
                         <p class="mt-2 text-sm leading-relaxed text-texto-suave">Todas as anotações do candidato, de qualquer vaga. As registradas aqui ficam associadas a esta vaga.</p>
                     </div>
-                    @if (($catalogo ?? null) !== null)
-                        @include('anotacoes._formulario', ['acao' => route('vagas.candidatos.anotacoes.store', [$vaga, $perfil->codigo]), 'catalogo' => $catalogo])
-                    @endif
-                    <div id="historico-anotacoes">
-                        @include('anotacoes._historico', ['anotacoes' => $perfil->anotacoes])
+                    <div>
+                        <x-botao variante="secundario" data-abrir-modal="anotacoes-entrevista" aria-haspopup="dialog" aria-controls="anotacoes-entrevista">Ver anotações de entrevista</x-botao>
                     </div>
+                    @include('anotacoes._modal', [
+                        'anotacoes' => $perfil->anotacoes,
+                        'acao' => ($catalogo ?? null) !== null ? route('vagas.candidatos.anotacoes.store', [$vaga, $perfil->codigo]) : null,
+                        'descricao' => 'Todas as anotações de '.$perfil->nome.', de qualquer vaga. As registradas aqui ficam associadas a esta vaga.',
+                    ])
                 </section>
             @endif
         </div>

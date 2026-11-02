@@ -14,6 +14,8 @@ use Database\Seeders\UsuarioSeeder;
 use Database\Seeders\VagaSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\MessageBag;
+use Illuminate\Support\ViewErrorBag;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
@@ -170,11 +172,11 @@ class AnotacaoEntrevistaTest extends TestCase
         }
 
         $this->get(route('candidatos.show', $this->candidato))
-            ->assertSeeInOrder(['Terceira conversa.', 'Segunda conversa.', 'Primeira conversa.']);
+            ->assertSeeInOrder(['Terceira conversa.', 'Segunda conversa.', 'Primeira conversa.', 'Registrar anotação']);
 
         $this->moverParaEntrevista();
         $this->get(route('vagas.candidatos.show', [$this->vaga, $this->candidato->codigo]))
-            ->assertSeeInOrder(['Terceira conversa.', 'Segunda conversa.', 'Primeira conversa.']);
+            ->assertSeeInOrder(['Terceira conversa.', 'Segunda conversa.', 'Primeira conversa.', 'Registrar anotação']);
     }
 
     public function test_perfil_em_triagem_nao_mostra_anotacoes_nem_formulario_e_revelado_em_outra_vaga_mostra_todas(): void
@@ -241,6 +243,11 @@ class AnotacaoEntrevistaTest extends TestCase
     {
         $this->get(route('candidatos.show', $this->candidato))
             ->assertOk()
+            ->assertSee('data-abrir-modal="anotacoes-entrevista"', false)
+            ->assertSee('<dialog id="anotacoes-entrevista"', false)
+            ->assertDontSee('data-abrir-ao-carregar', false)
+            ->assertSeeInOrder(['Adicionar nova anotação', 'data-fechar-modal', 'Nenhuma anotação ainda.', 'Registrar anotação'])
+            ->assertSee('data-regiao-recolhivel hidden', false)
             ->assertSee('Registrar anotação')
             ->assertSee('Nenhuma anotação ainda.')
             ->assertSee('Sem vaga associada')
@@ -248,6 +255,37 @@ class AnotacaoEntrevistaTest extends TestCase
             ->assertSee('name="competencias_observadas[]"', false)
             ->assertSee('id="historico-anotacoes"', false)
             ->assertSee('id="competencias-candidato"', false);
+    }
+
+    public function test_modal_pela_vaga_revelada_mostra_botao_no_cabecalho_e_historico_antes_do_formulario(): void
+    {
+        $this->moverParaEntrevista();
+
+        $this->get(route('vagas.candidatos.show', [$this->vaga, $this->candidato->codigo]))
+            ->assertOk()
+            ->assertSee('data-abrir-modal="anotacoes-entrevista"', false)
+            ->assertSee('<dialog id="anotacoes-entrevista"', false)
+            ->assertSeeInOrder(['Adicionar nova anotação', 'data-fechar-modal', 'Nenhuma anotação ainda.', 'Registrar anotação']);
+    }
+
+    #[TestWith(['texto'])]
+    #[TestWith(['vaga_id'])]
+    #[TestWith(['competencias_observadas.0'])]
+    public function test_erro_de_validacao_marca_modal_e_formulario_para_reabertura(string $campo): void
+    {
+        $erros = (new ViewErrorBag)->put('default', new MessageBag([$campo => 'Revise a anotação.']));
+
+        $this->view('anotacoes._modal', [
+            'errors' => $erros,
+            'anotacoes' => collect(),
+            'acao' => route('candidatos.anotacoes.store', $this->candidato),
+            'descricao' => 'Anotações de Joana Prates.',
+            'catalogo' => ['soft' => collect([$this->comunicacao]), 'hard' => collect([$this->python])],
+            'vagas' => collect([$this->vaga]),
+        ])
+            ->assertSee('data-abrir-ao-carregar', false)
+            ->assertSee('aria-expanded="true"', false)
+            ->assertDontSee('data-regiao-recolhivel hidden', false);
     }
 
     public function test_visitante_nao_registra_anotacao(): void

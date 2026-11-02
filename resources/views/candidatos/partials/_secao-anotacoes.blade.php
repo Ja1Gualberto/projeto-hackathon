@@ -5,9 +5,13 @@
         <p class="mt-2 text-sm leading-relaxed text-texto-suave">Registre o que foi percebido na conversa para não se perder entre seleções. A vaga é opcional.</p>
     </div>
 
-    @include('anotacoes._formulario', ['acao' => route('candidatos.anotacoes.store', $candidato), 'vagas' => $vagas, 'catalogo' => $catalogo])
-
-    <div id="historico-anotacoes">
-        @include('anotacoes._historico', ['anotacoes' => $anotacoes])
+    <div>
+        <x-botao variante="secundario" data-abrir-modal="anotacoes-entrevista" aria-haspopup="dialog" aria-controls="anotacoes-entrevista">Ver anotações de entrevista</x-botao>
     </div>
+
+    @include('anotacoes._modal', [
+        'anotacoes' => $anotacoes,
+        'acao' => route('candidatos.anotacoes.store', $candidato),
+        'descricao' => 'Anotações das entrevistas com '.$candidato->nome.'. A vaga é opcional ao registrar uma nova anotação.',
+    ])
 </section>
