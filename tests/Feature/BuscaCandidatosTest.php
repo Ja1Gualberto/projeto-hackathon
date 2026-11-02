@@ -2,16 +2,21 @@
 
 namespace Tests\Feature;
 
+use App\DTOs\FiltroCandidatosDTO;
 use App\Enums\Area;
 use App\Models\Candidato;
 use App\Models\Competencia;
 use App\Models\User;
 use App\Repositories\Interfaces\CandidatoRepositoryInterface;
 use App\Repositories\Interfaces\CompetenciaRepositoryInterface;
+use App\Services\ApresentacaoCandidatosService;
 use Database\Seeders\CandidatoSeeder;
 use Database\Seeders\CompetenciaSeeder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\MessageBag;
+use Illuminate\Support\ViewErrorBag;
 use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
@@ -105,6 +110,120 @@ class BuscaCandidatosTest extends TestCase
             ->assertSee('Nenhum talento com esses critérios');
     }
 
+    public function test_elementos_opcionais_ficam_ocultos_e_nao_ativam_alertas_sem_erros(): void
+    {
+        $candidato = Candidato::factory()->create(['dados_atualizados_em' => now()]);
+        $competencia = Competencia::factory()->hard()->create();
+        $candidato->competencias()->attach($competencia, ['origem' => 'curriculo']);
+
+        $resposta = $this->actingAs(User::factory()->create())->get(route('candidatos.index'))->assertOk();
+
+        $documento = new \DOMDocument;
+        $documento->loadHTML($resposta->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        $xpath = new \DOMXPath($documento);
+        $card = '//a[@href="'.route('candidatos.show', $candidato).'"]';
+        $this->assertCount(2, $xpath->query($card.'/div[@hidden]'));
+        $this->assertCount(1, $xpath->query($card.'//p[@hidden]'));
+        $this->assertCount(1, $xpath->query($card.'//span[@aria-label="Mais 0 competências"][@hidden]'));
+        $this->assertCount(1, $xpath->query('//div[@aria-label="Competências selecionadas"][@hidden]'));
+        $this->assertCount(1, $xpath->query('//main/div[@role="alert"][@hidden][not(@data-alerta)]'));
+    }
+
+    public function test_html_entrega_filtros_e_catalogo_preenchidos_sem_depender_de_javascript(): void
+    {
+        $competencia = Competencia::factory()->hard()->create(['nome' => 'Python']);
+        $candidato = Candidato::factory()->estagiario()->retencaoVencida()->create([
+            'nome' => 'Marina Teste', 'area' => Area::Dados, 'experiencia_na_area' => true,
+        ]);
+        $candidato->competencias()->attach($competencia, ['origem' => 'curriculo']);
+
+        $resposta = $this->actingAs(User::factory()->create())->get(route('candidatos.index', [
+            'busca' => 'Marina', 'situacao' => 'retencao', 'tipo' => 'estagiario',
+            'area' => 'dados', 'experiencia' => 1, 'competencias' => [$competencia->id],
+        ]));
+
+        $resposta->assertOk()->assertSee('1 talentos encontrados')->assertSee($candidato->nome)
+            ->assertSee('Perfis ativos com retenção pendente')->assertSee('Com todas:')
+            ->assertSee('xl:grid-cols-[15rem_minmax(0,1fr)]', false)
+            ->assertSee('grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3', false);
+        $documento = new \DOMDocument;
+        $documento->loadHTML($resposta->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        $xpath = new \DOMXPath($documento);
+        foreach (['situacao' => 'retencao', 'tipo' => 'estagiario', 'area' => 'dados'] as $nome => $valor) {
+            $this->assertCount(1, $xpath->query('//select[@name="'.$nome.'"]/option[@value="'.$valor.'"][@selected]'));
+        }
+        $this->assertCount(1, $xpath->query('//input[@name="busca"][@value="Marina"]'));
+        $this->assertCount(1, $xpath->query('//input[@name="experiencia"][@checked]'));
+        $this->assertCount(1, $xpath->query('//input[@name="competencias[]"][@value="'.$competencia->id.'"][@checked]'));
+        $this->assertCount(1, $xpath->query('//form[@method="GET"][@data-busca-candidatos]'));
+        $this->assertCount(1, $xpath->query('//section[@id="resultados-candidatos"]'));
+    }
+
+    public function test_cards_limitam_competencias_e_preservam_avisos_de_situacao(): void
+    {
+        $candidato = Candidato::factory()->desativado()->retencaoVencida()->create();
+        $competencias = Competencia::factory()->hard()->count(6)->sequence(
+            fn ($sequencia): array => ['nome' => 'Competência '.$sequencia->index],
+        )->create();
+        $candidato->competencias()->attach($competencias->modelKeys(), ['origem' => 'curriculo']);
+
+        $resposta = $this->actingAs(User::factory()->create())
+            ->getJson(route('candidatos.index', ['situacao' => 'desativados']));
+
+        $resposta->assertOk();
+        $fragmento = $resposta->json('fragments.resultados-candidatos');
+        $this->assertStringContainsString('Desativado', $fragmento);
+        $this->assertStringContainsString('revisão de retenção pendente', $fragmento);
+        $this->assertStringContainsString('Mais 1 competências', $fragmento);
+        $this->assertStringContainsString('Competência 4', $fragmento);
+        $this->assertStringNotContainsString('Competência 5', $fragmento);
+        $this->assertStringContainsString('href="'.route('candidatos.show', $candidato).'"', $fragmento);
+    }
+
+    public function test_preenchimento_anterior_e_escapado_no_html(): void
+    {
+        $texto = '\"><script>alert(1)</script>';
+
+        $resposta = $this->actingAs(User::factory()->create())
+            ->withSession(['_old_input' => ['busca' => $texto]])->get(route('candidatos.index'));
+
+        $resposta->assertOk()->assertSee($texto)->assertDontSee($texto, false);
+    }
+
+    public function test_apresentacao_escapa_resumo_de_erros_e_preserva_associacao_com_o_campo(): void
+    {
+        $texto = '<script>alert(1)</script>';
+        $erros = (new ViewErrorBag)->put('default', new MessageBag(['busca' => $texto]));
+        $this->app['view']->share('errors', $erros);
+        $catalogo = ['hard' => new Collection, 'soft' => new Collection];
+
+        $dados = $this->app->make(ApresentacaoCandidatosService::class)->filtros(FiltroCandidatosDTO::fromArray([]), $catalogo, $erros);
+
+        $this->assertStringContainsString(e($texto), $dados['errosFiltros']->toHtml());
+        $this->assertStringNotContainsString($texto, $dados['errosFiltros']->toHtml());
+        $this->assertTrue($dados['alertaErros']->get('data-alerta'));
+        $this->assertFalse($dados['alertaErros']->get('hidden'));
+        $this->assertStringContainsString('aria-invalid="true"', $dados['campos']['busca']->toHtml());
+        $this->assertStringContainsString('aria-describedby="campo-busca-erro"', $dados['campos']['busca']->toHtml());
+    }
+
+    public function test_competencias_sao_escapadas_no_catalogo_nos_filtros_selecionados_e_nos_cards(): void
+    {
+        $texto = '<img src=x onerror=alert(1)>';
+        $competencia = Competencia::factory()->hard()->create(['nome' => $texto]);
+        $candidato = Candidato::factory()->create();
+        $candidato->competencias()->attach($competencia, ['origem' => 'curriculo']);
+        $url = route('candidatos.index', ['competencias' => [$competencia->id]]);
+        $this->actingAs(User::factory()->create());
+
+        $html = $this->get($url)->assertOk()->assertSee($texto)->assertDontSee($texto, false);
+        $fragmento = $this->getJson($url)->assertOk()->json('fragments.resultados-candidatos');
+
+        $this->assertStringContainsString(e($texto), $fragmento);
+        $this->assertStringNotContainsString($texto, $fragmento);
+        $this->assertStringContainsString($fragmento, $html->getContent());
+    }
+
     public function test_paginacao_preserva_filtros_e_ordem_alfabetica(): void
     {
         Candidato::factory()->estagiario()->count(13)->sequence(
@@ -178,6 +297,13 @@ class BuscaCandidatosTest extends TestCase
         $this->assertStringContainsString('tipo=estagiario', $fragmento);
         $this->assertStringContainsString('experiencia=1', $fragmento);
         $this->assertStringContainsString('competencias%5B0%5D=', $fragmento);
+        $documento = new \DOMDocument;
+        $documento->loadHTML($fragmento, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        $xpath = new \DOMXPath($documento);
+        $this->assertCount(1, $xpath->query('//div[@data-paginacao-busca]/nav'));
+        $relacao = $pagina === 1 ? 'next' : 'prev';
+        $outraPagina = $pagina === 1 ? 2 : 1;
+        $this->assertGreaterThan(0, $xpath->query('//div[@data-paginacao-busca]//a[@rel="'.$relacao.'"][contains(@href, "page='.$outraPagina.'")]')->length);
         foreach ([$ausente, 'Talento excluído', 'Talento parcial', 'CAND-', '<html', '<form', '<script'] as $proibido) {
             $this->assertStringNotContainsString($proibido, $fragmento);
         }

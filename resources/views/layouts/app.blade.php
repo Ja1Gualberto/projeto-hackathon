@@ -32,7 +32,7 @@
                 </div>
             </header>
 
-            <main id="conteudo" tabindex="-1" class="mx-auto flex w-full max-w-7xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
+            <main id="conteudo" tabindex="-1" class="mx-auto flex w-full @yield('largura-conteudo', 'max-w-7xl') flex-1 flex-col gap-6 px-4 py-8 sm:px-6">
                 <div data-ajax-anuncios role="status" aria-live="polite" aria-atomic="true" class="sr-only"></div>
                 <a data-ajax-login href="{{ route('login') }}" target="_blank" rel="noopener" hidden class="text-sm font-semibold text-primaria-700 underline">Abrir login em outra aba (seus campos serão preservados)</a>
                 <a data-ajax-conferir href="{{ url()->full() }}" target="_blank" rel="noopener" hidden class="text-sm font-semibold text-primaria-700 underline">Conferir estado em outra aba antes de repetir a operação</a>

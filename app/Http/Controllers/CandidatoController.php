@@ -8,12 +8,14 @@ use App\Http\Requests\BuscarCandidatosRequest;
 use App\Http\Requests\ExcluirCandidatoRequest;
 use App\Models\Candidato;
 use App\Services\Anotacoes\AnotacaoService;
+use App\Services\ApresentacaoCandidatosService;
 use App\Services\CandidatoService;
 use App\Services\Curriculo\CadastroCandidatoService;
 use App\Services\Lgpd\ExclusaoCandidatoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Response;
+use Illuminate\Support\ViewErrorBag;
 
 class CandidatoController extends Controller
 {
@@ -22,27 +24,28 @@ class CandidatoController extends Controller
         private AnotacaoService $anotacoes,
     ) {}
 
-    public function index(BuscarCandidatosRequest $request): Response|JsonResponse
+    public function index(BuscarCandidatosRequest $request, ApresentacaoCandidatosService $apresentacao): Response|JsonResponse
     {
         $filtro = $request->filtro();
-
-        $dados = [
-            'filtro' => $filtro,
-            'candidatos' => $this->candidatos->buscar($filtro),
-            'catalogo' => $this->candidatos->catalogoCompetencias(),
-        ];
+        $candidatos = $this->candidatos->buscar($filtro);
+        $catalogo = $this->candidatos->catalogoCompetencias();
+        $resultados = $apresentacao->resultados($candidatos, $filtro, $catalogo);
 
         if ($request->expectsJson()) {
             return response()->json([
                 'message' => null,
                 'fragments' => [
-                    'resultados-candidatos' => view('candidatos.partials._resultados', $dados)->render(),
+                    'resultados-candidatos' => $resultados->toHtml(),
                 ],
                 'redirect' => null,
             ])->header('Cache-Control', 'private, no-store');
         }
 
-        return response()->view('candidatos.index', $dados)->header('Cache-Control', 'private, no-store');
+        return response()->view('candidatos.index', [
+            ...$apresentacao->filtros($filtro, $catalogo, $request->session()->get('errors', new ViewErrorBag)),
+            'resultados' => $resultados,
+            'candidatos' => $candidatos,
+        ])->header('Cache-Control', 'private, no-store');
     }
 
     public function show(Candidato $candidato): Response
