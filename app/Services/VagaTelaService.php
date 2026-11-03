@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\DTOs\ItemRankingDTO;
 use App\Enums\Area;
+use App\Enums\EtapaSelecao;
 use App\Models\Competencia;
 use App\Models\Vaga;
 
@@ -85,6 +86,8 @@ class VagaTelaService
                 'perfilUrl' => route('vagas.candidatos.show', [$vaga, $item->codigo]),
                 'etapaUrl' => route('vagas.candidatos.etapa', [$vaga, $item->codigo]),
                 'anotacaoUrl' => route('vagas.candidatos.anotacoes.store', [$vaga, $item->codigo]),
+                'visualizacaoUrl' => $item->etapa === EtapaSelecao::Entrevista
+                    ? route('vagas.candidatos.visualizacao', [$vaga, $item->codigo]) : null,
             ])->values()->all())->all(),
         ];
     }

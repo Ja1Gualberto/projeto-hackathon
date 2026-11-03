@@ -9,5 +9,6 @@ import './modulos/perfil-candidato.js';
 import './modulos/importacao.js';
 import './modulos/menu.js';
 import './modulos/vagas.js';
+import './modulos/visualizacao-candidato.js';
 import './modulos/triagem.js';
 import './modulos/filtro-competencias.js';

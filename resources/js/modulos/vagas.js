@@ -245,6 +245,12 @@ function cardRanking(item, posicao, vaga, doc) {
     const form = card.querySelector('[data-mover-etapa]');
     form.dataset.etapaAtual = item.etapa;
     form.dataset.candidatoCodigo = item.codigo;
+    const visualizar = card.querySelector('[data-visualizar-candidato]');
+    visualizar.hidden = item.etapa !== 'entrevista';
+    if (!visualizar.hidden) {
+        visualizar.dataset.visualizacaoUrl = mesmaOrigem(item.visualizacaoUrl, doc.baseURI).href;
+        visualizar.setAttribute('aria-label', `Ver currículo e análise de IA de ${identificacao}`);
+    }
     const anotar = card.querySelector('[data-adicionar-anotacao]');
     anotar.hidden = !podeMover || item.etapa !== 'entrevista';
     if (!anotar.hidden) {
@@ -302,6 +308,7 @@ export function validarQuadro(dados, base = globalThis.location?.href) {
         if (!Array.isArray(itens) || !itens.every((item) => /^CAND-[0-9]{4}$/.test(item.codigo)
             && item.etapa === etapa && string(item.area)
             && string(item.perfilUrl) && string(item.etapaUrl) && string(item.anotacaoUrl)
+            && (etapa === 'entrevista' ? string(item.visualizacaoUrl) : item.visualizacaoUrl === null)
             && (item.nome === null || (etapa !== 'triagem' && string(item.nome)))
             && ['elegivel', 'desativado', 'experienciaNaArea'].every((campo) => boolean(item[campo]))
             && Number.isInteger(item.percentual) && item.percentual >= 0 && item.percentual <= 100
@@ -313,6 +320,9 @@ export function validarQuadro(dados, base = globalThis.location?.href) {
             mesmaOrigem(item.perfilUrl, base);
             mesmaOrigem(item.etapaUrl, base);
             mesmaOrigem(item.anotacaoUrl, base);
+            if (item.visualizacaoUrl !== null) {
+                mesmaOrigem(item.visualizacaoUrl, base);
+            }
         }
     }
     return dados;

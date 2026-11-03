@@ -30,7 +30,7 @@ function documento() {
         'modelo-vaga': ['[data-capa]', '[data-status]', '[data-area]', '[data-titulo]', '[data-competencias-total]', '[data-elegiveis]', '[data-entrevista]', '[data-aprovado]', '[data-abrir-quadro]'],
         'modelo-quadro': ['[data-status]', '[data-area]', '[data-titulo]', '[data-descricao]', '[data-atualizar-quadro]', '[data-editar-vaga]', '[data-encerrar-vaga]', '[data-vaga-encerrada]', '[data-encerrada-em]', '[data-soma-pesos]', '[data-requisitos]', '[data-elegiveis]', '[data-colunas]', '[data-adicionar-candidatos]', '[data-selecionar-candidatos]', '[data-importar-curriculos]'],
         'modelo-coluna': ['[data-coluna-titulo]', '[data-coluna-total]', '[data-aviso-triagem]', '[data-sem-elegiveis]', '[data-coluna-vazia]', '[data-coluna-itens]'],
-        'modelo-card-ranking': ['[data-card-titulo]', '[data-link-perfil]', '[data-posicao]', '[data-codigo-revelado]', '[data-area]', '[data-situacao]', '[data-score]', '[data-score-barra]', '[data-score-texto]', '[data-explicacao]', '[data-competencias]', '[data-experiencia]', '[data-energia]', '[data-proximidade-energia]', '[data-energia-ausente]', '[data-mover-etapa]', '[data-card-detalhes]', '[data-expandir-card]', '[data-adicionar-anotacao]'],
+        'modelo-card-ranking': ['[data-card-titulo]', '[data-link-perfil]', '[data-posicao]', '[data-codigo-revelado]', '[data-area]', '[data-situacao]', '[data-score]', '[data-score-barra]', '[data-score-texto]', '[data-explicacao]', '[data-competencias]', '[data-experiencia]', '[data-energia]', '[data-proximidade-energia]', '[data-energia-ausente]', '[data-mover-etapa]', '[data-card-detalhes]', '[data-expandir-card]', '[data-adicionar-anotacao]', '[data-visualizar-candidato]'],
         'modelo-tag-competencia': ['[data-tag-nome]', '[data-tag-peso]', '[data-tag-faltante]', '[data-tag-origem]'],
         'modelo-peso-competencia': ['label', 'select', '[data-erro-campo]'],
         'modelo-eixo-energia': ['label', 'select'],
@@ -62,7 +62,7 @@ function dadosQuadro() {
         colunas: { triagem: [{ codigo: 'CAND-0042', nome: null, area: 'Dados', etapa: 'triagem', elegivel: true, desativado: false,
             experienciaNaArea: true, proximidadeEnergia: 83, percentual: 75, explicacao: '75% — tem 1 de 2 competências',
             atendidas: [{ nome: 'Python', peso: 3, origem: 'entrevista' }], naoIdentificadas: [{ nome: 'SQL', peso: 1 }],
-            perfilUrl: '/vagas/3/candidatos/CAND-0042', etapaUrl: '/vagas/3/candidatos/CAND-0042/etapa', anotacaoUrl: '/vagas/3/candidatos/CAND-0042/anotacoes' }], entrevista: [], aprovado: [], reprovado: [] },
+            perfilUrl: '/vagas/3/candidatos/CAND-0042', etapaUrl: '/vagas/3/candidatos/CAND-0042/etapa', anotacaoUrl: '/vagas/3/candidatos/CAND-0042/anotacoes', visualizacaoUrl: null }], entrevista: [], aprovado: [], reprovado: [] },
     };
 }
 
@@ -180,7 +180,7 @@ test('etapas reveladas oferecem ações corretas e campos de texto nunca usam in
     const dados = dadosQuadro();
     const item = dados.colunas.triagem.pop();
     dados.vaga.titulo = '<img src=x onerror=alert(1)>';
-    dados.colunas.entrevista = [{ ...item, etapa: 'entrevista', nome: '<script>nome</script>', percentual: 50, proximidadeEnergia: null }];
+    dados.colunas.entrevista = [{ ...item, etapa: 'entrevista', nome: '<script>nome</script>', percentual: 50, proximidadeEnergia: null, visualizacaoUrl: '/vagas/3/candidatos/CAND-0042/visualizacao' }];
     dados.colunas.aprovado = [{ ...item, codigo: 'CAND-0043', etapa: 'aprovado', nome: 'Aprovado', percentual: 0 }];
     const quadro = montarQuadro(dados, documento());
     assert.equal(quadro.querySelector('[data-titulo]').textContent, dados.vaga.titulo);
@@ -215,7 +215,7 @@ test('coluna de reprovados mostra contagem, identidade e retorno à entrevista s
 
 test('cards iniciam compactos com controles de expansão independentes e identificação acessível', () => {
     const dados = dadosQuadro();
-    dados.colunas.entrevista.push({ ...dados.colunas.triagem[0], codigo: 'CAND-0043', etapa: 'entrevista', nome: 'Ana Silva' });
+    dados.colunas.entrevista.push({ ...dados.colunas.triagem[0], codigo: 'CAND-0043', etapa: 'entrevista', nome: 'Ana Silva', visualizacaoUrl: '/vagas/3/candidatos/CAND-0043/visualizacao' });
 
     const quadro = montarQuadro(dados, documento());
 
@@ -275,11 +275,39 @@ test('sem elegíveis mostra estado vazio específico na triagem', () => {
     assert.equal(triagem.querySelector('[data-coluna-itens]').hidden, true);
 });
 
+test('visualização aparece somente na entrevista e continua disponível para consulta em vaga encerrada', () => {
+    const dados = dadosQuadro();
+    const item = dados.colunas.triagem[0];
+    dados.colunas.entrevista.push({ ...item, etapa: 'entrevista', nome: 'Ana Silva', visualizacaoUrl: '/vagas/3/candidatos/CAND-0042/visualizacao' });
+    dados.colunas.aprovado.push({ ...item, etapa: 'aprovado', nome: 'Ana Silva' });
+    dados.colunas.reprovado.push({ ...item, etapa: 'reprovado', nome: 'Ana Silva' });
+    let quadro = montarQuadro(dados, documento());
+
+    assert.deepEqual(colunas(quadro).map((coluna) => cards(coluna)[0].querySelector('[data-visualizar-candidato]').hidden), [true, false, true, true]);
+    const botao = cards(colunas(quadro)[1])[0].querySelector('[data-visualizar-candidato]');
+    assert.equal(botao.dataset.visualizacaoUrl, 'https://banco.test/vagas/3/candidatos/CAND-0042/visualizacao');
+    assert.equal(botao.atributos['aria-label'], 'Ver currículo e análise de IA de Ana Silva');
+
+    Object.assign(dados.vaga, { aberta: false, editarUrl: null, selecionarUrl: null, importarUrl: null });
+    dados.colunas.entrevista[0].elegivel = false;
+    quadro = montarQuadro(dados, documento());
+    assert.equal(cards(colunas(quadro)[1])[0].querySelector('[data-visualizar-candidato]').hidden, false);
+    assert.equal(cards(colunas(quadro)[1])[0].querySelector('[data-adicionar-anotacao]').hidden, true);
+});
+
+test('URL de visualização externa ou ausente na entrevista é recusada', () => {
+    for (const url of [null, undefined, 'https://outro.test/visualizacao']) {
+        const dados = dadosQuadro();
+        dados.colunas.entrevista.push({ ...dados.colunas.triagem.pop(), etapa: 'entrevista', nome: 'Ana', visualizacaoUrl: url });
+        assert.throws(() => validarQuadro(dados, 'https://banco.test'));
+    }
+});
+
 test('JSON substitui o quadro inteiro e remove identidade ao voltar à triagem', () => {
     const doc = documento();
     const dados = dadosQuadro();
     const item = dados.colunas.triagem.pop();
-    dados.colunas.entrevista.push({ ...item, etapa: 'entrevista', nome: 'Nome revelado' });
+    dados.colunas.entrevista.push({ ...item, etapa: 'entrevista', nome: 'Nome revelado', visualizacaoUrl: '/vagas/3/candidatos/CAND-0042/visualizacao' });
     doc.inicial = { textContent: JSON.stringify(dados), dataset: { tela: 'quadro' }, remove() { doc.inicial = null; } };
     iniciarVagas(doc);
     assert.equal(doc.inicial, null);
@@ -301,6 +329,7 @@ test('dados inválidos e links externos são recusados antes de alterar a regiã
         (dados) => { dados.vaga.selecionarUrl = 'https://outro.test/'; },
         (dados) => { dados.vaga.importarUrl = 'https://outro.test/'; },
         (dados) => { dados.colunas.triagem[0].anotacaoUrl = 'https://outro.test/anotacoes'; },
+        (dados) => { dados.colunas.triagem[0].visualizacaoUrl = '/vagas/3/candidatos/CAND-0042/visualizacao'; },
         (dados) => { delete dados.colunas.triagem[0].perfilUrl; },
         (dados) => { delete dados.colunas.aprovado; },
     ]) {

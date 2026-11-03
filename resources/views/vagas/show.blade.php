@@ -15,5 +15,6 @@
     @include('vagas.partials._card-ranking')
     @include('participacoes.partials._confirmar-entrevista')
     @include('vagas.partials._anotacao-entrevista')
+    @include('vagas.partials._curriculo-analise')
     <noscript>Ative o JavaScript para consultar o quadro da vaga.</noscript>
 @endsection

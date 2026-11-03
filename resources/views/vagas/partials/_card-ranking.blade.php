@@ -24,15 +24,16 @@
             </div>
         </div>
         <div class="flex items-end justify-between gap-2 border-t border-borda pt-2">
-            <div class="flex min-w-0 flex-1 flex-wrap gap-2">
-                <form method="POST" data-mover-etapa class="flex flex-wrap gap-2">
+            <div class="flex min-w-0 flex-1 flex-wrap gap-1.5 [&_button]:min-h-7 [&_button]:gap-1.5 [&_button]:px-2.5 [&_button]:py-1 [&_button]:text-xs">
+                <form method="POST" data-mover-etapa class="flex flex-wrap gap-1.5">
                     @csrf
                     @method('PATCH')
                     <input type="hidden" name="contexto" value="quadro">
                 </form>
+                <x-botao variante="secundario" tamanho="sm" data-visualizar-candidato hidden aria-haspopup="dialog" aria-controls="curriculo-analise-quadro"><x-icone nome="documento" class="size-4 shrink-0" />Ver currículo e análise de IA</x-botao>
                 <x-botao variante="secundario" tamanho="sm" data-adicionar-anotacao hidden aria-haspopup="dialog" aria-controls="anotar-entrevista-quadro">Adicionar anotação</x-botao>
             </div>
-            <button type="button" data-expandir-card aria-expanded="false" class="group ml-auto inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-primaria-700 transition-colors hover:bg-primaria-50 motion-reduce:transition-none">
+            <button type="button" data-expandir-card aria-expanded="false" class="group ml-auto inline-flex size-8 shrink-0 cursor-pointer items-center justify-center rounded-lg text-primaria-700 transition-colors hover:bg-primaria-50 motion-reduce:transition-none">
                 <x-icone nome="seta" class="rotate-90 transition-transform group-aria-expanded:-rotate-90 motion-reduce:transition-none" />
             </button>
         </div>

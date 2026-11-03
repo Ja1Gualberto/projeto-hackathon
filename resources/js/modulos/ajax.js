@@ -3,6 +3,7 @@ import { mostrarAlerta } from './alertas.js';
 const REGIOES = new Set([
     'resultados-candidatos', 'catalogo-competencias', 'quadro-vaga', 'perfil-na-vaga',
     'historico-anotacoes', 'competencias-candidato', 'situacao-candidato', 'secao-lgpd', 'secao-energia',
+    'visualizacao-candidato', 'visualizacao-energia',
 ]);
 const renderizadores = new Map();
 
