@@ -18,6 +18,17 @@ class Competencia extends Model
     use HasFactory;
 
     /**
+     * Competências com logotipo em `public/images/competencias/{slug}.svg`. As demais, como as
+     * comportamentais, não têm uma marca que as identifique e são exibidas pelo nome.
+     *
+     * @var list<string>
+     */
+    public const SLUGS_COM_ICONE = [
+        'c-sharp', 'docker', 'excel-avancado', 'figma', 'git', 'java', 'javascript', 'laravel', 'linux', 'mysql', 'net',
+        'node-js', 'php', 'postgresql', 'power-bi', 'python', 'react', 'sql', 'typescript', 'vue-js', 'windows',
+    ];
+
+    /**
      * @var array<string, mixed>
      */
     protected $attributes = [
@@ -90,6 +101,11 @@ class Competencia extends Model
         return $this->belongsToMany(Vaga::class, 'competencia_vaga')
             ->withPivot('peso')
             ->withTimestamps();
+    }
+
+    public function iconeUrl(): ?string
+    {
+        return in_array($this->slug, self::SLUGS_COM_ICONE, true) ? asset("images/competencias/{$this->slug}.svg") : null;
     }
 
     /**

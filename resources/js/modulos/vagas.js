@@ -54,6 +54,8 @@ export function renderizarLista(dados, doc = document) {
     const itens = dados.vagas.map((vaga) => {
         const card = modelo(doc, 'modelo-vaga');
         card.classList.add(...(vaga.aberta ? 'bg-superficie' : 'border-dashed bg-fundo').split(' '));
+        card.dataset.area = vaga.areaValor;
+        card.querySelector('[data-capa]').classList.add(vaga.cor);
         status(card, vaga);
         texto(card, '[data-titulo]', vaga.titulo);
         link(card, '[data-titulo]', vaga.url, doc);
@@ -72,6 +74,39 @@ export function renderizarLista(dados, doc = document) {
     });
     doc.querySelector('[data-lista-vagas]').replaceChildren(...itens);
     doc.querySelector('[data-lista-vazia]').hidden = itens.length !== 0;
+    renderizarFiltroAreas(dados.areas, doc);
+}
+
+function renderizarFiltroAreas(areas, doc) {
+    const botoes = [{ valor: '', rotulo: 'Todas as áreas' }, ...areas].map((area) => {
+        const botao = modelo(doc, 'modelo-filtro-area');
+        botao.dataset.area = area.valor;
+        botao.setAttribute('aria-pressed', String(area.valor === ''));
+        texto(botao, '[data-rotulo]', area.rotulo);
+        const cor = botao.querySelector('[data-cor]');
+        if (area.cor) {
+            cor.classList.add(area.cor);
+        } else {
+            cor.remove();
+        }
+        botao.addEventListener('click', () => filtrarVagas(area.valor, doc));
+        return botao;
+    });
+    const filtro = doc.querySelector('[data-filtro-areas]');
+    filtro.replaceChildren(...botoes);
+    filtro.hidden = areas.length < 2;
+}
+
+export function filtrarVagas(area, doc = document) {
+    for (const botao of doc.querySelector('[data-filtro-areas]').children) {
+        botao.setAttribute('aria-pressed', String(botao.dataset.area === area));
+    }
+    let visiveis = 0;
+    for (const card of doc.querySelector('[data-lista-vagas]').children) {
+        card.hidden = area !== '' && card.dataset.area !== area;
+        visiveis += card.hidden ? 0 : 1;
+    }
+    anunciar(`${quantidade(visiveis, 'vaga exibida', 'vagas exibidas')}.`, doc);
 }
 
 function opcoes(select, itens, doc) {

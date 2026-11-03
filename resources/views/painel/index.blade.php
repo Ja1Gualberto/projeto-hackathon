@@ -29,8 +29,12 @@
                     @foreach ($topCompetencias as $competencia)
                         <li>
                             <a href="{{ route('candidatos.index', ['competencias' => [$competencia->id]]) }}" class="group block rounded-sm">
-                                <div class="mb-2 flex items-baseline justify-between gap-4">
-                                    <span class="font-medium group-hover:text-primaria-700 group-hover:underline">{{ $competencia->nome }}</span>
+                                <div class="mb-2 flex items-center justify-between gap-4">
+                                    @if ($competencia->iconeUrl())
+                                        <img src="{{ $competencia->iconeUrl() }}" alt="{{ $competencia->nome }}" title="{{ $competencia->nome }}" class="size-8 object-contain">
+                                    @else
+                                        <span class="font-medium group-hover:text-primaria-700 group-hover:underline">{{ $competencia->nome }}</span>
+                                    @endif
                                     <span class="shrink-0 text-sm text-texto-suave"><strong class="font-semibold tabular-nums text-texto">{{ $competencia->total }}</strong> {{ $competencia->total === 1 ? 'talento' : 'talentos' }}</span>
                                 </div>
                                 <div class="h-2 overflow-hidden rounded-sm bg-fundo" aria-hidden="true">

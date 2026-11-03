@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Enums\Area;
 use App\Enums\EtapaSelecao;
 use App\Enums\OrigemCompetencia;
 use App\Enums\PesoCompetencia;
@@ -11,6 +12,13 @@ use PHPUnit\Framework\TestCase;
 
 class EnumsDominioTest extends TestCase
 {
+    public function test_cada_area_tem_uma_cor_propria(): void
+    {
+        $cores = array_map(fn (Area $area): string => $area->cor(), Area::cases());
+
+        $this->assertSame($cores, array_values(array_unique($cores)));
+    }
+
     public function test_somente_entrevista_e_aprovado_revelam_a_identidade(): void
     {
         $this->assertFalse(EtapaSelecao::Triagem->revelaIdentidade());

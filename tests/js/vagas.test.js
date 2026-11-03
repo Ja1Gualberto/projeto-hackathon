@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, readdirSync } from 'node:fs';
 import { test } from 'node:test';
 import { aplicarFragmentos, registrarRenderizador, validarEnvelope } from '../../resources/js/modulos/ajax.js';
-import { iniciarVagas, montarQuadro, preencherFormulario, quantidade, renderizarLista, validarQuadro } from '../../resources/js/modulos/vagas.js';
+import { filtrarVagas, iniciarVagas, montarQuadro, preencherFormulario, quantidade, renderizarLista, validarQuadro } from '../../resources/js/modulos/vagas.js';
 
 function elemento(seletores = []) {
     const filhos = new Map(seletores.map((seletor) => [seletor, elemento()]));
@@ -20,12 +20,14 @@ function elemento(seletores = []) {
         replaceChildren(...itens) { this.children = itens; },
         remove() { this.removido = true; },
         setAttribute(nome, valor) { this.atributos[nome] = String(valor); },
+        addEventListener(evento, acao) { this[`ao_${evento}`] = acao; },
     };
 }
 
 function documento() {
     const estruturas = {
-        'modelo-vaga': ['[data-status]', '[data-tipo]', '[data-area]', '[data-titulo]', '[data-competencias-total]', '[data-elegiveis]', '[data-entrevista]', '[data-aprovado]', '[data-abrir-quadro]'],
+        'modelo-filtro-area': ['[data-cor]', '[data-rotulo]'],
+        'modelo-vaga': ['[data-capa]', '[data-status]', '[data-tipo]', '[data-area]', '[data-titulo]', '[data-competencias-total]', '[data-elegiveis]', '[data-entrevista]', '[data-aprovado]', '[data-abrir-quadro]'],
         'modelo-quadro': ['[data-status]', '[data-tipo]', '[data-area]', '[data-titulo]', '[data-descricao]', '[data-atualizar-quadro]', '[data-editar-vaga]', '[data-encerrar-vaga]', '[data-vaga-encerrada]', '[data-encerrada-em]', '[data-soma-pesos]', '[data-requisitos]', '[data-elegiveis]', '[data-colunas]'],
         'modelo-coluna': ['[data-coluna-titulo]', '[data-coluna-total]', '[data-aviso-triagem]', '[data-sem-elegiveis]', '[data-coluna-vazia]', '[data-coluna-itens]'],
         'modelo-card-ranking': ['[data-card-titulo]', '[data-link-perfil]', '[data-posicao]', '[data-codigo-revelado]', '[data-tipo-servidor]', '[data-tipo-estagiario]', '[data-area]', '[data-situacao]', '[data-score]', '[data-score-barra]', '[data-score-texto]', '[data-explicacao]', '[data-competencias]', '[data-experiencia]', '[data-energia]', '[data-proximidade-energia]', '[data-energia-ausente]', '[data-mover-etapa]', '[data-card-detalhes]', '[data-expandir-card]', '[data-adicionar-anotacao]'],
@@ -33,7 +35,7 @@ function documento() {
         'modelo-peso-competencia': ['label', 'select', '[data-erro-campo]'],
         'modelo-eixo-energia': ['label', 'select'],
     };
-    const raizes = new Map(['[data-lista-vagas]', '[data-lista-vazia]'].map((seletor) => [seletor, elemento()]));
+    const raizes = new Map(['[data-lista-vagas]', '[data-lista-vazia]', '[data-filtro-areas]', '[data-ajax-anuncios]'].map((seletor) => [seletor, elemento()]));
     const form = elemento(['[data-catalogo="hard"]', '[data-catalogo="soft"]', '[data-eixos-energia]']);
     const campos = new Map(['titulo', 'area', 'tipo_candidato', 'descricao'].map((nome) => [nome, elemento()]));
     form.elements = { namedItem: (nome) => campos.get(nome) };
@@ -69,10 +71,10 @@ const cards = (coluna) => coluna.querySelector('[data-coluna-itens]').children.m
 
 test('lista mantém estrutura, contagens, estado vazio e diferencia vaga encerrada', () => {
     const doc = documento();
-    renderizarLista({ vagas: [] }, doc);
+    renderizarLista({ vagas: [], areas: [] }, doc);
     assert.equal(doc.querySelector('[data-lista-vazia]').hidden, false);
     const vaga = { ...dadosQuadro().vaga, aberta: false, status: 'Encerrada', competencias_count: 1, totalElegiveis: 2, entrevista_count: 1, aprovado_count: 0 };
-    renderizarLista({ vagas: [vaga] }, doc);
+    renderizarLista({ vagas: [vaga], areas: [] }, doc);
     const card = doc.querySelector('[data-lista-vagas]').children[0];
     assert.equal(doc.querySelector('[data-lista-vazia]').hidden, true);
     assert.equal(card.querySelector('[data-competencias-total]').textContent, '1 competência');
@@ -81,6 +83,41 @@ test('lista mantém estrutura, contagens, estado vazio e diferencia vaga encerra
     assert.equal(card.querySelector('[data-abrir-quadro]').href, 'https://banco.test/vagas/3');
     assert.ok(card.classList.contains('border-dashed'));
     assert.equal(quantidade(1, 'candidato elegível', 'candidatos elegíveis'), '1 candidato elegível');
+});
+
+test('capa usa a cor da área e o filtro por cor mostra só as vagas escolhidas', () => {
+    const doc = documento();
+    const vaga = { ...dadosQuadro().vaga, competencias_count: 1, totalElegiveis: 2, entrevista_count: 0, aprovado_count: 0 };
+    renderizarLista({
+        vagas: [{ ...vaga, areaValor: 'infraestrutura', cor: 'bg-yellow-400' }, { ...vaga, areaValor: 'desenvolvimento', cor: 'bg-blue-600' }],
+        areas: [{ valor: 'desenvolvimento', rotulo: 'Desenvolvimento', cor: 'bg-blue-600' }, { valor: 'infraestrutura', rotulo: 'Infraestrutura', cor: 'bg-yellow-400' }],
+    }, doc);
+    const filtro = doc.querySelector('[data-filtro-areas]');
+    const [redes, sistemas] = doc.querySelector('[data-lista-vagas]').children;
+    const [todas, desenvolvimento] = filtro.children;
+    assert.ok(redes.querySelector('[data-capa]').classList.contains('bg-yellow-400'));
+    assert.equal(filtro.hidden, false);
+    assert.equal(todas.querySelector('[data-cor]').removido, true);
+    assert.equal(todas.atributos['aria-pressed'], 'true');
+    assert.ok(desenvolvimento.querySelector('[data-cor]').classList.contains('bg-blue-600'));
+
+    desenvolvimento.ao_click();
+    assert.equal(redes.hidden, true);
+    assert.equal(sistemas.hidden, false);
+    assert.equal(todas.atributos['aria-pressed'], 'false');
+    assert.equal(desenvolvimento.atributos['aria-pressed'], 'true');
+    assert.equal(doc.querySelector('[data-ajax-anuncios]').textContent, '1 vaga exibida.');
+
+    filtrarVagas('', doc);
+    assert.equal(redes.hidden, false);
+    assert.equal(todas.atributos['aria-pressed'], 'true');
+    assert.equal(doc.querySelector('[data-ajax-anuncios]').textContent, '2 vagas exibidas.');
+});
+
+test('filtro por cor fica oculto quando há vagas de uma só área', () => {
+    const doc = documento();
+    renderizarLista({ vagas: [], areas: [{ valor: 'dados', rotulo: 'Dados', cor: 'bg-violet-600' }] }, doc);
+    assert.equal(doc.querySelector('[data-filtro-areas]').hidden, true);
 });
 
 test('formulário preenche dados, catálogo, pesos e energia sem lógica Blade', () => {

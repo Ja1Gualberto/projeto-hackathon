@@ -24,4 +24,20 @@ enum Area: string
             self::Design => 'Design e UX',
         };
     }
+
+    /**
+     * Classe Tailwind da cor que identifica a área na capa das vagas.
+     */
+    public function cor(): string
+    {
+        return match ($this) {
+            self::Desenvolvimento => 'bg-blue-600',
+            self::Infraestrutura => 'bg-yellow-400',
+            self::Suporte => 'bg-emerald-600',
+            self::Dados => 'bg-violet-600',
+            self::Produto => 'bg-orange-500',
+            self::Seguranca => 'bg-red-600',
+            self::Design => 'bg-pink-500',
+        };
+    }
 }

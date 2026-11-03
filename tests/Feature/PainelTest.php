@@ -40,6 +40,30 @@ class PainelTest extends TestCase
         $this->assertSame([2, 1], $resposta['topCompetencias']->pluck('total')->map(fn ($total): int => (int) $total)->all());
     }
 
+    public function test_tecnologia_aparece_como_icone_e_comportamental_como_texto(): void
+    {
+        $candidato = Candidato::factory()->create();
+        $python = Competencia::factory()->hard()->create(['nome' => 'Python']);
+        $redes = Competencia::factory()->hard()->create(['nome' => 'Redes de Computadores']);
+        $comunicacao = Competencia::factory()->soft()->create(['nome' => 'Comunicação']);
+        $candidato->competencias()->attach([$python->id, $redes->id, $comunicacao->id], ['origem' => 'curriculo']);
+
+        $this->actingAs(User::factory()->create())->get(route('painel'))
+            ->assertOk()
+            ->assertSee('<img src="'.asset('images/competencias/python.svg').'" alt="Python"', false)
+            ->assertSee('>Comunicação</span>', false)
+            ->assertSee('>Redes de Computadores</span>', false)
+            ->assertDontSee('images/competencias/comunicacao.svg')
+            ->assertDontSee('images/competencias/redes-de-computadores.svg');
+    }
+
+    public function test_toda_competencia_com_icone_tem_o_arquivo_publicado(): void
+    {
+        foreach (Competencia::SLUGS_COM_ICONE as $slug) {
+            $this->assertFileExists(public_path("images/competencias/{$slug}.svg"));
+        }
+    }
+
     public function test_painel_vazio_orienta_o_primeiro_cadastro(): void
     {
         $this->actingAs(User::factory()->create())->get(route('painel'))

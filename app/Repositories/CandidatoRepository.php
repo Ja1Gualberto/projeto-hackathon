@@ -109,7 +109,7 @@ class CandidatoRepository implements CandidatoRepositoryInterface
 
     public function topCompetencias(int $limite = 8): Collection
     {
-        return Competencia::query()->select(['id', 'nome'])->withCount([
+        return Competencia::query()->select(['id', 'nome', 'slug'])->withCount([
             'candidatos as total' => fn (Builder $query) => $query->ativos(),
         ])->whereHas('candidatos', fn (Builder $query) => $query->ativos())
             ->orderByDesc('total')->orderBy('nome')->limit($limite)->get();

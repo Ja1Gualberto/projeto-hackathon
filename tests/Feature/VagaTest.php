@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Enums\Area;
 use App\Enums\StatusVaga;
 use App\Models\Candidato;
 use App\Models\Competencia;
@@ -292,6 +293,24 @@ class VagaTest extends TestCase
             ->assertSeeInOrder(['Vaga encerrada', 'Encerrada'])
             ->assertSee(route('vagas.show', $estagio))
             ->assertSee('Nova vaga');
+    }
+
+    public function test_lista_traz_a_cor_da_area_e_filtra_apenas_areas_com_vagas(): void
+    {
+        $this->vaga(atributos: ['titulo' => 'Vaga de redes', 'area' => Area::Infraestrutura]);
+        $this->vaga(atributos: ['titulo' => 'Vaga de sistemas', 'area' => Area::Desenvolvimento]);
+        $this->vaga(atributos: ['titulo' => 'Outra de sistemas', 'area' => Area::Desenvolvimento]);
+
+        $dados = json_decode($this->get(route('vagas.index'))->assertOk()->viewData('dadosTela'), true);
+
+        $vagas = collect($dados['vagas'])->keyBy('titulo');
+        $this->assertSame('infraestrutura', $vagas['Vaga de redes']['areaValor']);
+        $this->assertSame(Area::Infraestrutura->cor(), $vagas['Vaga de redes']['cor']);
+        $this->assertSame(Area::Desenvolvimento->cor(), $vagas['Vaga de sistemas']['cor']);
+        $this->assertSame([
+            ['valor' => 'desenvolvimento', 'rotulo' => 'Desenvolvimento', 'cor' => Area::Desenvolvimento->cor()],
+            ['valor' => 'infraestrutura', 'rotulo' => 'Infraestrutura e Redes', 'cor' => Area::Infraestrutura->cor()],
+        ], $dados['areas']);
     }
 
     public function test_lista_vazia_convida_a_criar_a_primeira_vaga(): void

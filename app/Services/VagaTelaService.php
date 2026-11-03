@@ -14,13 +14,24 @@ class VagaTelaService
     /** @param array{vagas: iterable<Vaga>, elegiveis: array<int, int>} $lista */
     public function lista(array $lista): array
     {
-        return ['vagas' => collect($lista['vagas'])->map(fn (Vaga $vaga): array => [
-            ...$this->vaga($vaga),
-            'competencias_count' => $vaga->competencias_count,
-            'entrevista_count' => $vaga->entrevista_count,
-            'aprovado_count' => $vaga->aprovado_count,
-            'totalElegiveis' => $lista['elegiveis'][$vaga->id] ?? 0,
-        ])->all()];
+        $vagas = collect($lista['vagas']);
+
+        return [
+            'vagas' => $vagas->map(fn (Vaga $vaga): array => [
+                ...$this->vaga($vaga),
+                'areaValor' => $vaga->area->value,
+                'cor' => $vaga->area->cor(),
+                'competencias_count' => $vaga->competencias_count,
+                'entrevista_count' => $vaga->entrevista_count,
+                'aprovado_count' => $vaga->aprovado_count,
+                'totalElegiveis' => $lista['elegiveis'][$vaga->id] ?? 0,
+            ])->all(),
+            'areas' => collect(Area::cases())
+                ->filter(fn (Area $area): bool => $vagas->contains(fn (Vaga $vaga): bool => $vaga->area === $area))
+                ->map(fn (Area $area): array => ['valor' => $area->value, 'rotulo' => $area->rotulo(), 'cor' => $area->cor()])
+                ->values()
+                ->all(),
+        ];
     }
 
     /**
