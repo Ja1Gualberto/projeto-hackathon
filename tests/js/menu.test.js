@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { runInNewContext } from 'node:vm';
 import { registrarMenu } from '../../resources/js/modulos/menu.js';
 
 const layout = readFileSync(new URL('../../resources/views/layouts/app.blade.php', import.meta.url), 'utf8');
@@ -107,7 +106,7 @@ function montarMenu({ desktop = true, preferencia = null, armazenamentoBloqueado
     return { doc, janela, raiz, lateral, conteudo, identidade, abrir, fundo, inicio, icone, sair, tela, gravacoes, tecla, clicar };
 }
 
-test('desktop expande ao clicar na própria lateral e recolhe ao clicar fora, salvando a preferência', () => {
+test('desktop expande ao clicar na lateral e recolhe ao clicar fora', () => {
     const ui = montarMenu();
     assert.equal(ui.raiz.dataset.menuRecolhido, 'true');
     assert.equal(ui.identidade.getAttribute('aria-expanded'), 'false');
@@ -120,7 +119,7 @@ test('desktop expande ao clicar na própria lateral e recolhe ao clicar fora, sa
     assert.equal(ui.lateral.inert, false);
     assert.equal(ui.conteudo.inert, false);
     assert.equal(ui.fundo.hidden, true);
-    assert.deepEqual(ui.gravacoes, [['banco-talentos:menu-recolhido', 'false']]);
+    assert.deepEqual(ui.gravacoes, []);
 
     ui.conteudo.focus();
     ui.clicar(ui.conteudo);
@@ -128,68 +127,27 @@ test('desktop expande ao clicar na própria lateral e recolhe ao clicar fora, sa
     assert.equal(ui.raiz.dataset.menuRecolhido, 'true');
     assert.match(ui.identidade.getAttribute('aria-label'), /Expandir navegação/);
     assert.equal(ui.doc.activeElement, ui.conteudo);
-    assert.deepEqual(ui.gravacoes.at(-1), ['banco-talentos:menu-recolhido', 'true']);
+    assert.deepEqual(ui.gravacoes, []);
 });
 
-test('restaura preferência válida e ignora valores desconhecidos', () => {
-    const recolhido = montarMenu({ preferencia: 'true' });
-    const expandido = montarMenu({ preferencia: 'false' });
-    const desconhecido = montarMenu({ preferencia: 'qualquer valor' });
+test('preferencia expandida antiga nao reabre o menu em uma nova pagina', () => {
+    const ui = montarMenu({ preferencia: 'false' });
 
-    assert.equal(recolhido.raiz.dataset.menuRecolhido, 'true');
-    assert.equal(recolhido.identidade.getAttribute('aria-expanded'), 'false');
-    assert.equal(expandido.raiz.dataset.menuRecolhido, 'false');
-    assert.equal(desconhecido.raiz.dataset.menuRecolhido, 'true');
+    assert.equal(ui.raiz.dataset.menuRecolhido, 'true');
+    assert.equal(ui.identidade.getAttribute('aria-expanded'), 'false');
+    assert.match(layout, /data-menu-recolhido="true"/);
 });
-
-for (const [preferencia, estadoEsperado] of [[null, 'true'], ['true', 'true'], ['false', 'false'], ['valor inválido', 'true']]) {
-    test(`aplica a preferência ${preferencia} antes de renderizar a lateral`, () => {
-        const antesDaLateral = layout.split('<x-menu-lateral')[0];
-        const script = antesDaLateral.match(/<script\b[^>]*>([\s\S]*?)<\/script>/)?.[1];
-        assert.ok(script, 'A preferência precisa ser restaurada antes de renderizar a lateral');
-        const raiz = { dataset: { menuRecolhido: 'true' } };
-
-        runInNewContext(script, {
-            document: { currentScript: { parentElement: raiz } },
-            window: { localStorage: { getItem: () => preferencia } },
-        });
-
-        assert.equal(raiz.dataset.menuRecolhido, estadoEsperado);
-    });
-}
-
-test('renderização inicial mantém o padrão quando o armazenamento está bloqueado', () => {
-    const script = layout.match(/<script\b[^>]*>([\s\S]*?)<\/script>/)?.[1];
-    assert.ok(script);
-    const raiz = { dataset: { menuRecolhido: 'true' } };
-
-    runInNewContext(script, {
-        document: { currentScript: { parentElement: raiz } },
-        window: { get localStorage() { throw new Error('Armazenamento bloqueado'); } },
-    });
-
-    assert.equal(raiz.dataset.menuRecolhido, 'true');
-});
-
-test('navegar entre páginas mantém o menu aberto e depois recolhido', () => {
-    const armazenamento = new Map();
-    const vagas = montarMenu({ armazenamento });
+test('navegar por um link deixa a nova pagina com o menu recolhido', () => {
+    const vagas = montarMenu();
     vagas.clicar(vagas.lateral);
 
     const navegacao = vagas.clicar(vagas.inicio);
-    const importacao = montarMenu({ armazenamento });
+    const importacao = montarMenu({ preferencia: 'false' });
 
     assert.equal(navegacao.defaultPrevented, false);
-    assert.equal(importacao.raiz.dataset.menuRecolhido, 'false');
-    assert.equal(importacao.identidade.getAttribute('aria-expanded'), 'true');
-
-    importacao.clicar(importacao.identidade);
-    const candidatos = montarMenu({ armazenamento });
-
-    assert.equal(candidatos.raiz.dataset.menuRecolhido, 'true');
-    assert.equal(candidatos.identidade.getAttribute('aria-expanded'), 'false');
+    assert.equal(importacao.raiz.dataset.menuRecolhido, 'true');
+    assert.equal(importacao.identidade.getAttribute('aria-expanded'), 'false');
 });
-
 test('menu funciona mesmo com acesso ao armazenamento bloqueado', () => {
     const ui = montarMenu({ armazenamentoBloqueado: true });
 
@@ -274,7 +232,7 @@ test('celular inicia fechado e abre um diálogo com foco e bloqueio do conteúdo
     assert.deepEqual(ui.gravacoes, []);
 });
 
-for (const acao of ['identidade', 'fundo', 'Escape', 'link']) {
+for (const acao of ['identidade', 'fundo', 'Escape']) {
     test(`celular fecha pelo ${acao} e devolve foco e rolagem`, () => {
         const ui = montarMenu({ desktop: false });
         ui.clicar(ui.abrir);
@@ -301,6 +259,16 @@ for (const acao of ['identidade', 'fundo', 'Escape', 'link']) {
     });
 }
 
+test('nova pagina no celular inicia fechada depois de navegar pelo menu', () => {
+    const ui = montarMenu({ desktop: false });
+    ui.clicar(ui.abrir);
+
+    assert.equal(ui.clicar(ui.inicio).defaultPrevented, false);
+
+    const novaPagina = montarMenu({ desktop: false });
+    assert.equal(novaPagina.raiz.dataset.menuAberto, 'false');
+    assert.equal(novaPagina.lateral.inert, true);
+});
 test('Tab e Shift+Tab mantêm a navegação dentro do menu aberto no celular', () => {
     const ui = montarMenu({ desktop: false });
     ui.clicar(ui.abrir);
@@ -347,7 +315,7 @@ test('Escape fora do diálogo não interfere com a página e inicializar novamen
     ui.clicar(ui.lateral);
 
     assert.equal(ui.raiz.dataset.menuRecolhido, 'false');
-    assert.equal(ui.gravacoes.length, 1);
+    assert.equal(ui.gravacoes.length, 0);
 });
 
 test('páginas sem menu não recebem alterações nem ouvintes', () => {

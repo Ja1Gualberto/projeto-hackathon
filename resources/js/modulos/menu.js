@@ -1,5 +1,3 @@
-const chavePreferencia = 'banco-talentos:menu-recolhido';
-
 export function registrarMenu(doc = document, janela = window) {
     const raiz = doc.querySelector('[data-menu]');
     if (!raiz || raiz.hasAttribute('data-menu-pronto')) {
@@ -15,12 +13,6 @@ export function registrarMenu(doc = document, janela = window) {
     let recolhido = true;
     let aberto = false;
     let overflowAnterior;
-
-    try {
-        recolhido = janela.localStorage.getItem(chavePreferencia) !== 'false';
-    } catch {
-        // A navegação continua funcionando quando o navegador bloqueia o armazenamento.
-    }
 
     function atualizar() {
         const modal = !desktop.matches && aberto;
@@ -54,18 +46,9 @@ export function registrarMenu(doc = document, janela = window) {
         }
     }
 
-    function salvarPreferencia() {
-        try {
-            janela.localStorage.setItem(chavePreferencia, String(recolhido));
-        } catch {
-            // Persistir a preferência é opcional; interagir com o menu não é.
-        }
-    }
-
     function abrirMenu() {
         if (desktop.matches) {
             recolhido = false;
-            salvarPreferencia();
         } else {
             aberto = true;
         }
@@ -81,7 +64,6 @@ export function registrarMenu(doc = document, janela = window) {
         }
         if (desktop.matches) {
             recolhido = true;
-            salvarPreferencia();
         } else {
             aberto = false;
         }
@@ -110,8 +92,6 @@ export function registrarMenu(doc = document, janela = window) {
         } else if (identidade.contains(evento.target)) {
             evento.preventDefault();
             fecharMenu(true);
-        } else if (!desktop.matches && evento.target.closest?.('a[href]')) {
-            fecharMenu();
         }
     }, true);
 
