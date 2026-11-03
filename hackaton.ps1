@@ -27,7 +27,8 @@ $Commands = [ordered]@{
     php = 'Executa php <args> no container'
     pint = 'Executa vendor/bin/pint <args> no container'
     check = 'Formata o PHP com Pint no container'
-    setup = 'Compila, inicia o ambiente e gera a APP_KEY se faltar'
+    setup = 'Compila, inicia o ambiente, gera a APP_KEY se faltar e prepara a IA local'
+    'ia-setup' = 'Inicia o Ollama e instala o modelo configurado para analise de perfil'
     demo = 'Prepara o ambiente de demonstracao do zero (setup + migrate:fresh --seed)'
     shell = 'Abre um Bash no container da aplicacao'
     exec = 'Executa um comando arbitrario no container'
@@ -62,7 +63,7 @@ function Resolve-Compose {
 }
 
 function Invoke-Compose {
-    param([string[]]$ComposeArguments)
+    param([string[]]$ComposeArguments, [string]$StandardInput)
 
     $nativeArguments = @($script:ComposePrefix) + @(
         '--project-directory', $ProjectDirectory,
@@ -70,7 +71,11 @@ function Invoke-Compose {
     ) + $ComposeArguments
 
     $ErrorActionPreference = 'Continue'
-    & $script:ComposeExecutable @nativeArguments
+    if ($PSBoundParameters.ContainsKey('StandardInput')) {
+        $StandardInput | & $script:ComposeExecutable @nativeArguments
+    } else {
+        & $script:ComposeExecutable @nativeArguments
+    }
     $exitCode = $LASTEXITCODE
 
     if ($exitCode -ne 0) {
@@ -122,6 +127,36 @@ function Invoke-InContainer {
     Invoke-Compose (@('exec') + $execArguments + @($Service) + $ContainerArguments)
 }
 
+function Initialize-LocalAi {
+    param([string[]]$CommandArguments = @())
+
+    if ($CommandArguments.Count -gt 0) {
+        throw 'Uso: .\hackaton.ps1 ia-setup (o modelo e definido por OLLAMA_MODEL).'
+    }
+
+    Write-Info 'Iniciando o Ollama para a analise de perfil...'
+    Invoke-Compose @('up', '-d', 'ollama')
+    Write-Info 'Aguardando o Ollama e preparando o modelo (o primeiro download pode demorar)...'
+    $installModel = @'
+attempts=0
+until ollama list >/dev/null 2>&1; do
+    attempts=$((attempts + 1))
+    if [ "$attempts" -ge 30 ]; then
+        echo "Ollama nao ficou disponivel. Consulte .\hackaton.ps1 logs ollama." >&2
+        exit 1
+    fi
+    sleep 2
+done
+if ollama show "$OLLAMA_MODEL" >/dev/null 2>&1; then
+    printf "Modelo %s ja instalado.\n" "$OLLAMA_MODEL"
+else
+    ollama pull "$OLLAMA_MODEL"
+fi
+'@
+    Invoke-Compose @('exec', '-T', 'ollama', 'sh', '-eu', '-s') -StandardInput ($installModel.Replace("`r", ''))
+    Write-Info 'IA local pronta. Para habilitar a analise, configure manualmente ENERGIA_IA_HABILITADA=true e ENERGIA_IA_PROVEDOR=ollama no .env.'
+}
+
 function Invoke-Setup {
     param([string[]]$CommandArguments)
 
@@ -132,6 +167,7 @@ function Invoke-Setup {
         Invoke-InContainer @('php', 'artisan', 'key:generate', '--no-interaction')
     }
 
+    Initialize-LocalAi @()
     Write-Info 'Ambiente configurado. Execute .\hackaton.ps1 artisan migrate --no-interaction quando necessario.'
 }
 
@@ -159,12 +195,16 @@ function Show-Help {
     Write-Output ''
     Write-Output 'Exemplos:'
     Write-Output '  .\hackaton.ps1 setup'
+    Write-Output '  .\hackaton.ps1 ia-setup'
     Write-Output '  .\hackaton.ps1 artisan migrate --no-interaction'
     Write-Output '  .\hackaton.ps1 logs app'
     Write-Output '  .\hackaton.ps1 exec ls -la'
     Write-Output ''
     Write-Output 'O build instala Composer/npm e compila os assets; Node nao esta na imagem final.'
     Write-Output 'O codigo e copiado para a imagem: apos alteracoes locais, execute .\hackaton.ps1 dev.'
+    Write-Output 'setup tambem prepara a IA local; use ia-setup para instalar ou reiniciar apenas o Ollama.'
+    Write-Output 'O modelo segue OLLAMA_MODEL (padrao: llama3.2:3b) e fica salvo no volume ollama-data.'
+    Write-Output 'Para usar a analise, configure manualmente ENERGIA_IA_HABILITADA=true e ENERGIA_IA_PROVEDOR=ollama no .env.'
     Write-Output 'artisan e tinker rodam como www-data (usuario do Apache); shell e exec rodam como root.'
     Write-Output 'Composer e Pint no container nao alteram os arquivos do projeto no host.'
     Write-Output 'Atencao: down --volumes apaga os dados persistidos, incluindo o banco.'
@@ -220,6 +260,7 @@ try {
             Invoke-InContainer $commandArguments
         }
         'setup' { Invoke-Setup $commandArguments }
+        'ia-setup' { Initialize-LocalAi $commandArguments }
         'demo' { Invoke-Demo $commandArguments }
     }
 } catch {

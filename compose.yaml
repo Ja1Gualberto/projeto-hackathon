@@ -36,8 +36,7 @@ services:
       mysql:
         condition: service_healthy
 
-  # Opcional: docker compose --profile ia-local up -d ollama
-  # Depois: docker compose exec ollama ollama pull llama3.2:3b
+  # Preparado por ./hackaton setup ou ./hackaton ia-setup (também no PowerShell).
   # Sem portas publicadas: acessível apenas pela rede interna do projeto.
   ollama:
     image: ollama/ollama:latest
@@ -45,6 +44,7 @@ services:
     environment:
       OLLAMA_HOST: "0.0.0.0:11434"
       OLLAMA_NO_CLOUD: "1"
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
     volumes:
       - ollama-data:/root/.ollama
 

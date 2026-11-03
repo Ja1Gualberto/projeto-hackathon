@@ -29,7 +29,8 @@ COMMANDS=(
     "php|Executa php <args> no container"
     "pint|Executa vendor/bin/pint <args> no container"
     "check|Formata o PHP com Pint no container"
-    "setup|Compila, inicia o ambiente e gera a APP_KEY se faltar"
+    "setup|Compila, inicia o ambiente, gera a APP_KEY se faltar e prepara a IA local"
+    "ia-setup|Inicia o Ollama e instala o modelo configurado para análise de perfil"
     "demo|Prepara o ambiente de demonstração do zero (setup + migrate:fresh --seed)"
     "shell|Abre um Bash no container da aplicação"
     "exec|Executa um comando arbitrário: ./hackaton exec <cmd> [args]"
@@ -130,12 +131,15 @@ cmd_help() {
         printf '  %s%-10s%s %s\n' "$C_GREEN" "$name" "$C_RESET" "$description"
     done
     printf '\n%sExemplos:%s\n' "$C_BOLD" "$C_RESET"
-    printf '  ./hackaton %s\n' 'setup' 'dev' 'artisan migrate --no-interaction' 'logs app' 'pint --test' 'exec ls -la'
+    printf '  ./hackaton %s\n' 'setup' 'dev' 'ia-setup' 'artisan migrate --no-interaction' 'logs app' 'pint --test' 'exec ls -la'
     printf '\n'
     printf '%s\n' \
         'dev inicia o Vite (npm run dev); alterações locais aparecem sem reconstruir as imagens.' \
         'O código local é compartilhado com a aplicação; as dependências ficam nas imagens.' \
         'Após alterar composer.lock ou package-lock.json, execute ./hackaton dev novamente.' \
+        'setup também prepara a IA local; use ia-setup para instalar ou reiniciar apenas o Ollama.' \
+        'O modelo segue OLLAMA_MODEL (padrão: llama3.2:3b) e fica salvo no volume ollama-data.' \
+        'Para usar a análise, configure manualmente ENERGIA_IA_HABILITADA=true e ENERGIA_IA_PROVEDOR=ollama no .env.' \
         'artisan e tinker rodam como www-data (usuário do Apache); shell e exec rodam como root.' \
         'Pint e outros comandos podem alterar os arquivos locais compartilhados com o container.' \
         'Atenção: down --volumes apaga os dados persistidos, incluindo o banco.'
@@ -171,12 +175,37 @@ cmd_exec() {
     run_in_container "$@"
 }
 
+cmd_ia_setup() {
+    [[ $# -eq 0 ]] || fail "Uso: ./hackaton ia-setup (o modelo é definido por OLLAMA_MODEL)."
+    info "Iniciando o Ollama para a análise de perfil..."
+    compose up -d ollama
+    info "Aguardando o Ollama e preparando o modelo (o primeiro download pode demorar)..."
+    compose exec -T ollama sh -eu -c '
+        attempts=0
+        until ollama list >/dev/null 2>&1; do
+            attempts=$((attempts + 1))
+            if [ "$attempts" -ge 30 ]; then
+                echo "Ollama não ficou disponível. Consulte ./hackaton logs ollama." >&2
+                exit 1
+            fi
+            sleep 2
+        done
+        if ollama show "$OLLAMA_MODEL" >/dev/null 2>&1; then
+            printf "Modelo %s já instalado.\n" "$OLLAMA_MODEL"
+        else
+            ollama pull "$OLLAMA_MODEL"
+        fi
+    '
+    info "IA local pronta. Para habilitar a análise, configure manualmente ENERGIA_IA_HABILITADA=true e ENERGIA_IA_PROVEDOR=ollama no .env."
+}
+
 cmd_setup() {
     cmd_dev "$@"
     if ! grep -qE "^APP_KEY=['\"]?[^'\"[:space:]#]+" "$PROJECT_DIR/.env"; then
         # Grava o .env montado do host; continua como root.
         run_in_container php artisan key:generate --no-interaction
     fi
+    cmd_ia_setup
     info "Ambiente configurado. Execute ./hackaton artisan migrate --no-interaction quando necessário."
 }
 
