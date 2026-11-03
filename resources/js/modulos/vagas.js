@@ -174,6 +174,13 @@ function cardRanking(item, posicao, vaga, doc) {
     titulo.classList.toggle('font-mono', item.nome === null);
     texto(card, '[data-link-perfil]', identificacao);
     link(card, '[data-link-perfil]', item.perfilUrl, doc);
+    const detalhes = card.querySelector('[data-card-detalhes]');
+    detalhes.id = `card-detalhes-${item.codigo}`;
+    detalhes.hidden = true;
+    const expandir = card.querySelector('[data-expandir-card]');
+    expandir.setAttribute('aria-controls', detalhes.id);
+    expandir.setAttribute('aria-expanded', 'false');
+    expandir.setAttribute('aria-label', `Mostrar competências de ${identificacao}`);
     texto(card, '[data-codigo-revelado]', item.codigo);
     card.querySelector('[data-codigo-revelado]').hidden = item.nome === null;
     card.querySelector('[data-tipo-servidor]').hidden = item.tipo !== 'servidor';

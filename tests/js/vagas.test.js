@@ -28,7 +28,7 @@ function documento() {
         'modelo-vaga': ['[data-status]', '[data-tipo]', '[data-area]', '[data-titulo]', '[data-competencias-total]', '[data-elegiveis]', '[data-entrevista]', '[data-aprovado]', '[data-abrir-quadro]'],
         'modelo-quadro': ['[data-status]', '[data-tipo]', '[data-area]', '[data-titulo]', '[data-descricao]', '[data-atualizar-quadro]', '[data-editar-vaga]', '[data-encerrar-vaga]', '[data-vaga-encerrada]', '[data-encerrada-em]', '[data-soma-pesos]', '[data-requisitos]', '[data-elegiveis]', '[data-colunas]'],
         'modelo-coluna': ['[data-coluna-titulo]', '[data-coluna-total]', '[data-aviso-triagem]', '[data-sem-elegiveis]', '[data-coluna-vazia]', '[data-coluna-itens]'],
-        'modelo-card-ranking': ['[data-card-titulo]', '[data-link-perfil]', '[data-posicao]', '[data-codigo-revelado]', '[data-tipo-servidor]', '[data-tipo-estagiario]', '[data-area]', '[data-situacao]', '[data-score]', '[data-score-barra]', '[data-score-texto]', '[data-explicacao]', '[data-competencias]', '[data-experiencia]', '[data-energia]', '[data-proximidade-energia]', '[data-energia-ausente]', '[data-mover-etapa]'],
+        'modelo-card-ranking': ['[data-card-titulo]', '[data-link-perfil]', '[data-posicao]', '[data-codigo-revelado]', '[data-tipo-servidor]', '[data-tipo-estagiario]', '[data-area]', '[data-situacao]', '[data-score]', '[data-score-barra]', '[data-score-texto]', '[data-explicacao]', '[data-competencias]', '[data-experiencia]', '[data-energia]', '[data-proximidade-energia]', '[data-energia-ausente]', '[data-mover-etapa]', '[data-card-detalhes]', '[data-expandir-card]'],
         'modelo-tag-competencia': ['[data-tag-nome]', '[data-tag-peso]', '[data-tag-faltante]', '[data-tag-origem]'],
         'modelo-peso-competencia': ['label', 'select', '[data-erro-campo]'],
         'modelo-eixo-energia': ['label', 'select'],
@@ -152,6 +152,27 @@ test('etapas reveladas oferecem ações corretas e campos de texto nunca usam in
     const aprovado = cards(colunas(quadro)[2])[0];
     assert.deepEqual(aprovado.querySelector('[data-mover-etapa]').children.map((botao) => botao.value), ['entrevista']);
     assert.ok(aprovado.querySelector('[data-score-texto]').classList.contains('text-score-baixo'));
+});
+
+test('cards iniciam compactos com controles de expansão independentes e identificação acessível', () => {
+    const dados = dadosQuadro();
+    dados.colunas.entrevista.push({ ...dados.colunas.triagem[0], codigo: 'CAND-0043', etapa: 'entrevista', nome: 'Ana Silva' });
+
+    const quadro = montarQuadro(dados, documento());
+
+    const anonimo = cards(colunas(quadro)[0])[0];
+    const revelado = cards(colunas(quadro)[1])[0];
+    assert.equal(anonimo.querySelector('[data-card-detalhes]').hidden, true);
+    assert.equal(anonimo.querySelector('[data-card-detalhes]').id, 'card-detalhes-CAND-0042');
+    assert.deepEqual(anonimo.querySelector('[data-expandir-card]').atributos, {
+        'aria-controls': 'card-detalhes-CAND-0042',
+        'aria-expanded': 'false',
+        'aria-label': 'Mostrar competências de CAND-0042',
+    });
+    assert.equal(revelado.querySelector('[data-card-detalhes]').hidden, true);
+    assert.equal(revelado.querySelector('[data-card-detalhes]').id, 'card-detalhes-CAND-0043');
+    assert.equal(revelado.querySelector('[data-expandir-card]').atributos['aria-controls'], 'card-detalhes-CAND-0043');
+    assert.equal(revelado.querySelector('[data-expandir-card]').atributos['aria-label'], 'Mostrar competências de Ana Silva');
 });
 
 test('vaga encerrada e candidatos inelegíveis removem ações e arraste', () => {

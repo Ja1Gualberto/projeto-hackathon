@@ -257,6 +257,152 @@ function montarMovimentacao() {
     return { doc, docEventos, regiao, atributos, alvos, colunas, aviso, focados, formulario, evento, elementoEm };
 }
 
+function montarExpansao(quadro, identificacao, dentroDoQuadro = true) {
+    const detalhes = { hidden: true };
+    const atributos = new Map([['aria-expanded', 'false']]);
+    const card = {
+        querySelector: (seletor) => ({
+            '[data-card-detalhes]': detalhes,
+            '[data-link-perfil]': { textContent: identificacao },
+        })[seletor],
+    };
+    const botao = {
+        dentroDoQuadro,
+        closest: (seletor) => seletor === '[data-codigo]' ? card : null,
+        getAttribute: (nome) => atributos.get(nome),
+        setAttribute: (nome, valor) => atributos.set(nome, valor),
+    };
+    const icone = { closest: (seletor) => seletor === '[data-expandir-card]' ? botao : null };
+    return { detalhes, atributos, clicar: () => quadro.docEventos.click(quadro.evento(icone, { button: 0 })) };
+}
+
+test('seta expande e recolhe somente as competências do card escolhido sem requisições', async () => {
+    const quadro = montarMovimentacao();
+    const primeiro = montarExpansao(quadro, 'CAND-0042');
+    const segundo = montarExpansao(quadro, 'Ana Silva');
+    let chamadas = 0;
+    globalThis.fetch = async () => { chamadas++; throw new Error('Expansão não deve acessar o servidor'); };
+
+    await primeiro.clicar();
+
+    assert.equal(primeiro.detalhes.hidden, false);
+    assert.equal(primeiro.atributos.get('aria-expanded'), 'true');
+    assert.equal(primeiro.atributos.get('aria-label'), 'Ocultar competências de CAND-0042');
+    assert.equal(segundo.detalhes.hidden, true);
+
+    await segundo.clicar();
+    await primeiro.clicar();
+
+    assert.equal(primeiro.detalhes.hidden, true);
+    assert.equal(primeiro.atributos.get('aria-expanded'), 'false');
+    assert.equal(primeiro.atributos.get('aria-label'), 'Mostrar competências de CAND-0042');
+    assert.equal(segundo.detalhes.hidden, false);
+    assert.equal(segundo.atributos.get('aria-label'), 'Ocultar competências de Ana Silva');
+    assert.equal(chamadas, 0);
+});
+
+test('expansão ignora controles fora do quadro e funciona em cards inseridos após atualizar', async () => {
+    const quadro = montarMovimentacao();
+    const externo = montarExpansao(quadro, 'Externo', false);
+
+    await externo.clicar();
+
+    assert.equal(externo.detalhes.hidden, true);
+    assert.equal(externo.atributos.get('aria-expanded'), 'false');
+
+    quadro.regiao.innerHTML = 'quadro atualizado';
+    const novo = montarExpansao(quadro, 'CAND-0043');
+    await novo.clicar();
+
+    assert.equal(novo.detalhes.hidden, false);
+    assert.equal(novo.atributos.get('aria-expanded'), 'true');
+});
+
+function instalarAnimacao(quadro, expansao, movimentoReduzido = false) {
+    const animacoes = [];
+    const natural = { height: '180px', paddingTop: '12px', borderTopWidth: '1px', marginBottom: '0px', opacity: '1' };
+    let estiloAtual = natural;
+    quadro.doc.defaultView = {
+        matchMedia: () => ({ matches: movimentoReduzido }),
+        getComputedStyle: (elemento) => elemento === expansao.detalhes ? estiloAtual : { rowGap: '12px' },
+    };
+    expansao.detalhes.animate = (quadros, opcoes) => {
+        const animacao = {
+            quadros, opcoes, cancelada: false,
+            cancel() { this.cancelada = true; estiloAtual = natural; },
+            concluir() { this.onfinish(); },
+        };
+        animacoes.push(animacao);
+        return animacao;
+    };
+    return { animacoes, emProgresso: (altura) => { estiloAtual = { ...natural, height: altura }; } };
+}
+
+test('competências crescem gradualmente e só ficam ocultas ao terminar o recolhimento', async () => {
+    const quadro = montarMovimentacao();
+    const expansao = montarExpansao(quadro, 'CAND-0042');
+    const { animacoes } = instalarAnimacao(quadro, expansao);
+
+    await expansao.clicar();
+
+    assert.equal(animacoes[0].quadros[0].height, '0px');
+    assert.equal(animacoes[0].quadros[0].marginBottom, '-12px');
+    assert.equal(animacoes[0].quadros[1].height, '180px');
+    assert.ok(animacoes[0].opcoes.duration > 0);
+    animacoes[0].concluir();
+    assert.equal(expansao.detalhes.hidden, false);
+    assert.equal(animacoes[0].cancelada, true);
+
+    await expansao.clicar();
+
+    assert.equal(expansao.detalhes.hidden, false);
+    assert.equal(expansao.atributos.get('aria-expanded'), 'false');
+    assert.equal(animacoes[1].quadros[0].height, '180px');
+    assert.equal(animacoes[1].quadros[1].height, '0px');
+    animacoes[1].concluir();
+    assert.equal(expansao.detalhes.hidden, true);
+    assert.equal(animacoes[1].cancelada, true);
+});
+
+test('cliques rápidos invertem a animação da altura atual sem ocultar um card reaberto', async () => {
+    const quadro = montarMovimentacao();
+    const expansao = montarExpansao(quadro, 'CAND-0042');
+    const { animacoes, emProgresso } = instalarAnimacao(quadro, expansao);
+    await expansao.clicar();
+    emProgresso('70px');
+
+    await expansao.clicar();
+
+    assert.equal(animacoes[0].cancelada, true);
+    assert.equal(animacoes[1].quadros[0].height, '70px');
+    emProgresso('40px');
+
+    await expansao.clicar();
+    animacoes[1].concluir();
+
+    assert.equal(animacoes[1].cancelada, true);
+    assert.equal(animacoes[2].quadros[0].height, '40px');
+    assert.equal(animacoes[2].quadros[1].height, '180px');
+    assert.equal(expansao.detalhes.hidden, false);
+    assert.equal(expansao.atributos.get('aria-expanded'), 'true');
+    animacoes[2].concluir();
+    assert.equal(expansao.detalhes.hidden, false);
+});
+
+test('preferência por movimento reduzido mantém expansão e recolhimento sem animação', async () => {
+    const quadro = montarMovimentacao();
+    const expansao = montarExpansao(quadro, 'CAND-0042');
+    const { animacoes } = instalarAnimacao(quadro, expansao, true);
+
+    await expansao.clicar();
+    assert.equal(expansao.detalhes.hidden, false);
+    await expansao.clicar();
+
+    assert.equal(expansao.detalhes.hidden, true);
+    assert.equal(expansao.atributos.get('aria-expanded'), 'false');
+    assert.deepEqual(animacoes, []);
+});
+
 test('cada movimentação fecha a mensagem anterior antes de enviar: o nome não sobra ao voltar à triagem', async () => {
     const quadro = montarMovimentacao();
     const ordem = [];
@@ -409,7 +555,7 @@ test('encerramento usa uma confirmação e impede movimentações e atualizaçã
 
     const envio = quadro.docEventos.submit(quadro.evento(form));
     await quadro.docEventos.submit(quadro.evento(quadro.formulario('CAND-0077').form, { submitter: { name: 'etapa', value: 'entrevista' } }));
-    await quadro.docEventos.click(quadro.evento({ closest: () => ({ dentroDoQuadro: true }) }, { button: 0 }));
+    await quadro.docEventos.click(quadro.evento({ closest: (seletor) => seletor === '[data-atualizar-quadro]' ? { dentroDoQuadro: true } : null }, { button: 0 }));
     assert.equal(chamadas, 1);
     liberar();
     await envio;

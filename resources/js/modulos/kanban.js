@@ -18,6 +18,55 @@ const REGIOES_DE_MOVIMENTACAO = '#quadro-vaga, #perfil-na-vaga';
 export function registrarQuadro(doc = document) {
     let pendente = false;
     let arrastado = null;
+    const animacoesDetalhes = new WeakMap();
+
+    function animarDetalhes(card, detalhes, aberto) {
+        const janela = doc.defaultView;
+        const anterior = animacoesDetalhes.get(detalhes);
+        if (!detalhes.animate || janela?.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            anterior?.cancel();
+            animacoesDetalhes.delete(detalhes);
+            detalhes.hidden = !aberto;
+            return;
+        }
+
+        function medir() {
+            const estilo = janela.getComputedStyle(detalhes);
+            return {
+                height: estilo.height,
+                paddingTop: estilo.paddingTop,
+                borderTopWidth: estilo.borderTopWidth,
+                marginBottom: estilo.marginBottom,
+                opacity: estilo.opacity,
+                overflow: 'hidden',
+                minHeight: '0px',
+            };
+        }
+
+        const recolhido = {
+            height: '0px', paddingTop: '0px', borderTopWidth: '0px',
+            marginBottom: `-${janela.getComputedStyle(card).rowGap}`,
+            opacity: '0', overflow: 'hidden', minHeight: '0px',
+        };
+        const inicio = detalhes.hidden ? recolhido : medir();
+        anterior?.cancel();
+        detalhes.hidden = false;
+        const destino = aberto ? medir() : recolhido;
+        const animacao = detalhes.animate([inicio, destino], {
+            duration: 320,
+            easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+            fill: 'both',
+        });
+        animacoesDetalhes.set(detalhes, animacao);
+        animacao.onfinish = () => {
+            if (animacoesDetalhes.get(detalhes) !== animacao) {
+                return;
+            }
+            detalhes.hidden = !aberto;
+            animacoesDetalhes.delete(detalhes);
+            animacao.cancel();
+        };
+    }
 
     async function mover(formulario, botao) {
         const regiao = formulario.closest(REGIOES_DE_MOVIMENTACAO);
@@ -60,8 +109,20 @@ export function registrarQuadro(doc = document) {
         if (evento.button !== 0 || evento.ctrlKey || evento.metaKey || evento.shiftKey || evento.altKey) {
             return;
         }
-        const link = evento.target.closest?.('[data-atualizar-quadro]');
         const regiao = doc.getElementById('quadro-vaga');
+        const expandir = evento.target.closest?.('[data-expandir-card]');
+        if (expandir && regiao?.contains(expandir)) {
+            const card = expandir.closest('[data-codigo]');
+            const detalhes = card.querySelector('[data-card-detalhes]');
+            const identificacao = card.querySelector('[data-link-perfil]').textContent;
+            const aberto = expandir.getAttribute('aria-expanded') !== 'true';
+            evento.preventDefault();
+            animarDetalhes(card, detalhes, aberto);
+            expandir.setAttribute('aria-expanded', String(aberto));
+            expandir.setAttribute('aria-label', `${aberto ? 'Ocultar' : 'Mostrar'} competências de ${identificacao}`);
+            return;
+        }
+        const link = evento.target.closest?.('[data-atualizar-quadro]');
         if (!link || !regiao?.contains(link)) {
             return;
         }
