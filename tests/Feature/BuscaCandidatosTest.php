@@ -315,6 +315,9 @@ class BuscaCandidatosTest extends TestCase
         $xpath = new \DOMXPath($documento);
         $this->assertCount(4, $xpath->query('//select[@name="por_pagina"]/option'));
         $this->assertCount(1, $xpath->query('//select[@name="por_pagina"]/option[@value="'.$porPagina.'"][@selected]'));
+        $this->assertCount(0, $xpath->query('//form[@data-busca-candidatos]//select[@name="por_pagina"]'));
+        $this->assertCount(1, $xpath->query('//section[@id="resultados-candidatos"]/div[1]//select[@name="por_pagina"][@form="filtros-candidatos"]'));
+        $this->assertCount(1, $xpath->query('//form[@id="filtros-candidatos"][@data-busca-candidatos]'));
 
         $proximaUrl = $resposta['candidatos']->nextPageUrl();
         $this->assertStringContainsString('por_pagina='.$porPagina, $proximaUrl);
@@ -326,6 +329,7 @@ class BuscaCandidatosTest extends TestCase
         $fragmento = $this->getJson($url)->assertOk()->json('fragments.resultados-candidatos');
         $documento->loadHTML($fragmento, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
         $this->assertCount($porPagina, (new \DOMXPath($documento))->query('//article[@data-card-candidato]'));
+        $this->assertCount(1, (new \DOMXPath($documento))->query('//select[@name="por_pagina"][@form="filtros-candidatos"]/option[@value="'.$porPagina.'"][@selected]'));
     }
 
     #[TestWith([['vaga_id' => 'invalido'], 'vaga_id'])]

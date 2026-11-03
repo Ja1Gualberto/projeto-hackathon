@@ -62,11 +62,6 @@ final class ApresentacaoCandidatosService
                     'opcoes' => ['ativos' => 'Ativos', 'desativados' => 'Desativados', 'retencao' => 'Retenção pendente'],
                     'attributes' => new ComponentAttributeBag(['data-valor-padrao' => 'ativos']),
                 ]),
-                'porPagina' => $this->componente('campo', [
-                    'nome' => 'por_pagina', 'rotulo' => 'Candidatos por página', 'tipo' => 'select', 'valor' => $filtro->porPagina,
-                    'opcoes' => [10 => '10', 20 => '20', 50 => '50', 100 => '100'],
-                    'attributes' => new ComponentAttributeBag(['data-valor-padrao' => '10']),
-                ]),
                 'vaga' => $this->componente('campo', [
                     'nome' => 'vaga_id', 'rotulo' => 'Processo seletivo', 'tipo' => 'select', 'valor' => $filtro->vagaId,
                     'vazio' => 'Todos os processos',
@@ -122,6 +117,11 @@ final class ApresentacaoCandidatosService
             : new HtmlString;
 
         return $this->renderizar('candidatos.partials._resultados', [
+            'porPagina' => $this->componente('campo', [
+                'nome' => 'por_pagina', 'rotulo' => 'Candidatos por página', 'tipo' => 'select', 'valor' => $filtro->porPagina,
+                'opcoes' => [10 => '10', 20 => '20', 50 => '50', 100 => '100'],
+                'attributes' => new ComponentAttributeBag(['form' => 'filtros-candidatos', 'data-valor-padrao' => '10']),
+            ]),
             'total' => $candidatos->total(),
             'rotuloTotal' => $candidatos->total() === 1 ? 'talento encontrado' : 'talentos encontrados',
             'situacao' => match ($filtro->situacao) {

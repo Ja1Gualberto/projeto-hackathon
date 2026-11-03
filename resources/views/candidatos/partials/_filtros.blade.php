@@ -1,4 +1,4 @@
-<form method="GET" action="{{ $urlBusca }}" data-autosubmit data-busca-candidatos class="flex min-w-0 flex-col gap-5 rounded-card border border-borda bg-superficie p-5" aria-label="Filtrar talentos">
+<form id="filtros-candidatos" method="GET" action="{{ $urlBusca }}" data-autosubmit data-busca-candidatos class="flex min-w-0 flex-col gap-5 rounded-card border border-borda bg-superficie p-5" aria-label="Filtrar talentos">
     <div data-ajax-erros role="alert" tabindex="-1" hidden class="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800"></div>
     <div class="flex items-center justify-between gap-3">
         <h2 class="text-lg font-semibold">Filtros</h2>
@@ -7,7 +7,6 @@
 
     {{ $campos['busca'] }}
     {{ $campos['situacao'] }}
-    {{ $campos['porPagina'] }}
     <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-1">
         {{ $campos['vaga'] }}
         {{ $campos['area'] }}

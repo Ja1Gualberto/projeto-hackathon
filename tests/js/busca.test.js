@@ -20,9 +20,11 @@ function montar(t) {
     const resumo = { textContent: '', hidden: true, focado: false, focus() { this.focado = true; } };
     const regiao = {
         innerHTML: 'resultado anterior', setAttribute: (k, v) => atributos.set(k, v),
-        contains: () => false,
+        contains: (elemento) => elemento?.name === 'por_pagina' && form.elements.includes(elemento),
         removeAttribute: (k) => atributos.delete(k),
-        querySelector: () => ({ textContent: '13 talentos encontrados', focus() {} }),
+        querySelector: (seletor) => seletor === '[name="por_pagina"]'
+            ? form.elements.find((elemento) => elemento.name === 'por_pagina')
+            : { textContent: '13 talentos encontrados', focus() {} },
     };
     function campo(name, type, value = '') {
         return {
@@ -34,7 +36,10 @@ function montar(t) {
     const busca = campo('busca', 'search', 'Ana');
     const tipo = campo('tipo', 'select-one', 'estagiario');
     const situacao = { ...campo('situacao', 'select-one', 'ativos'), dataset: { valorPadrao: 'ativos' } };
-    const porPagina = { ...campo('por_pagina', 'select-one', '10'), dataset: { valorPadrao: '10' } };
+    const porPagina = {
+        ...campo('por_pagina', 'select-one', '10'), dataset: { valorPadrao: '10' },
+        focus() { doc.activeElement = this; },
+    };
     const experiencia = campo('experiencia', 'checkbox', '1');
     const competencia = campo('competencias[]', 'checkbox', '7');
     const semNome = campo('', 'search', 'Python');
@@ -42,14 +47,16 @@ function montar(t) {
         baseURI: 'https://banco.test/candidatos?busca=Ana&tipo=estagiario&page=2', activeElement: busca,
         getElementById: (id) => id === 'resultados-candidatos' ? regiao : null,
         querySelector: () => aviso,
-        addEventListener: (nome, fn) => { docEventos[nome] = fn; },
+        addEventListener: (nome, fn) => { docEventos[nome] = (evento) => fn({ type: nome, ...evento }); },
     };
     const form = {
         action: 'https://banco.test/candidatos', elements: [busca, tipo, situacao, porPagina, experiencia, competencia, semNome],
         ownerDocument: doc, dataset: {},
         addEventListener: (nome, fn) => { eventos[nome] = (evento) => fn({ type: nome, ...evento }); },
         querySelectorAll: () => [], querySelector: () => resumo,
+        contains: (elemento) => form.elements.includes(elemento) && elemento.name !== 'por_pagina',
     };
+    form.elements.forEach((elemento) => { elemento.form = form; });
     globalThis.FormData = class {
         constructor(formulario) {
             const dados = new formDataOriginal();
@@ -88,7 +95,7 @@ function montar(t) {
         };
         return docEventos.click({ button: 0, target: { closest: () => link }, preventDefault() {} });
     }
-    return { eventos, janelaEventos, doc, form, busca, tipo, situacao, porPagina, experiencia, competencia, regiao, aviso, resumo, atributos, chamadas, resolver, janela, historico, clicar };
+    return { eventos, docEventos, janelaEventos, doc, form, busca, tipo, situacao, porPagina, experiencia, competencia, regiao, aviso, resumo, atributos, chamadas, resolver, janela, historico, clicar };
 }
 
 test('debounce de 400 ms, reset de page e URL confirmada somente no sucesso sem perder campo/foco/cursor', async (t) => {
@@ -142,7 +149,7 @@ test('quantidade por página atualiza imediatamente, mantém filtros e reinicia 
 
     for (const [indice, quantidade] of ['10', '20', '50', '100'].entries()) {
         ui.porPagina.value = quantidade;
-        ui.eventos.change({ target: ui.porPagina });
+        ui.docEventos.change({ target: ui.porPagina });
 
         const url = ui.chamadas[indice].url;
         assert.equal(url.searchParams.get('por_pagina'), quantidade);
@@ -173,6 +180,41 @@ test('quantidade por página acompanha navegação e histórico e volta a 10 ao 
     ui.resolver(2);
     await esperar();
     assert.equal(ui.porPagina.value, '10');
+});
+
+test('seletor fora dos filtros mantém foco e continua funcionando após substituir os resultados', async (t) => {
+    const ui = montar(t);
+    ui.doc.activeElement = ui.porPagina;
+    ui.porPagina.value = '50';
+    const novoSeletor = { ...ui.porPagina };
+    Object.defineProperty(ui.regiao, 'innerHTML', {
+        set() {
+            ui.form.elements = ui.form.elements.map((elemento) => elemento.name === 'por_pagina' ? novoSeletor : elemento);
+            ui.doc.activeElement = null;
+        },
+    });
+
+    ui.docEventos.change({ target: ui.porPagina });
+    ui.resolver(0);
+    await esperar();
+
+    assert.equal(ui.doc.activeElement, novoSeletor);
+    novoSeletor.value = '100';
+    ui.docEventos.change({ target: novoSeletor });
+    assert.equal(ui.chamadas.length, 2);
+    assert.equal(ui.chamadas[1].url.searchParams.get('por_pagina'), '100');
+    ui.resolver(1);
+    await esperar();
+});
+
+test('mudanças delegadas não duplicam campos internos nem consultam por controles de outro formulário', (t) => {
+    const ui = montar(t);
+
+    ui.eventos.change({ target: ui.situacao });
+    ui.docEventos.change({ target: ui.situacao });
+    ui.docEventos.change({ target: { ...ui.porPagina, form: {} } });
+
+    assert.equal(ui.chamadas.length, 1);
 });
 
 test('edição invalida e cancela GET antes do debounce e descarta respostas fora de ordem', async (t) => {

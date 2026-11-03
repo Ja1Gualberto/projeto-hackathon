@@ -64,6 +64,7 @@ export function configurarBusca(formulario, janela = window) {
                 throw new ErroAjax('O servidor enviou uma resposta de busca inesperada.');
             }
             const restaurarFoco = focarResultado && regiao.contains(doc.activeElement);
+            const restaurarQuantidade = regiao.contains(doc.activeElement) && doc.activeElement?.name === 'por_pagina';
             aplicarFragmentos(dados, doc);
             if (sincronizar) {
                 restaurarCampos(url);
@@ -74,7 +75,9 @@ export function configurarBusca(formulario, janela = window) {
             urlConfirmada = url.href;
             const titulo = regiao.querySelector('#resultados-titulo');
             anunciar(titulo?.textContent ?? 'Resultados atualizados.', doc);
-            if (restaurarFoco) {
+            if (restaurarQuantidade) {
+                regiao.querySelector('[name="por_pagina"]')?.focus();
+            } else if (restaurarFoco) {
                 titulo?.focus();
             }
         } catch (erro) {
@@ -112,6 +115,11 @@ export function configurarBusca(formulario, janela = window) {
 
     formulario.addEventListener('input', alterar);
     formulario.addEventListener('change', alterar);
+    doc.addEventListener('change', (evento) => {
+        if (evento.target.form === formulario && !formulario.contains(evento.target)) {
+            alterar(evento);
+        }
+    });
     formulario.addEventListener('submit', (evento) => {
         evento.preventDefault();
         consultar(urlDosCampos(), 'filtros', invalidar());
