@@ -22,6 +22,8 @@ final class NormalizadorTexto
     {
         $data = '(?:(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-z]*\.?(?:\s+de\s+|\s+|\/))?(?:\d{1,2}\/)?\d{4}';
 
-        return preg_match("/^{$data}(?:\s*(?:-|a|ate)\s*(?:{$data}|atual|presente|hoje))?$/", self::normalizar($texto)) === 1;
+        $normalizado = trim(self::normalizar($texto), '() ');
+
+        return preg_match("/^{$data}(?:\s*(?:[-–—]|a|ate)\s*(?:{$data}|atual(?:mente)?|presente|hoje|em andamento|cursando))?$/u", $normalizado) === 1;
     }
 }

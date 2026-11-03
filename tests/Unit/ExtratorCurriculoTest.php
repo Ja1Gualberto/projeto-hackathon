@@ -332,6 +332,96 @@ class ExtratorCurriculoTest extends TestCase
         ], $dados->experiencias);
     }
 
+    #[TestWith(['2025 - em andamento'])]
+    #[TestWith(['2025–Atualmente'])]
+    #[TestWith(['2025 — presente'])]
+    #[TestWith(['(2025 - 2027)'])]
+    public function test_periodo_isolado_apos_descricao_fica_no_item_anterior(string $periodo): void
+    {
+        $dados = $this->extrair("EXPERIÊNCIA\nSuporte aos usuários.\n{$periodo}\nManutenção de equipamentos.");
+
+        $this->assertSame(["Suporte aos usuários. — {$periodo}", 'Manutenção de equipamentos.'], $dados->experiencias);
+    }
+
+    public function test_periodo_quebrado_apos_hifen_nao_recebe_um_segundo_separador(): void
+    {
+        $dados = $this->extrair("FORMAÇÃO\nSistemas de Informação | Instituto Horizonte | 2021 -\n2024");
+
+        $this->assertSame(['Sistemas de Informação | Instituto Horizonte | 2021 - 2024'], $dados->formacoes);
+    }
+
+    public function test_cargo_com_periodo_nao_e_unido_a_ultima_atividade_do_emprego_anterior(): void
+    {
+        $dados = $this->extrair(implode("\n", [
+            'EXPERIÊNCIA',
+            '- Participação ativa em cerimônias ágeis e revisões de código',
+            'Estagiário de Desenvolvimento fev 2020 - dez 2020',
+            'Startup Horizonte',
+        ]));
+
+        $this->assertSame([
+            'Participação ativa em cerimônias ágeis e revisões de código',
+            'Estagiário de Desenvolvimento fev 2020 - dez 2020',
+            'Startup Horizonte',
+        ], $dados->experiencias);
+    }
+
+    public function test_data_isolada_no_cabecalho_e_nascimento_mas_data_profissional_nao_e(): void
+    {
+        $this->freezeTime();
+
+        $dados = $this->extrair("Ana Lima\n14/03/2004\nFORMAÇÃO\nSistemas de Informação");
+        $profissional = $this->extrair("Ana Lima\nEXPERIÊNCIA\n14/03/2020\nSuporte aos usuários.");
+
+        $this->assertSame('2004-03-14', $dados->data_nascimento);
+        $this->assertNull($profissional->data_nascimento);
+    }
+
+    public function test_recompoe_email_fragmentado_sem_juntar_contatos_em_linhas_diferentes(): void
+    {
+        $dados = $this->extrair("Ana Lima\nana.lima .dev @ exemplo.com\nana\nseparada@example.com");
+
+        $this->assertSame('ana.lima.dev@exemplo.com', $dados->email);
+    }
+
+    public function test_cursos_mistos_e_atividades_academicas_nao_sao_experiencia_profissional(): void
+    {
+        $dados = $this->extrair(implode("\n", [
+            'Ana Lima',
+            'EXPERIÊNCIA',
+            'Monitoria de laboratório com Python',
+            'ATIVIDADES ACADÊMICAS',
+            'Oficina de redes locais.',
+            'CURSOS E ATIVIDADES COMPLEMENTARES',
+            'Introdução a redes de computadores',
+            'STACK TÉCNICA',
+            'Terraform, Ansible',
+            'I N F O R M A Ç Õ E S C O M P L E M E N TA R E S',
+            'Disponibilidade para viagens',
+        ]));
+
+        $this->assertSame(['Monitoria de laboratório com Python'], $dados->experiencias);
+        $this->assertSame(['Oficina de redes locais.'], $dados->projetos);
+        $this->assertSame(['Introdução a redes de computadores'], $dados->formacoes);
+        $this->assertSame(['Terraform', 'Ansible'], $dados->sugestoes_competencias);
+    }
+
+    public function test_link_em_linha_separada_completa_a_frase_do_projeto_sem_perder_o_link(): void
+    {
+        $dados = $this->extrair("PROJETOS\nFila de notificações. Código de demonstração em\nhttps://example.com/ana/fila.");
+
+        $this->assertSame(['Fila de notificações. Código de demonstração em https://example.com/ana/fila.'], $dados->projetos);
+        $this->assertSame(['https://example.com/ana/fila'], $dados->links);
+    }
+
+    public function test_marcador_de_fonte_simbolica_sozinho_nao_vira_item(): void
+    {
+        $dados = $this->extrair("FORMAÇÃO\n\u{F0B2}\n\u{F0B2} Sistemas de Informação\nEXPERIÊNCIA\n\u{F0B2} Suporte aos usuários");
+
+        $this->assertSame(['Sistemas de Informação'], $dados->formacoes);
+        $this->assertSame(['Suporte aos usuários'], $dados->experiencias);
+    }
+
     public function test_item_longo_e_dividido_em_frases_sem_perder_conteudo(): void
     {
         $frases = [

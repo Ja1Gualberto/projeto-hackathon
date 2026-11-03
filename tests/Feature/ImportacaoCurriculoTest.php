@@ -15,6 +15,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
 class ImportacaoCurriculoTest extends TestCase
@@ -244,6 +245,89 @@ class ImportacaoCurriculoTest extends TestCase
         ], $dados['projetos']);
         $this->assertSame('desenvolvimento', $dados['area_sugerida']);
         $this->assertTrue($dados['experiencia_na_area']);
+    }
+
+    #[TestWith([40, 300])]
+    #[TestWith([400, 40])]
+    public function test_barra_lateral_nao_mistura_formacao_com_identificacao_ou_experiencia(int $lateral, int $principal): void
+    {
+        $pdf = (new GeradorPdfCurriculo)->gerarComPosicoes([
+            ['x' => $lateral, 'y' => 780, 'texto' => 'CONTATO', 'tamanho' => 12],
+            ['x' => $lateral, 'y' => 760, 'texto' => 'ana@exemplo.com', 'tamanho' => 9],
+            ['x' => $lateral, 'y' => 720, 'texto' => 'TECNOLOGIAS', 'tamanho' => 12],
+            ['x' => $lateral, 'y' => 700, 'texto' => 'Python', 'tamanho' => 9],
+            ['x' => $lateral, 'y' => 660, 'texto' => 'FORMAÇÃO', 'tamanho' => 12],
+            ['x' => $lateral, 'y' => 640, 'texto' => 'Análise de Sistemas', 'tamanho' => 9],
+            ['x' => $lateral, 'y' => 625, 'texto' => 'Instituto Horizonte', 'tamanho' => 9],
+            ['x' => $lateral, 'y' => 610, 'texto' => '2024 - em andamento', 'tamanho' => 9],
+            ['x' => $principal, 'y' => 780, 'texto' => 'Ana Lima', 'tamanho' => 24],
+            ['x' => $principal, 'y' => 750, 'texto' => 'Desenvolvedora júnior', 'tamanho' => 9],
+            ['x' => $principal, 'y' => 710, 'texto' => 'RESUMO', 'tamanho' => 12],
+            ['x' => $principal, 'y' => 690, 'texto' => 'Desenvolvo sistemas internos.', 'tamanho' => 9],
+            ['x' => $principal, 'y' => 650, 'texto' => 'EXPERIÊNCIA', 'tamanho' => 12],
+            ['x' => $principal, 'y' => 630, 'texto' => 'Estágio com Python', 'tamanho' => 9],
+            ['x' => $principal, 'y' => 615, 'texto' => '03/2025 - atual', 'tamanho' => 9],
+        ]);
+
+        $uuid = $this->importar(UploadedFile::fake()->createWithContent('lateral.pdf', $pdf));
+
+        $dados = session("importacoes.{$uuid}.dados");
+        $this->assertSame('Ana Lima', $dados['nome']);
+        $this->assertSame('ana@exemplo.com', $dados['email']);
+        $this->assertSame(['Análise de Sistemas', 'Instituto Horizonte — 2024 - em andamento'], $dados['formacoes']);
+        $this->assertSame(['Estágio com Python — 03/2025 - atual'], $dados['experiencias']);
+        $this->assertContains('Python', array_column($dados['competencias'], 'nome'));
+    }
+
+    public function test_titulo_centralizado_mantem_as_duas_colunas_na_mesma_secao_sem_misturar_datas(): void
+    {
+        $pdf = (new GeradorPdfCurriculo)->gerarComPosicoes([
+            ['x' => 50, 'y' => 790, 'texto' => 'Ana Lima', 'tamanho' => 24],
+            ['x' => 215, 'y' => 720, 'texto' => 'FORMAÇÃO ACADÊMICA', 'tamanho' => 12],
+            ['x' => 60, 'y' => 680, 'texto' => '2022', 'tamanho' => 10],
+            ['x' => 60, 'y' => 660, 'texto' => 'Colégio Horizonte', 'tamanho' => 10],
+            ['x' => 330, 'y' => 685, 'texto' => '2023 - 2027', 'tamanho' => 10],
+            ['x' => 330, 'y' => 665, 'texto' => 'Universidade Vale Digital', 'tamanho' => 10],
+            ['x' => 250, 'y' => 580, 'texto' => 'HABILIDADES', 'tamanho' => 12],
+            ['x' => 60, 'y' => 540, 'texto' => 'Terraform', 'tamanho' => 10],
+            ['x' => 60, 'y' => 520, 'texto' => 'Ansible', 'tamanho' => 10],
+            ['x' => 330, 'y' => 535, 'texto' => 'Kubernetes', 'tamanho' => 10],
+            ['x' => 330, 'y' => 515, 'texto' => 'Prometheus', 'tamanho' => 10],
+            ['x' => 50, 'y' => 450, 'texto' => 'EXPERIÊNCIA', 'tamanho' => 12],
+            ['x' => 50, 'y' => 430, 'texto' => 'Suporte aos usuários.', 'tamanho' => 10],
+        ]);
+
+        $uuid = $this->importar(UploadedFile::fake()->createWithContent('centralizado.pdf', $pdf));
+
+        $dados = session("importacoes.{$uuid}.dados");
+        $this->assertSame(['2022 Colégio Horizonte', '2023 - 2027 Universidade Vale Digital'], $dados['formacoes'], session("importacoes.{$uuid}.texto"));
+        $this->assertSame(['Suporte aos usuários.'], $dados['experiencias']);
+        $this->assertEqualsCanonicalizing(['Terraform', 'Ansible', 'Kubernetes', 'Prometheus'], $dados['sugestoes_competencias']);
+    }
+
+    public function test_titulos_espacados_e_contato_no_rodape_preenchem_os_campos_corretos(): void
+    {
+        $uuid = $this->importar($this->pdf([
+            'Ana Lima',
+            'R E S U M O P R O F I S S I O N A L',
+            'Desenvolvo aplicações com testes automatizados.',
+            'E X P E R I Ê N C I A',
+            'Estágio com Python',
+            'E D U C A Ç Ã O',
+            'Sistemas de Informação',
+            'H A B I L I D A D E S',
+            'Python, Terraform',
+            'PROJETO DE TESTE',
+            'Fluxo de cadastro com validação de acessibilidade.',
+            'Porto Velho, RO | ana@exemplo.com',
+        ]));
+
+        $dados = session("importacoes.{$uuid}.dados");
+        $this->assertSame('ana@exemplo.com', $dados['email']);
+        $this->assertSame(['Sistemas de Informação'], $dados['formacoes']);
+        $this->assertSame(['Estágio com Python'], $dados['experiencias']);
+        $this->assertSame(['Fluxo de cadastro com validação de acessibilidade.'], $dados['projetos']);
+        $this->assertSame(['Terraform'], $dados['sugestoes_competencias']);
     }
 
     public function test_arquivo_que_nao_e_pdf_e_rejeitado(): void

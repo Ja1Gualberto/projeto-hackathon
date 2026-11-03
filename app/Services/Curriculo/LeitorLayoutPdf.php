@@ -54,12 +54,16 @@ class LeitorLayoutPdf
     private array $fontesSemLargura = [];
 
     /**
+     * Usa form feed entre colunas independentes e vertical tab entre blocos da mesma seção.
+     *
      * @return array{texto: string, destaque: ?string}|null Nulo quando a ordem visual não é confiável.
      */
     public function ler(Document $documento): ?array
     {
         $textos = [];
         $destaque = null;
+        $cabecalhoInicial = [];
+        $this->fontesSemLargura = [];
 
         foreach (array_values($documento->getPages()) as $indice => $pagina) {
             if ((int) ($pagina->getDetails()['Rotate'] ?? 0) % 360 !== 0) {
@@ -76,9 +80,22 @@ class LeitorLayoutPdf
 
             if ($indice === 0) {
                 $destaque = $this->destaque($linhas);
+                $topo = $linhas;
+                usort($topo, fn (array $a, array $b): int => $b['y'] <=> $a['y']);
+                $cabecalhoInicial = array_column(array_slice($topo, 0, 3), 'texto');
+            } else {
+                $topo = $fragmentos === [] ? 0.0 : max(array_column($fragmentos, 'y'));
+                $linhas = array_values(array_filter($linhas, fn (array $linha): bool => ! (
+                    $linha['y'] >= $topo - 3 * $linha['tamanho']
+                    && in_array($linha['texto'], $cabecalhoInicial, true)
+                )));
             }
 
-            array_push($textos, ...array_column($linhas, 'texto'));
+            foreach ($linhas as $linha) {
+                if (preg_match('/^(?:pag(?:ina)?\.?\s*)?\d+\s*(?:\/|de)\s*\d+$/iu', $linha['texto']) !== 1) {
+                    $textos[] = $linha['texto'];
+                }
+            }
         }
 
         return $textos === [] ? null : ['texto' => implode("\n", $textos), 'destaque' => $destaque];
@@ -274,7 +291,9 @@ class LeitorLayoutPdf
             foreach ($linha as $trecho) {
                 $vao = $atual === null ? 0.0 : $trecho['x'] - $atual['x1'];
 
-                if ($atual !== null && $vao > self::DISTANCIA_ENTRE_FRAGMENTOS * $trecho['tamanho']) {
+                $marcador = $atual !== null && preg_match('/^[•▪◦●○■►➢✓\x{F0B2}]$/u', trim($atual['texto'])) === 1;
+
+                if ($atual !== null && $vao > ($marcador ? 3 : self::DISTANCIA_ENTRE_FRAGMENTOS) * $trecho['tamanho']) {
                     $fragmentos[] = $atual;
                     $atual = null;
                 }
@@ -318,7 +337,7 @@ class LeitorLayoutPdf
      * @param  list<Fragmento>  $fragmentos
      * @return list<Linha>
      */
-    private function ordenar(array $fragmentos): array
+    private function ordenar(array $fragmentos, bool $separarColunas = true): array
     {
         usort($fragmentos, fn (array $a, array $b): int => $b['y'] <=> $a['y']);
         $linhas = $this->agruparLinhas($fragmentos);
@@ -327,12 +346,31 @@ class LeitorLayoutPdf
             return array_map(fn (array $linha): array => $this->unirLinha($linha), $linhas);
         }
 
+        $tabela = $this->ordenarTabela($linhas, $separarColunas);
+
+        if ($tabela !== null) {
+            return $tabela;
+        }
+
         $coluna = $this->corteVertical($fragmentos);
+        $titulo = $this->corteDeTitulo($linhas);
+
+        if ($titulo !== null) {
+            [$inicio, $fim] = $titulo;
+
+            return [
+                ...$this->ordenar(array_merge([], ...array_slice($linhas, 0, $inicio)), $separarColunas),
+                $this->unirLinha($linhas[$inicio]),
+                ...$this->ordenar(array_merge(...array_slice($linhas, $inicio + 1, $fim - $inicio - 1)), false),
+                ...$this->ordenar(array_merge([], ...array_slice($linhas, $fim)), $separarColunas),
+            ];
+        }
 
         if ($coluna !== null) {
             return [
-                ...$this->ordenar(array_values(array_filter($fragmentos, fn (array $fragmento): bool => $fragmento['x0'] < $coluna))),
-                ...$this->ordenar(array_values(array_filter($fragmentos, fn (array $fragmento): bool => $fragmento['x0'] >= $coluna))),
+                ...$this->ordenar(array_values(array_filter($fragmentos, fn (array $fragmento): bool => $fragmento['x0'] < $coluna)), $separarColunas),
+                ['y' => 0.0, 'tamanho' => 0.0, 'texto' => $separarColunas ? "\f" : "\v"],
+                ...$this->ordenar(array_values(array_filter($fragmentos, fn (array $fragmento): bool => $fragmento['x0'] >= $coluna)), $separarColunas),
             ];
         }
 
@@ -352,9 +390,124 @@ class LeitorLayoutPdf
         }
 
         return [
-            ...$this->ordenar(array_merge(...array_slice($linhas, 0, $corte))),
-            ...$this->ordenar(array_merge(...array_slice($linhas, $corte))),
+            ...$this->ordenar(array_merge(...array_slice($linhas, 0, $corte)), $separarColunas),
+            ...$this->ordenar(array_merge(...array_slice($linhas, $corte)), $separarColunas && ! (
+                count($linhas[$corte - 1]) === 1 && $this->pareceTitulo($linhas[$corte - 1][0]['texto'])
+            )),
         ];
+    }
+
+    /**
+     * Títulos centralizados pertencem às duas colunas abaixo, não à coluna em que o texto começa.
+     *
+     * @param  list<list<Fragmento>>  $linhas
+     * @return array{int, int}|null Início e fim exclusivo da seção compartilhada.
+     */
+    private function corteDeTitulo(array $linhas): ?array
+    {
+        foreach ($linhas as $indice => $linha) {
+            $item = $linha[0];
+
+            if (count($linha) !== 1 || ! isset($linhas[$indice + 1]) || ! $this->pareceTitulo($item['texto'])) {
+                continue;
+            }
+
+            $espacoAcima = $indice === 0 || $linhas[$indice - 1][0]['y'] - $item['y'] >= 1.5 * $item['tamanho'];
+            $espacoAbaixo = 1.2 * $item['tamanho'] <= $item['y'] - $linhas[$indice + 1][0]['y'];
+
+            if (! $espacoAcima || ! $espacoAbaixo) {
+                continue;
+            }
+
+            $fim = $indice + 1;
+
+            while (isset($linhas[$fim]) && ! (count($linhas[$fim]) === 1 && $this->pareceTitulo($linhas[$fim][0]['texto']))) {
+                $fim++;
+            }
+
+            $abaixo = array_merge(...array_slice($linhas, $indice + 1, $fim - $indice - 1));
+
+            if ($abaixo === []) {
+                continue;
+            }
+
+            $coluna = $this->corteVertical($abaixo);
+
+            if ($coluna === null) {
+                continue;
+            }
+
+            $esquerda = min(array_column($abaixo, 'x0'));
+            $limiteEsquerdo = max(array_column(array_filter($abaixo, fn (array $fragmento): bool => $fragmento['x0'] < $coluna), 'x1'));
+            $abrangeColunas = ($item['x0'] < $coluna && $item['x1'] > $limiteEsquerdo)
+                || ($indice === 0 && abs($item['x0'] - $esquerda) <= $item['tamanho']);
+
+            if ($abrangeColunas) {
+                return [$indice, $fim];
+            }
+        }
+
+        return null;
+    }
+
+    private function pareceTitulo(string $texto): bool
+    {
+        return preg_match('/^(?:formacao|educacao|escolaridade|certificados?|certificacoes|cursos|habilidades|competencias|experiencias?|projetos?|portfolio)\b/', NormalizadorTexto::normalizar($texto)) === 1
+            && mb_strlen(trim($texto)) <= 60;
+    }
+
+    /**
+     * Uma tabela com cargo/período e atividades é lida por registro, não por coluna inteira.
+     * O espaço entre registros delimita as células, inclusive quando elas têm várias linhas.
+     *
+     * @param  list<list<Fragmento>>  $linhas
+     * @return list<Linha>|null
+     */
+    private function ordenarTabela(array $linhas, bool $separarColunas): ?array
+    {
+        foreach ($linhas as $indice => $linha) {
+            $titulos = array_map(fn (array $item): string => NormalizadorTexto::normalizar($item['texto']), $linha);
+
+            if (count($linha) < 2
+                || array_intersect($titulos, ['cargo', 'cargo e periodo', 'empresa', 'periodo']) === []
+                || array_intersect($titulos, ['atividades', 'descricao', 'responsabilidades']) === []) {
+                continue;
+            }
+
+            $fim = $indice + 1;
+
+            while (isset($linhas[$fim]) && ! (count($linhas[$fim]) === 1 && $this->pareceTitulo($linhas[$fim][0]['texto']))) {
+                $fim++;
+            }
+
+            $registros = [];
+            $atual = [];
+
+            foreach (array_slice($linhas, $indice + 1, $fim - $indice - 1) as $linhaRegistro) {
+                if ($atual !== [] && $atual[array_key_last($atual)]['y'] - $linhaRegistro[0]['y'] > 2 * $linhaRegistro[0]['tamanho']) {
+                    $registros[] = $atual;
+                    $atual = [];
+                }
+
+                array_push($atual, ...$linhaRegistro);
+            }
+
+            if ($atual !== []) {
+                $registros[] = $atual;
+            }
+
+            $resultado = $this->ordenar(array_merge([], ...array_slice($linhas, 0, $indice)), $separarColunas);
+
+            foreach ($registros as $registro) {
+                $ordenadas = $this->ordenar($registro, false);
+                $textos = array_filter(array_column($ordenadas, 'texto'), fn (string $texto): bool => $texto !== "\v");
+                $resultado[] = ['y' => $registro[0]['y'], 'tamanho' => max(array_column($registro, 'tamanho')), 'texto' => implode(' ', $textos)];
+            }
+
+            return [...$resultado, ...$this->ordenar(array_merge([], ...array_slice($linhas, $fim)), $separarColunas)];
+        }
+
+        return null;
     }
 
     /**
@@ -365,6 +518,10 @@ class LeitorLayoutPdf
      */
     private function corteVertical(array $fragmentos): ?float
     {
+        if ($fragmentos === []) {
+            return null;
+        }
+
         usort($fragmentos, fn (array $a, array $b): int => $a['x0'] <=> $b['x0']);
 
         $tamanhos = array_column($fragmentos, 'tamanho');
@@ -399,9 +556,9 @@ class LeitorLayoutPdf
             $fragmentos,
             fn (array $fragmento): bool => ! NormalizadorTexto::ehSomenteData($fragmento['texto']),
         ));
-        usort($conteudo, fn (array $a, array $b): int => $b['y'] <=> $a['y']);
+        usort($fragmentos, fn (array $a, array $b): int => $b['y'] <=> $a['y']);
 
-        return count($this->agruparLinhas($conteudo)) >= self::LINHAS_MINIMAS_COLUNA;
+        return $conteudo !== [] && count($this->agruparLinhas($fragmentos)) >= self::LINHAS_MINIMAS_COLUNA;
     }
 
     /**
@@ -463,6 +620,7 @@ class LeitorLayoutPdf
             return null;
         }
 
+        $linhas = array_values(array_filter($linhas, fn (array $linha): bool => ! in_array($linha['texto'], ["\f", "\v"], true)));
         $tamanhos = array_column($linhas, 'tamanho');
         sort($tamanhos);
         $maior = end($tamanhos);
@@ -496,7 +654,10 @@ class LeitorLayoutPdf
         }
 
         try {
-            $largura = $fonte->calculateTextWidth($texto, $faltantes);
+            $detalhes = $fonte->getDetails();
+            $largura = isset($detalhes['FirstChar'], $detalhes['LastChar'], $detalhes['Widths'])
+                ? $fonte->calculateTextWidth($texto, $faltantes)
+                : null;
         } catch (Throwable) {
             $largura = null;
         }

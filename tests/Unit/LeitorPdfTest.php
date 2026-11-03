@@ -199,6 +199,85 @@ class LeitorPdfTest extends TestCase
         $this->assertNull($resultado->destaque);
     }
 
+    public function test_tabela_mantem_cargo_periodo_e_atividades_no_mesmo_registro(): void
+    {
+        $resultado = $this->ler((new GeradorPdfCurriculo)->gerarComPosicoes([
+            ['x' => 50, 'y' => 780, 'texto' => 'HISTÓRICO PROFISSIONAL'],
+            ['x' => 60, 'y' => 750, 'texto' => 'Cargo e período', 'tamanho' => 9],
+            ['x' => 300, 'y' => 750, 'texto' => 'Atividades', 'tamanho' => 9],
+            ['x' => 60, 'y' => 720, 'texto' => 'Analista de dados |', 'tamanho' => 9],
+            ['x' => 60, 'y' => 707, 'texto' => 'Horizonte | jan/2023 -', 'tamanho' => 9],
+            ['x' => 60, 'y' => 694, 'texto' => 'atual', 'tamanho' => 9],
+            ['x' => 300, 'y' => 720, 'texto' => 'Modelei dados em PostgreSQL', 'tamanho' => 9],
+            ['x' => 300, 'y' => 707, 'texto' => 'e automatizei cargas em Python.', 'tamanho' => 9],
+            ['x' => 60, 'y' => 640, 'texto' => 'Assistente | Vale Digital', 'tamanho' => 9],
+            ['x' => 60, 'y' => 627, 'texto' => 'mar/2020 - dez/2022', 'tamanho' => 9],
+            ['x' => 300, 'y' => 640, 'texto' => 'Reconciliei bases e documentei', 'tamanho' => 9],
+            ['x' => 300, 'y' => 627, 'texto' => 'regras de tratamento de dados.', 'tamanho' => 9],
+            ['x' => 50, 'y' => 560, 'texto' => 'FORMAÇÃO'],
+            ['x' => 50, 'y' => 540, 'texto' => 'Bacharelado em Estatística'],
+        ]));
+
+        $this->assertSame(implode("\n", [
+            'HISTÓRICO PROFISSIONAL',
+            'Analista de dados | Horizonte | jan/2023 - atual Modelei dados em PostgreSQL e automatizei cargas em Python.',
+            'Assistente | Vale Digital mar/2020 - dez/2022 Reconciliei bases e documentei regras de tratamento de dados.',
+            'FORMAÇÃO',
+            'Bacharelado em Estatística',
+        ]), $resultado->texto);
+    }
+
+    public function test_remove_cabecalho_repetido_e_paginacao_sem_perder_continuacao_na_segunda_pagina(): void
+    {
+        $linhas = [
+            'Ana Lima',
+            'Engenheira de plataforma',
+            'EXPERIÊNCIA',
+            ...array_fill(0, 44, 'Automação de infraestrutura e resposta a incidentes.'),
+            '1 / 2',
+            'Ana Lima',
+            'Engenheira de plataforma',
+            'Continuação da experiência em infraestrutura.',
+            'PROJETOS DE INFRAESTRUTURA',
+            'Migração para Kubernetes.',
+            '2 / 2',
+        ];
+
+        $resultado = $this->ler((new GeradorPdfCurriculo)->gerar($linhas));
+
+        $this->assertSame(1, substr_count($resultado->texto, 'Ana Lima'));
+        $this->assertSame(1, substr_count($resultado->texto, 'Engenheira de plataforma'));
+        $this->assertStringNotContainsString('1 / 2', $resultado->texto);
+        $this->assertStringNotContainsString('2 / 2', $resultado->texto);
+        $this->assertStringContainsString("Continuação da experiência em infraestrutura.\nPROJETOS DE INFRAESTRUTURA\nMigração para Kubernetes.", $resultado->texto);
+    }
+
+    public function test_datas_a_esquerda_permanecem_associadas_aos_cargos_da_linha_do_tempo(): void
+    {
+        $resultado = $this->ler((new GeradorPdfCurriculo)->gerarComPosicoes([
+            ['x' => 50, 'y' => 780, 'texto' => '01/2022 - atual', 'tamanho' => 9],
+            ['x' => 250, 'y' => 780, 'texto' => 'Engenheira | Horizonte', 'tamanho' => 9],
+            ['x' => 250, 'y' => 765, 'texto' => 'Automação de infraestrutura.', 'tamanho' => 9],
+            ['x' => 50, 'y' => 720, 'texto' => '03/2018 - 12/2021', 'tamanho' => 9],
+            ['x' => 250, 'y' => 720, 'texto' => 'Analista | Vale Digital', 'tamanho' => 9],
+            ['x' => 250, 'y' => 705, 'texto' => 'Manutenção de pipelines.', 'tamanho' => 9],
+        ]));
+
+        $this->assertSame("01/2022 - atual Engenheira | Horizonte\nAutomação de infraestrutura.\n03/2018 - 12/2021 Analista | Vale Digital\nManutenção de pipelines.", $resultado->texto);
+    }
+
+    public function test_marcadores_afastados_do_texto_nao_viram_uma_coluna_separada(): void
+    {
+        $resultado = $this->ler((new GeradorPdfCurriculo)->gerarComPosicoes([
+            ['x' => 50, 'y' => 780, 'texto' => '•', 'tamanho' => 9],
+            ['x' => 72, 'y' => 780, 'texto' => 'Manutenção preventiva de computadores e periféricos', 'tamanho' => 9],
+            ['x' => 50, 'y' => 760, 'texto' => '•', 'tamanho' => 9],
+            ['x' => 72, 'y' => 760, 'texto' => 'Atendimento presencial e suporte técnico aos usuários', 'tamanho' => 9],
+        ]));
+
+        $this->assertSame("• Manutenção preventiva de computadores e periféricos\n• Atendimento presencial e suporte técnico aos usuários", $resultado->texto);
+    }
+
     public function test_pdf_sem_texto_e_identificado_como_digitalizado(): void
     {
         $resultado = $this->ler((new GeradorPdfCurriculo)->gerarSemTexto());

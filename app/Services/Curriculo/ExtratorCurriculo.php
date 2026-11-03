@@ -33,10 +33,10 @@ class ExtratorCurriculo
         'cursos' => ['cursos', 'capacitacoes', 'treinamentos'],
         'certificados' => ['certificados', 'certificado', 'certificacoes', 'certificacao'],
         'experiencias' => ['experiencias', 'experiencia', 'historico profissional', 'atuacao profissional', 'trajetoria profissional'],
-        'projetos' => ['projetos', 'projeto', 'portfolio'],
-        'competencias' => ['competencias', 'habilidades', 'conhecimentos', 'tecnologias', 'skills', 'ferramentas', 'linguagens', 'frameworks', 'bibliotecas', 'banco de dados', 'bancos de dados'],
+        'projetos' => ['projetos', 'projeto', 'portfolio', 'atividades academicas'],
+        'competencias' => ['competencias', 'habilidades', 'conhecimentos', 'tecnologias', 'skills', 'stack', 'ferramentas', 'linguagens', 'frameworks', 'bibliotecas', 'banco de dados', 'bancos de dados'],
         'idiomas' => ['idiomas', 'idioma', 'linguas'],
-        'outros' => ['resumo', 'objetivo', 'objetivos', 'perfil', 'sobre mim', 'contato', 'contatos', 'dados pessoais', 'informacoes adicionais', 'atividades complementares', 'referencias'],
+        'outros' => ['resumo', 'objetivo', 'objetivos', 'perfil', 'apresentacao', 'sobre mim', 'contato', 'contatos', 'dados pessoais', 'informacoes adicionais', 'informacoes complementares', 'atividades complementares', 'referencias'],
     ];
 
     /** Palavras que podem acompanhar um título sem deixar de ser título ("Formação Acadêmica"). */
@@ -44,6 +44,7 @@ class ExtratorCurriculo
         'academica', 'academico', 'academicas', 'academicos', 'profissional', 'profissionais', 'complementar', 'complementares',
         'tecnica', 'tecnicas', 'tecnico', 'tecnicos', 'comportamentais', 'pessoais', 'pessoal', 'relevante', 'relevantes',
         'principais', 'adicionais', 'gerais', 'estrangeiras', 'desenvolvidos', 'realizados', 'programacao',
+        'teste', 'testes', 'infraestrutura', 'atividades',
         'tecs', 'tecnologias', 'ferramentas', 'frameworks', 'bibliotecas', 'competencias', 'habilidades',
         'e', 'de', 'em',
     ];
@@ -57,7 +58,7 @@ class ExtratorCurriculo
         'especialista', 'supervisor', 'supervisora', 'advogado', 'advogada', 'contador', 'contadora',
     ];
 
-    private const MARCADOR_DE_LISTA = '/^(?:[-–—•*·▪◦●○■►➢✓]|\d{1,2}[.)])\s+/u';
+    private const MARCADOR_DE_LISTA = '/^(?:[-–—•*·▪◦●○■►➢✓\x{F0B2}]|\d{1,2}[.)])(?:\s+|$)/u';
 
     /** Radicais de nível de idioma, do maior para o menor. */
     private const NIVEIS_IDIOMA = [
@@ -106,7 +107,7 @@ class ExtratorCurriculo
             email: $this->email($textoCompleto),
             telefone: $this->telefone($textoCompleto),
             cpf: $this->cpf($textoCompleto),
-            data_nascimento: $this->dataNascimento($linhas),
+            data_nascimento: $this->dataNascimento($linhas, $secoes['cabecalho']),
             formacoes: $this->limitarItens([...$this->itens($secoes['formacoes']), ...$this->itens($secoes['cursos'])]),
             experiencias: $this->limitarItens([...$this->itens($secoes['experiencias'], textoCorrido: true), ...$this->itens($secoes['certificados'])]),
             projetos: $this->limitarItens($this->itens($secoes['projetos'], textoCorrido: true)),
@@ -128,8 +129,8 @@ class ExtratorCurriculo
      */
     private function linhas(string $texto): array
     {
-        $linhas = preg_split('/\R/u', $texto) ?: [];
-        $linhas = array_map(fn (string $linha): string => trim((string) preg_replace('/[ \t\x{00A0}]+/u', ' ', $linha)), $linhas);
+        $linhas = preg_split('/([\f\v])|\R/u', $texto, -1, PREG_SPLIT_DELIM_CAPTURE) ?: [];
+        $linhas = array_map(fn (string $linha): string => in_array($linha, ["\f", "\v"], true) ? $linha : trim((string) preg_replace('/[ \t\x{00A0}]+/u', ' ', $linha)), $linhas);
 
         return array_values(array_filter($linhas, fn (string $linha): bool => $linha !== ''));
     }
@@ -150,6 +151,18 @@ class ExtratorCurriculo
         $retorno = null;
 
         foreach ($linhas as $linha) {
+            if ($linha === "\f") {
+                [$atual, $retorno] = ['cabecalho', null];
+
+                continue;
+            }
+
+            $email = $this->email($linha);
+
+            if ($email !== null && preg_match('/^(?:.*\|\s*)?(?:e-?mail\s*:\s*)?'.preg_quote($email, '/').'$/iu', $linha) === 1) {
+                continue;
+            }
+
             $cabecalho = $this->identificarCabecalho($linha);
 
             if ($cabecalho === null) {
@@ -200,6 +213,16 @@ class ExtratorCurriculo
             foreach ($prefixos as $prefixo) {
                 if ($candidato === $prefixo || ($permitePrefixo && $this->tituloQualificado($candidato, $prefixo))) {
                     return [$secao, $resto];
+                }
+
+                if (preg_match('/(?:\b[a-z]\s+){3}/', $candidato) === 1) {
+                    $compacto = str_replace(' ', '', $candidato);
+                    $inicio = str_replace(' ', '', $prefixo);
+                    $qualificadores = implode('|', self::QUALIFICADORES_TITULO);
+
+                    if (preg_match('/^'.preg_quote($inicio, '/').'(?:'.$qualificadores.')*$/', $compacto) === 1) {
+                        return [$secao, $resto];
+                    }
                 }
             }
         }
@@ -284,6 +307,8 @@ class ExtratorCurriculo
 
     private function email(string $texto): ?string
     {
+        $texto = (string) preg_replace('/(?<=[a-z0-9._%+\-])[ \t]+(?=[.@])|(?<=[.@])[ \t]+(?=[a-z0-9])/i', '', $texto);
+
         if (preg_match('/[A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,}/i', $texto, $encontrado) !== 1
             || filter_var($encontrado[0], FILTER_VALIDATE_EMAIL) === false) {
             return null;
@@ -356,11 +381,15 @@ class ExtratorCurriculo
 
     /**
      * @param  list<string>  $linhas
+     * @param  list<string>  $cabecalho
      */
-    private function dataNascimento(array $linhas): ?string
+    private function dataNascimento(array $linhas, array $cabecalho): ?string
     {
         foreach ($linhas as $linha) {
-            if (! str_contains(NormalizadorTexto::normalizar($linha), 'nasc')
+            $dataIsoladaNoCabecalho = in_array($linha, array_slice($cabecalho, 0, 5), true)
+                && preg_match('/^\d{1,2}[\/.-]\d{1,2}[\/.-]\d{4}$/', $linha) === 1;
+
+            if ((! $dataIsoladaNoCabecalho && ! str_contains(NormalizadorTexto::normalizar($linha), 'nasc'))
                 || preg_match('/(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/', $linha, $partes) !== 1) {
                 continue;
             }
@@ -439,9 +468,18 @@ class ExtratorCurriculo
         $limpas = [];
 
         foreach ($linhas as $linha) {
+            if ($linha === "\v") {
+                $limpas[] = ['texto' => $linha, 'marcador' => false];
+
+                continue;
+            }
+
             $texto = trim((string) preg_replace(self::MARCADOR_DE_LISTA, '', $linha, 1, $marcadores));
 
-            if ($texto !== '' && preg_match('~^(?:https?://|www\.)\S+$|^(?:github\.com|gitlab\.com|linkedin\.com)/\S+$~i', $texto) !== 1) {
+            $linkIsolado = preg_match('~^(?:https?://|www\.)\S+$|^(?:github\.com|gitlab\.com|linkedin\.com)/\S+$~i', $texto) === 1;
+            $continuaTexto = $limpas !== [] && $this->terminaEmConector($limpas[array_key_last($limpas)]['texto'], $textoCorrido);
+
+            if ($texto !== '' && (! $linkIsolado || $continuaTexto)) {
                 $limpas[] = ['texto' => $texto, 'marcador' => $marcadores > 0];
             }
         }
@@ -453,7 +491,24 @@ class ExtratorCurriculo
         $data = null;
 
         foreach ($limpas as ['texto' => $texto, 'marcador' => $marcador]) {
-            if (NormalizadorTexto::ehSomenteData($texto) && $atual !== null && $data === null && ! $this->terminaFrase($atual)) {
+            if ($texto === "\v") {
+                if ($atual !== null) {
+                    $itens[] = $this->fecharItem($atual, $data);
+                }
+
+                [$atual, $data, $ultima] = [null, null, ''];
+
+                continue;
+            }
+
+            if (NormalizadorTexto::ehSomenteData($texto) && $atual !== null && preg_match('/[-–—]\s*$/u', $atual) === 1) {
+                $atual .= " {$texto}";
+                $ultima = $texto;
+
+                continue;
+            }
+
+            if (NormalizadorTexto::ehSomenteData($texto) && $atual !== null && $data === null && ! NormalizadorTexto::ehSomenteData($atual)) {
                 $data = $texto;
 
                 continue;
@@ -471,7 +526,7 @@ class ExtratorCurriculo
             }
 
             if ($atual !== null && ! $marcador
-                && (NormalizadorTexto::ehSomenteData($atual) || $this->continuaItem($atual, $ultima, $texto, $maiorLinha, $textoCorrido))) {
+                && ((NormalizadorTexto::ehSomenteData($atual) && ! NormalizadorTexto::ehSomenteData($texto)) || $this->continuaItem($atual, $ultima, $texto, $maiorLinha, $textoCorrido))) {
                 $atual .= " {$texto}";
             } else {
                 if ($atual !== null) {
@@ -504,11 +559,17 @@ class ExtratorCurriculo
             return false;
         }
 
+        if (in_array(strtok(NormalizadorTexto::normalizar($seguinte), ' '), self::PALAVRAS_DE_CARGO, true)
+            && preg_match('/\b(?:19|20)\d{2}\b/', $seguinte) === 1) {
+            return false;
+        }
+
         $linhaCheia = $textoCorrido
             && $maiorLinha >= self::TAMANHO_MINIMO_TEXTO_CORRIDO
             && mb_strlen($ultima) >= self::PROPORCAO_LINHA_CHEIA * $maiorLinha;
 
         return preg_match('/^\p{Ll}/u', $seguinte) === 1
+            || preg_match('/[|–—-]$/u', $ultima) === 1
             || str_ends_with($ultima, ',')
             || $this->terminaEmConector($ultima, $textoCorrido)
             || substr_count($item, '(') > substr_count($item, ')')
