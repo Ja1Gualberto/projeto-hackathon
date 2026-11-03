@@ -16,6 +16,7 @@ class FiltroCandidatosDTOTest extends TestCase
             'area' => 'desenvolvimento',
             'experiencia' => '1',
             'busca' => '  Marina  ',
+            'por_pagina' => '20',
         ]);
 
         $this->assertSame([3, 7], $filtro->competencias);
@@ -24,6 +25,7 @@ class FiltroCandidatosDTOTest extends TestCase
         $this->assertTrue($filtro->somenteComExperiencia);
         $this->assertSame('Marina', $filtro->busca);
         $this->assertSame('ativos', $filtro->situacao);
+        $this->assertSame(20, $filtro->porPagina);
     }
 
     public function test_filtros_vazios_mantem_os_valores_padrao(): void
@@ -36,11 +38,12 @@ class FiltroCandidatosDTOTest extends TestCase
         $this->assertFalse($filtro->somenteComExperiencia);
         $this->assertNull($filtro->busca);
         $this->assertSame('ativos', $filtro->situacao);
+        $this->assertSame(10, $filtro->porPagina);
     }
 
     public function test_equivalencias_geram_novo_dto_sem_alterar_os_filtros_originais(): void
     {
-        $original = FiltroCandidatosDTO::fromArray(['competencias' => ['3'], 'vaga_id' => '8']);
+        $original = FiltroCandidatosDTO::fromArray(['competencias' => ['3'], 'vaga_id' => '8', 'por_pagina' => '50']);
 
         $resolvido = $original->comCompetenciasEquivalentes([3 => [3, 4, 5]]);
 
@@ -49,5 +52,6 @@ class FiltroCandidatosDTOTest extends TestCase
         $this->assertSame([3 => [3, 4, 5]], $resolvido->competenciasEquivalentes);
         $this->assertSame([3], $resolvido->competencias);
         $this->assertSame(8, $resolvido->vagaId);
+        $this->assertSame(50, $resolvido->porPagina);
     }
 }

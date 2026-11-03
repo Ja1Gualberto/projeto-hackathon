@@ -54,6 +54,7 @@ return [
         'area' => 'área',
         'tipo_candidato' => 'tipo de candidato',
         'competencias' => 'competências',
+        'por_pagina' => 'candidatos por página',
         'texto' => 'anotação',
         'etapa' => 'etapa',
         'motivo' => 'motivo',

@@ -34,6 +34,7 @@ function montar(t) {
     const busca = campo('busca', 'search', 'Ana');
     const tipo = campo('tipo', 'select-one', 'estagiario');
     const situacao = { ...campo('situacao', 'select-one', 'ativos'), dataset: { valorPadrao: 'ativos' } };
+    const porPagina = { ...campo('por_pagina', 'select-one', '10'), dataset: { valorPadrao: '10' } };
     const experiencia = campo('experiencia', 'checkbox', '1');
     const competencia = campo('competencias[]', 'checkbox', '7');
     const semNome = campo('', 'search', 'Python');
@@ -44,7 +45,7 @@ function montar(t) {
         addEventListener: (nome, fn) => { docEventos[nome] = fn; },
     };
     const form = {
-        action: 'https://banco.test/candidatos', elements: [busca, tipo, situacao, experiencia, competencia, semNome],
+        action: 'https://banco.test/candidatos', elements: [busca, tipo, situacao, porPagina, experiencia, competencia, semNome],
         ownerDocument: doc, dataset: {},
         addEventListener: (nome, fn) => { eventos[nome] = (evento) => fn({ type: nome, ...evento }); },
         querySelectorAll: () => [], querySelector: () => resumo,
@@ -87,7 +88,7 @@ function montar(t) {
         };
         return docEventos.click({ button: 0, target: { closest: () => link }, preventDefault() {} });
     }
-    return { eventos, janelaEventos, doc, form, busca, tipo, situacao, experiencia, competencia, regiao, aviso, resumo, atributos, chamadas, resolver, janela, historico, clicar };
+    return { eventos, janelaEventos, doc, form, busca, tipo, situacao, porPagina, experiencia, competencia, regiao, aviso, resumo, atributos, chamadas, resolver, janela, historico, clicar };
 }
 
 test('debounce de 400 ms, reset de page e URL confirmada somente no sucesso sem perder campo/foco/cursor', async (t) => {
@@ -132,6 +133,46 @@ test('situação usa a busca existente, mantém URL e volta a Ativos ao limpar o
     ui.resolver(2);
     await esperar();
     assert.equal(ui.situacao.value, 'ativos');
+});
+
+test('quantidade por página atualiza imediatamente, mantém filtros e reinicia a paginação', async (t) => {
+    const ui = montar(t);
+    ui.competencia.checked = true;
+    ui.experiencia.checked = true;
+
+    for (const [indice, quantidade] of ['10', '20', '50', '100'].entries()) {
+        ui.porPagina.value = quantidade;
+        ui.eventos.change({ target: ui.porPagina });
+
+        const url = ui.chamadas[indice].url;
+        assert.equal(url.searchParams.get('por_pagina'), quantidade);
+        assert.equal(url.searchParams.has('page'), false);
+        assert.equal(url.searchParams.get('busca'), 'Ana');
+        assert.equal(url.searchParams.get('competencias[]'), '7');
+        assert.equal(url.searchParams.get('experiencia'), '1');
+        ui.resolver(indice);
+        await esperar();
+        assert.equal(new URL(ui.janela.location.href).searchParams.get('por_pagina'), quantidade);
+    }
+});
+
+test('quantidade por página acompanha navegação e histórico e volta a 10 ao limpar', async (t) => {
+    const ui = montar(t);
+    ui.clicar('https://banco.test/candidatos?por_pagina=50&page=2');
+    ui.resolver(0);
+    await esperar();
+    assert.equal(ui.porPagina.value, '50');
+
+    ui.janela.location.href = 'https://banco.test/candidatos?por_pagina=20';
+    ui.janelaEventos.popstate();
+    ui.resolver(1);
+    await esperar();
+    assert.equal(ui.porPagina.value, '20');
+
+    ui.clicar('https://banco.test/candidatos', true);
+    ui.resolver(2);
+    await esperar();
+    assert.equal(ui.porPagina.value, '10');
 });
 
 test('edição invalida e cancela GET antes do debounce e descarta respostas fora de ordem', async (t) => {

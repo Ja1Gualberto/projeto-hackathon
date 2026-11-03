@@ -289,8 +289,43 @@ class BuscaCandidatosTest extends TestCase
             ->get(route('candidatos.index', ['tipo' => 'estagiario']));
 
         $resposta->assertOk()->assertSee('13 talentos encontrados')
-            ->assertSeeInOrder(['Talento 00', 'Talento 11'])->assertDontSee('Talento 12');
+            ->assertSeeInOrder(['Talento 00', 'Talento 09'])->assertDontSee('Talento 10')
+            ->assertViewHas('candidatos', fn ($resultado): bool => $resultado->perPage() === 10 && $resultado->count() === 10);
         $this->assertStringContainsString('tipo=estagiario', $resposta['candidatos']->nextPageUrl());
+    }
+
+    #[TestWith([10])]
+    #[TestWith([20])]
+    #[TestWith([50])]
+    #[TestWith([100])]
+    public function test_quantidade_por_pagina_limita_cards_e_preserva_selecao_e_filtros(int $porPagina): void
+    {
+        Candidato::factory()->count($porPagina + 1)->sequence(
+            fn ($sequencia): array => ['nome' => 'Talento '.str_pad((string) $sequencia->index, 3, '0', STR_PAD_LEFT)],
+        )->create(['area' => Area::Dados]);
+        $url = route('candidatos.index', ['area' => 'dados', 'busca' => 'Talento', 'por_pagina' => $porPagina]);
+        $this->actingAs(User::factory()->create());
+
+        $resposta = $this->get($url)->assertOk();
+
+        $this->assertSame($porPagina, $resposta['candidatos']->perPage());
+        $this->assertCount($porPagina, $resposta['candidatos']);
+        $documento = new \DOMDocument;
+        $documento->loadHTML($resposta->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        $xpath = new \DOMXPath($documento);
+        $this->assertCount(4, $xpath->query('//select[@name="por_pagina"]/option'));
+        $this->assertCount(1, $xpath->query('//select[@name="por_pagina"]/option[@value="'.$porPagina.'"][@selected]'));
+
+        $proximaUrl = $resposta['candidatos']->nextPageUrl();
+        $this->assertStringContainsString('por_pagina='.$porPagina, $proximaUrl);
+        $this->assertStringContainsString('area=dados', $proximaUrl);
+        $this->assertStringContainsString('busca=Talento', $proximaUrl);
+        $this->get($proximaUrl)->assertOk()
+            ->assertViewHas('candidatos', fn ($resultado): bool => $resultado->count() === 1 && $resultado->currentPage() === 2);
+
+        $fragmento = $this->getJson($url)->assertOk()->json('fragments.resultados-candidatos');
+        $documento->loadHTML($fragmento, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        $this->assertCount($porPagina, (new \DOMXPath($documento))->query('//article[@data-card-candidato]'));
     }
 
     #[TestWith([['vaga_id' => 'invalido'], 'vaga_id'])]
@@ -299,6 +334,11 @@ class BuscaCandidatosTest extends TestCase
     #[TestWith([['competencias' => 'texto'], 'competencias'])]
     #[TestWith([['experiencia' => 'talvez'], 'experiencia'])]
     #[TestWith([['situacao' => 'todos'], 'situacao'])]
+    #[TestWith([['por_pagina' => 12], 'por_pagina'])]
+    #[TestWith([['por_pagina' => 0], 'por_pagina'])]
+    #[TestWith([['por_pagina' => 101], 'por_pagina'])]
+    #[TestWith([['por_pagina' => 'texto'], 'por_pagina'])]
+    #[TestWith([['por_pagina' => [10]], 'por_pagina'])]
     public function test_filtros_invalidos_sao_rejeitados(array $parametros, string $campo): void
     {
         $this->actingAs(User::factory()->create())->from(route('candidatos.index'))

@@ -20,9 +20,10 @@ final readonly class FiltroCandidatosDTO
         public array $competenciasEquivalentes = [],
         public ?int $excluirVagaId = null,
         public bool $qualquerCompetencia = false,
+        public int $porPagina = 10,
     ) {}
 
-    /** @param array{competencias?: list<int|string>|null, vaga_id?: int|string|null, area?: string|null, experiencia?: bool|int|string|null, busca?: string|null, situacao?: string|null} $validados */
+    /** @param array{competencias?: list<int|string>|null, vaga_id?: int|string|null, area?: string|null, experiencia?: bool|int|string|null, busca?: string|null, situacao?: string|null, por_pagina?: int|string|null} $validados */
     public static function fromArray(array $validados): self
     {
         return new self(
@@ -32,6 +33,7 @@ final readonly class FiltroCandidatosDTO
             somenteComExperiencia: (bool) ($validados['experiencia'] ?? false),
             busca: filled($validados['busca'] ?? null) ? trim($validados['busca']) : null,
             situacao: $validados['situacao'] ?? 'ativos',
+            porPagina: (int) ($validados['por_pagina'] ?? 10),
         );
     }
 
@@ -39,6 +41,6 @@ final readonly class FiltroCandidatosDTO
     public function comCompetenciasEquivalentes(array $equivalencias): self
     {
         return new self($this->competencias, $this->vagaId, $this->area, $this->somenteComExperiencia,
-            $this->busca, $this->situacao, $equivalencias, $this->excluirVagaId, $this->qualquerCompetencia);
+            $this->busca, $this->situacao, $equivalencias, $this->excluirVagaId, $this->qualquerCompetencia, $this->porPagina);
     }
 }

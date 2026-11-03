@@ -33,6 +33,7 @@ class BuscarCandidatosRequest extends FormRequest
             'experiencia' => ['nullable', 'boolean'],
             'busca' => ['nullable', 'string', 'max:100'],
             'situacao' => ['nullable', 'in:ativos,desativados,retencao'],
+            'por_pagina' => ['nullable', 'integer', Rule::in([10, 20, 50, 100])],
         ];
     }
 

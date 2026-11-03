@@ -26,6 +26,7 @@ class TriagemCandidatoController extends Controller
             busca: $request->filtro()->busca,
             excluirVagaId: $vaga->id,
             qualquerCompetencia: true,
+            porPagina: 12,
         );
 
         return response()->view('participacoes.triagem', [

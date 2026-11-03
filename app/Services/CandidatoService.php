@@ -28,7 +28,7 @@ class CandidatoService
             $equivalencias[$id] = $this->competencias->idsQueAtendem($id);
         }
 
-        return $this->candidatos->buscar($filtro->comCompetenciasEquivalentes($equivalencias));
+        return $this->candidatos->buscar($filtro->comCompetenciasEquivalentes($equivalencias), $filtro->porPagina);
     }
 
     public function detalhar(Candidato $candidato): Candidato

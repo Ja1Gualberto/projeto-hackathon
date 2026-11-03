@@ -7,6 +7,7 @@
 
     {{ $campos['busca'] }}
     {{ $campos['situacao'] }}
+    {{ $campos['porPagina'] }}
     <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-1">
         {{ $campos['vaga'] }}
         {{ $campos['area'] }}
