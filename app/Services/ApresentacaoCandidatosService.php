@@ -7,7 +7,6 @@ use App\Enums\Area;
 use App\Enums\StatusCandidato;
 use App\Models\Candidato;
 use App\Models\Competencia;
-use App\Models\Participacao;
 use App\Repositories\Interfaces\VagaRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
@@ -139,6 +138,10 @@ final class ApresentacaoCandidatosService
     {
         $desativado = $candidato->status === StatusCandidato::Desativado;
         $retencaoVencida = $candidato->retencao_vencida;
+        $ultimaVaga = $candidato->participacoes->sortBy([
+            ['created_at', 'desc'],
+            ['id', 'desc'],
+        ])->first()?->vaga?->titulo;
         $competencias = [];
 
         foreach ($candidato->competencias as $competencia) {
@@ -156,7 +159,8 @@ final class ApresentacaoCandidatosService
             'nome' => $candidato->nome,
             'area' => $candidato->area->rotulo(),
             'experiencia' => $candidato->experiencia_na_area ? 'sim' : 'não informado',
-            'processos' => $candidato->participacoes->map(fn (Participacao $participacao): string => $participacao->vaga->titulo)->implode(' · '),
+            'ultimaVaga' => $ultimaVaga,
+            'atributosUltimaVaga' => new ComponentAttributeBag(['hidden' => $ultimaVaga === null]),
             'seloDesativado' => $desativado ? $this->componente('badge', [], new HtmlString('Desativado')) : new HtmlString,
             'atributosDesativado' => new ComponentAttributeBag(['hidden' => ! $desativado]),
             'seloRetencao' => $retencaoVencida ? $this->componente('badge', ['cor' => 'aviso'], new HtmlString('revisão de retenção pendente')) : new HtmlString,

@@ -102,8 +102,39 @@ class BuscaCandidatosTest extends TestCase
         $candidato = Candidato::factory()->estagiario()->create(['experiencia_na_area' => false]);
 
         $this->actingAs(User::factory()->create())->get(route('candidatos.index'))
-            ->assertOk()->assertSee($candidato->nome)->assertSee('Sem processo seletivo vinculado')
+            ->assertOk()->assertSee($candidato->nome)->assertDontSee('Sem processo seletivo vinculado')
             ->assertSee('Experiência na área: não informado')->assertDontSee('CAND-');
+    }
+
+    public function test_cards_agrupam_nome_experiencia_e_apenas_a_ultima_vaga_antes_do_link_de_perfil(): void
+    {
+        $this->freezeTime();
+        $candidato = Candidato::factory()->create(['area' => Area::Desenvolvimento, 'experiencia_na_area' => true]);
+        $vaga = Vaga::factory()->create(['titulo' => 'Estagiário de Infraestrutura']);
+        $vaga->participacoes()->create(['candidato_id' => $candidato->id, 'etapa' => 'triagem']);
+        $vagaAnterior = Vaga::factory()->create(['titulo' => 'Vaga anterior']);
+        $participacaoAnterior = $vagaAnterior->participacoes()->create(['candidato_id' => $candidato->id, 'etapa' => 'triagem']);
+        $participacaoAnterior->forceFill(['created_at' => now()->subDay()])->save();
+
+        $resposta = $this->actingAs(User::factory()->create())
+            ->getJson(route('candidatos.index'))->assertOk();
+        $fragmento = $resposta->json('fragments.resultados-candidatos');
+
+        $this->assertStringContainsString($candidato->nome, $fragmento);
+        $this->assertStringContainsString('Ver perfil', $fragmento);
+        $this->assertStringContainsString('Última vaga: '.$vaga->titulo, $fragmento);
+        $this->assertStringNotContainsString($vagaAnterior->titulo, $fragmento);
+
+        $documento = new \DOMDocument;
+        $documento->loadHTML($fragmento, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        $xpath = new \DOMXPath($documento);
+        $cabecalho = '//article[@data-card-candidato]/a';
+        $this->assertCount(1, $xpath->query($cabecalho.'/div[h3][p][span[not(@hidden)]]'));
+        $this->assertCount(1, $xpath->query($cabecalho.'/div/*[1][self::h3]'));
+        $this->assertCount(1, $xpath->query($cabecalho.'/*[2][self::span]'));
+        $this->get(route('candidatos.index'))->assertOk()->assertSeeInOrder([
+            $candidato->nome, 'Desenvolvimento', 'Experiência na área: sim', 'Última vaga: '.$vaga->titulo, 'Ver perfil',
+        ]);
     }
 
     public function test_filtros_sem_resultado_oferecem_remover_filtros(): void
