@@ -22,13 +22,18 @@ class CandidatoService
     /** @return LengthAwarePaginator<int, Candidato> */
     public function buscar(FiltroCandidatosDTO $filtro): LengthAwarePaginator
     {
-        $equivalencias = [];
+        return $this->candidatos->buscar($this->resolverCompetencias($filtro), $filtro->porPagina);
+    }
+
+    public function resolverCompetencias(FiltroCandidatosDTO $filtro): FiltroCandidatosDTO
+    {
+        $equivalencias = $filtro->competenciasEquivalentes;
 
         foreach ($filtro->competencias as $id) {
-            $equivalencias[$id] = $this->competencias->idsQueAtendem($id);
+            $equivalencias[$id] ??= $this->competencias->idsQueAtendem($id);
         }
 
-        return $this->candidatos->buscar($filtro->comCompetenciasEquivalentes($equivalencias), $filtro->porPagina);
+        return $filtro->comCompetenciasEquivalentes($equivalencias);
     }
 
     /** @return list<int> */

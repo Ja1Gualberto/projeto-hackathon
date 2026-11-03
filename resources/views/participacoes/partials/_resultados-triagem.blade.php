@@ -23,7 +23,11 @@
                 <span class="flex min-w-0 flex-col gap-3">
                     <span class="font-mono font-semibold">{{ $candidato->codigo }}</span>
                     <span class="text-sm text-texto-suave">{{ $candidato->area->rotulo() }}</span>
-                    <span class="flex flex-wrap gap-2">@foreach ($candidato->competencias as $competencia)<x-tag-competencia :nome="$competencia->nome" />@endforeach</span>
+                    <span class="flex flex-wrap gap-2">
+                        @foreach ($candidato->competencias as $competencia)
+                            <x-tag-competencia :nome="$competencia->nome" :da-vaga="in_array($competencia->id, $competenciasDaVagaEmDestaque, true)" :data-correspondencia="in_array($competencia->id, $competenciasEmDestaque, true) ? 'true' : 'false'" />
+                        @endforeach
+                    </span>
                 </span>
             </label>
         @empty
