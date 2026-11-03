@@ -31,6 +31,12 @@ class CandidatoService
         return $this->candidatos->buscar($filtro->comCompetenciasEquivalentes($equivalencias), $filtro->porPagina);
     }
 
+    /** @return list<int> */
+    public function buscarIds(FiltroCandidatosDTO $filtro): array
+    {
+        return $this->candidatos->buscarIds($filtro);
+    }
+
     public function detalhar(Candidato $candidato): Candidato
     {
         return $this->candidatos->detalhar($candidato);

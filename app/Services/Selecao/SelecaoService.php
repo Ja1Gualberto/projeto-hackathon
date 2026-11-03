@@ -92,6 +92,10 @@ class SelecaoService
     /** @param list<int> $candidatoIds */
     public function adicionarATriagem(Vaga $vaga, array $candidatoIds): void
     {
+        if ($candidatoIds === []) {
+            throw ValidationException::withMessages(['candidatos' => 'Selecione ao menos um candidato para adicionar à triagem.']);
+        }
+
         $this->participacoes->adicionarATriagem($vaga, $candidatoIds);
     }
 

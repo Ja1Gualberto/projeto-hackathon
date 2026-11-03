@@ -17,6 +17,9 @@ interface CandidatoRepositoryInterface
     /** @return LengthAwarePaginator<int, Candidato> */
     public function buscar(FiltroCandidatosDTO $filtro, int $porPagina = 12): LengthAwarePaginator;
 
+    /** @return list<int> */
+    public function buscarIds(FiltroCandidatosDTO $filtro): array;
+
     public function detalhar(Candidato $candidato): Candidato;
 
     /** @param array<string, mixed> $atributos */

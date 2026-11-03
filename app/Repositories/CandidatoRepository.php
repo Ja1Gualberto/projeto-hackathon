@@ -26,10 +26,21 @@ class CandidatoRepository implements CandidatoRepositoryInterface
 
     public function buscar(FiltroCandidatosDTO $filtro, int $porPagina = 12): LengthAwarePaginator
     {
-        $consulta = Candidato::query()->with([
+        return $this->consultaFiltrada($filtro)->with([
             'competencias' => fn (BelongsToMany $query): BelongsToMany => $query->orderBy('nome'),
             'participacoes.vaga',
-        ]);
+        ])->orderBy('nome')->orderBy('id')->paginate($porPagina)->withQueryString();
+    }
+
+    public function buscarIds(FiltroCandidatosDTO $filtro): array
+    {
+        return $this->consultaFiltrada($filtro)->reorder()->select('candidatos.id')->pluck('candidatos.id')->all();
+    }
+
+    /** @return Builder<Candidato> */
+    private function consultaFiltrada(FiltroCandidatosDTO $filtro): Builder
+    {
+        $consulta = Candidato::query();
 
         if ($filtro->situacao === 'desativados') {
             $consulta->where('status', StatusCandidato::Desativado);
@@ -67,13 +78,17 @@ class CandidatoRepository implements CandidatoRepositoryInterface
         }
 
         if ($filtro->busca !== null) {
-            $consulta->where(fn (Builder $query) => $query
-                ->where('codigo', 'like', '%'.$filtro->busca.'%')
-                ->orWhere('nome', 'like', '%'.$filtro->busca.'%')
-                ->orWhere('email', 'like', '%'.$filtro->busca.'%'));
+            $consulta->where(function (Builder $query) use ($filtro): void {
+                $query->where('codigo', 'like', '%'.$filtro->busca.'%');
+
+                if (! $filtro->somentePorCodigo) {
+                    $query->orWhere('nome', 'like', '%'.$filtro->busca.'%')
+                        ->orWhere('email', 'like', '%'.$filtro->busca.'%');
+                }
+            });
         }
 
-        return $consulta->orderBy('nome')->orderBy('id')->paginate($porPagina)->withQueryString();
+        return $consulta;
     }
 
     /** @param Builder<Candidato> $consulta */

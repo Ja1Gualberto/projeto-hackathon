@@ -21,6 +21,7 @@ final readonly class FiltroCandidatosDTO
         public ?int $excluirVagaId = null,
         public bool $qualquerCompetencia = false,
         public int $porPagina = 10,
+        public bool $somentePorCodigo = false,
     ) {}
 
     /** @param array{competencias?: list<int|string>|null, vaga_id?: int|string|null, area?: string|null, experiencia?: bool|int|string|null, busca?: string|null, situacao?: string|null, por_pagina?: int|string|null} $validados */
@@ -41,6 +42,6 @@ final readonly class FiltroCandidatosDTO
     public function comCompetenciasEquivalentes(array $equivalencias): self
     {
         return new self($this->competencias, $this->vagaId, $this->area, $this->somenteComExperiencia,
-            $this->busca, $this->situacao, $equivalencias, $this->excluirVagaId, $this->qualquerCompetencia, $this->porPagina);
+            $this->busca, $this->situacao, $equivalencias, $this->excluirVagaId, $this->qualquerCompetencia, $this->porPagina, $this->somentePorCodigo);
     }
 }

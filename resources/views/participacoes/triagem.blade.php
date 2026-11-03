@@ -12,8 +12,8 @@
         <x-alerta tipo="erro"><ul class="list-inside list-disc">@foreach ($errors->all() as $erro)<li>{{ $erro }}</li>@endforeach</ul></x-alerta>
     @endif
 
-    <form method="GET" action="{{ route('vagas.triagem.index', $vaga) }}" class="flex flex-col gap-5 rounded-card border border-borda bg-superficie p-5">
-        <x-campo nome="busca" rotulo="Buscar no banco" tipo="search" :valor="$filtro->busca" maxlength="100" ajuda="Busque pelo código, nome ou e-mail. A identidade continua oculta nos cartões da triagem." />
+    <form method="GET" action="{{ route('vagas.triagem.index', $vaga) }}" data-busca-candidatos class="flex flex-col gap-5 rounded-card border border-borda bg-superficie p-5">
+        <x-campo nome="busca" rotulo="Buscar por código do candidato" tipo="search" :valor="$filtro->busca" maxlength="100" ajuda="Busque apenas pelo código exibido no card. Nomes e e-mails não são pesquisados nesta etapa anônima." />
         <fieldset class="flex flex-col gap-3">
             <legend class="mb-2 font-semibold">Filtrar por competências</legend>
             <p class="text-sm text-texto-suave">O resultado deve atender a pelo menos uma das competências marcadas. Quem atende a mais competências selecionadas aparece primeiro. Candidatos já vinculados a esta vaga não aparecem.</p>
@@ -32,32 +32,11 @@
             @endforeach
         </fieldset>
         <div class="flex flex-wrap gap-3">
-            <x-botao type="submit">Filtrar candidatos</x-botao>
-            <x-botao :href="route('vagas.triagem.index', [$vaga, 'busca' => ''])" variante="secundario">Limpar filtros</x-botao>
+            <x-botao :href="route('vagas.triagem.index', [$vaga, 'busca' => ''])" data-limpar-busca variante="secundario">Limpar filtros</x-botao>
         </div>
     </form>
 
-    <form method="POST" action="{{ route('vagas.triagem.store', $vaga) }}" class="flex flex-col gap-4">
-        @csrf
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <h2 class="text-lg font-semibold">{{ $candidatos->total() }} candidatos disponíveis</h2>
-            <x-botao type="submit">Adicionar selecionados à triagem</x-botao>
-        </div>
-        <p class="text-sm text-texto-suave">Marque os candidatos desta página e adicione antes de navegar para outra página. O vínculo não altera a participação em outros processos.</p>
-        <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            @forelse ($candidatos as $candidato)
-                <label class="flex cursor-pointer items-start gap-3 rounded-card border border-borda bg-superficie p-5 has-checked:border-primaria-600 has-checked:bg-primaria-50">
-                    <input type="checkbox" name="candidatos[]" value="{{ $candidato->id }}" @checked(in_array($candidato->id, array_map('intval', old('candidatos', [])), true)) class="mt-1 size-5 shrink-0 accent-primaria-600">
-                    <span class="flex min-w-0 flex-col gap-3">
-                        <span class="font-mono font-semibold">{{ $candidato->codigo }}</span>
-                        <span class="text-sm text-texto-suave">{{ $candidato->area->rotulo() }}</span>
-                        <span class="flex flex-wrap gap-2">@foreach ($candidato->competencias as $competencia)<x-tag-competencia :nome="$competencia->nome" />@endforeach</span>
-                    </span>
-                </label>
-            @empty
-                <p class="text-sm text-texto-suave">Nenhum candidato disponível com esses critérios. Amplie os filtros ou importe currículos.</p>
-            @endforelse
-        </div>
-    </form>
-    {{ $candidatos->links('components.paginacao') }}
+    <section id="resultados-candidatos" aria-labelledby="resultados-titulo" class="flex min-w-0 flex-col gap-6 transition-opacity aria-busy:cursor-progress aria-busy:opacity-60 motion-reduce:transition-none">
+        @include('participacoes.partials._resultados-triagem')
+    </section>
 @endsection

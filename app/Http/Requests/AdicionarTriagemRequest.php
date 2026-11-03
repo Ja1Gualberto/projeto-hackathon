@@ -24,8 +24,14 @@ class AdicionarTriagemRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'candidatos' => ['required', 'array', 'min:1', 'max:100'],
+            'todos_filtrados' => ['sometimes', 'boolean'],
+            'candidatos' => [Rule::excludeIf($this->boolean('todos_filtrados')), 'required', 'array', 'min:1', 'max:100'],
             'candidatos.*' => ['required', 'integer', 'distinct', Rule::exists('candidatos', 'id')->where('status', 'ativo')],
+            'competencias' => ['exclude_unless:todos_filtrados,1', 'nullable', 'array'],
+            'competencias.*' => ['integer', 'exists:competencias,id'],
+            'busca' => ['exclude_unless:todos_filtrados,1', 'nullable', 'string', 'max:100'],
+            'excluidos' => ['exclude_unless:todos_filtrados,1', 'nullable', 'array', 'max:12'],
+            'excluidos.*' => ['integer', 'distinct'],
         ];
     }
 
