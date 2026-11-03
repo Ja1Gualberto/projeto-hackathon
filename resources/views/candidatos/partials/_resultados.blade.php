@@ -8,7 +8,7 @@
     {{ $selecionadas }}
 </div>
 
-<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+<div class="grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
     {{ $cards }}
     <div {{ $atributosVazio }} class="col-span-full">{{ $estadoVazio }}</div>
 </div>

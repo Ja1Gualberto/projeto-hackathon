@@ -138,11 +138,15 @@ final class ApresentacaoCandidatosService
         $retencaoVencida = $candidato->retencao_vencida;
         $competencias = [];
 
-        foreach ($candidato->competencias->take(5) as $competencia) {
-            $competencias[] = $this->componente('tag-competencia', ['nome' => $competencia->nome]);
+        foreach ($candidato->competencias as $competencia) {
+            $competencias[] = $this->componente('tag-competencia', [
+                'nome' => $competencia->nome,
+                'attributes' => new ComponentAttributeBag([
+                    'data-competencia-card' => true,
+                    'class' => 'shrink-0 whitespace-nowrap group-data-[expandido=true]/competencias:max-w-full group-data-[expandido=true]/competencias:whitespace-normal group-data-[expandido=true]/competencias:wrap-anywhere',
+                ]),
+            ]);
         }
-
-        $excedentes = max(0, $candidato->competencias->count() - 5);
 
         return $this->renderizar('candidatos.partials._card', [
             'urlPerfil' => route('candidatos.show', $candidato),
@@ -158,9 +162,8 @@ final class ApresentacaoCandidatosService
             'seloRetencao' => $retencaoVencida ? $this->componente('badge', ['cor' => 'aviso'], new HtmlString('revisão de retenção pendente')) : new HtmlString,
             'atributosRetencao' => new ComponentAttributeBag(['hidden' => ! $retencaoVencida]),
             'competencias' => $this->juntar($competencias),
+            'idCompetencias' => 'competencias-candidato-'.$candidato->id,
             'atributosSemCompetencias' => new ComponentAttributeBag(['hidden' => $competencias !== []]),
-            'excedentes' => $excedentes,
-            'atributosExcedentes' => new ComponentAttributeBag(['hidden' => $excedentes === 0]),
         ]);
     }
 

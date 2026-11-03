@@ -121,10 +121,11 @@ class BuscaCandidatosTest extends TestCase
         $documento = new \DOMDocument;
         $documento->loadHTML($resposta->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
         $xpath = new \DOMXPath($documento);
-        $card = '//a[@href="'.route('candidatos.show', $candidato).'"]';
+        $card = '//article[@data-card-candidato][a[@href="'.route('candidatos.show', $candidato).'"]]';
         $this->assertCount(2, $xpath->query($card.'/div[@hidden]'));
         $this->assertCount(1, $xpath->query($card.'//p[@hidden]'));
-        $this->assertCount(1, $xpath->query($card.'//span[@aria-label="Mais 0 competências"][@hidden]'));
+        $this->assertCount(1, $xpath->query($card.'//button[@data-expandir-competencias][@hidden][@aria-controls="competencias-candidato-'.$candidato->id.'"]'));
+        $this->assertCount(0, $xpath->query($card.'//a//button'));
         $this->assertCount(1, $xpath->query('//div[@aria-label="Competências selecionadas"][@hidden]'));
         $this->assertCount(1, $xpath->query('//main/div[@role="alert"][@hidden][not(@data-alerta)]'));
     }
@@ -145,7 +146,7 @@ class BuscaCandidatosTest extends TestCase
         $resposta->assertOk()->assertSee('1 talento encontrado')->assertSee($candidato->nome)
             ->assertSee('Perfis ativos com retenção pendente')->assertSee('Com todas:')
             ->assertSee('xl:grid-cols-[15rem_minmax(0,1fr)]', false)
-            ->assertSee('grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3', false);
+            ->assertSee('grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4', false);
         $documento = new \DOMDocument;
         $documento->loadHTML($resposta->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
         $xpath = new \DOMXPath($documento);
@@ -159,7 +160,7 @@ class BuscaCandidatosTest extends TestCase
         $this->assertCount(1, $xpath->query('//section[@id="resultados-candidatos"]'));
     }
 
-    public function test_cards_limitam_competencias_e_preservam_avisos_de_situacao(): void
+    public function test_cards_entregam_todas_as_competencias_para_expandir_e_preservam_avisos_de_situacao(): void
     {
         $candidato = Candidato::factory()->desativado()->retencaoVencida()->create();
         $competencias = Competencia::factory()->hard()->count(6)->sequence(
@@ -174,10 +175,28 @@ class BuscaCandidatosTest extends TestCase
         $fragmento = $resposta->json('fragments.resultados-candidatos');
         $this->assertStringContainsString('Desativado', $fragmento);
         $this->assertStringContainsString('revisão de retenção pendente', $fragmento);
-        $this->assertStringContainsString('Mais 1 competências', $fragmento);
+        $this->assertStringContainsString('Ver todas', $fragmento);
         $this->assertStringContainsString('Competência 4', $fragmento);
-        $this->assertStringNotContainsString('Competência 5', $fragmento);
+        $this->assertStringContainsString('Competência 5', $fragmento);
         $this->assertStringContainsString('href="'.route('candidatos.show', $candidato).'"', $fragmento);
+        $documento = new \DOMDocument;
+        $documento->loadHTML($fragmento, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        $xpath = new \DOMXPath($documento);
+        $this->assertCount(6, $xpath->query('//div[@id="competencias-candidato-'.$candidato->id.'"][@data-expandido="true"]/span[@data-competencia-card][not(@hidden)]'));
+    }
+
+    public function test_card_sem_competencias_mostra_mensagem_sem_tags(): void
+    {
+        Candidato::factory()->create();
+
+        $resposta = $this->actingAs(User::factory()->create())->getJson(route('candidatos.index'))->assertOk();
+
+        $documento = new \DOMDocument;
+        $documento->loadHTML($resposta->json('fragments.resultados-candidatos'), LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        $xpath = new \DOMXPath($documento);
+        $this->assertCount(1, $xpath->query('//div[@data-competencias-card]/p[not(@hidden)]'));
+        $this->assertCount(0, $xpath->query('//span[@data-competencia-card]'));
+        $this->assertCount(1, $xpath->query('//button[@data-expandir-competencias][@hidden]'));
     }
 
     public function test_preenchimento_anterior_e_escapado_no_html(): void
