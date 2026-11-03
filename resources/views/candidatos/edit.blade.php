@@ -4,7 +4,10 @@
 
 @section('conteudo')
     <nav aria-label="Localização" class="text-sm">
-        <a href="{{ route('candidatos.show', $candidato) }}" class="font-medium text-primaria-700 underline underline-offset-4">Voltar ao perfil</a>
+        <a href="{{ route('candidatos.show', $candidato) }}" class="inline-flex items-center gap-2 font-medium text-primaria-700 underline underline-offset-4">
+            <x-icone nome="seta" class="size-4 rotate-180" />
+            Voltar ao perfil
+        </a>
     </nav>
     <x-cabecalho-pagina titulo="Corrigir dados do candidato" subtitulo="Confira o cadastro e o consentimento. Salvar renova o prazo de retenção dos dados." />
 

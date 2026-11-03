@@ -3,7 +3,12 @@
 @section('titulo', 'Selecionar candidatos')
 
 @section('conteudo')
-    <nav aria-label="Localização"><a href="{{ route('vagas.show', $vaga) }}" class="text-sm font-medium text-primaria-700 underline underline-offset-4">Voltar ao quadro da vaga</a></nav>
+    <nav aria-label="Localização">
+        <a href="{{ route('vagas.show', $vaga) }}" class="inline-flex items-center gap-2 text-sm font-medium text-primaria-700 underline underline-offset-4">
+            <x-icone nome="seta" class="size-4 rotate-180" />
+            Voltar ao quadro da vaga
+        </a>
+    </nav>
     <x-cabecalho-pagina titulo="Selecionar candidatos" :subtitulo="$vaga->titulo.' — filtre por competências e marque quem deseja adicionar à triagem.'">
         <x-botao :href="route('importacoes.create', ['vaga_id' => $vaga->id])" variante="secundario">Importar currículos para esta vaga</x-botao>
     </x-cabecalho-pagina>

@@ -5,7 +5,10 @@
 @section('conteudo')
     <script type="application/json" id="dados-vagas" data-tela="formulario">{!! $dadosTela !!}</script>
     <nav aria-label="Localização" class="text-sm">
-        <a href="{{ route('vagas.show', $vaga) }}" class="font-medium text-primaria-700 underline underline-offset-4">Voltar ao quadro da vaga</a>
+        <a href="{{ route('vagas.show', $vaga) }}" class="inline-flex items-center gap-2 font-medium text-primaria-700 underline underline-offset-4">
+            <x-icone nome="seta" class="size-4 rotate-180" />
+            Voltar ao quadro da vaga
+        </a>
     </nav>
 
     <x-cabecalho-pagina titulo="Editar vaga" subtitulo="Ao salvar, o ranking é recalculado com as competências e os pesos novos." />

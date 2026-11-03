@@ -4,7 +4,10 @@
 
 @section('conteudo')
     <nav aria-label="Localização" class="text-sm">
-        <a href="{{ route('candidatos.index') }}" class="font-medium text-primaria-700 underline underline-offset-4">Voltar ao banco de talentos</a>
+        <a href="{{ route('candidatos.index') }}" class="inline-flex items-center gap-2 font-medium text-primaria-700 underline underline-offset-4">
+            <x-icone nome="seta" class="size-4 rotate-180" />
+            Voltar ao banco de talentos
+        </a>
     </nav>
 
     <div data-perfil-candidato class="perfil-candidato min-w-0 rounded-lg border border-borda bg-superficie">

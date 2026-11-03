@@ -6,7 +6,10 @@
 @section('conteudo')
     <script type="application/json" id="dados-vagas" data-tela="quadro">{!! $dadosTela !!}</script>
     <nav aria-label="Localização" class="text-sm">
-        <a href="{{ route('vagas.index') }}" class="font-medium text-primaria-700 underline underline-offset-4">Todas as vagas</a>
+        <a href="{{ route('vagas.index') }}" class="inline-flex items-center gap-2 font-medium text-primaria-700 underline underline-offset-4">
+            <x-icone nome="seta" class="size-4 rotate-180" />
+            Todas as vagas
+        </a>
     </nav>
 
     <section id="quadro-vaga" aria-label="Quadro da vaga" class="transition-opacity aria-busy:cursor-progress aria-busy:opacity-70"></section>
