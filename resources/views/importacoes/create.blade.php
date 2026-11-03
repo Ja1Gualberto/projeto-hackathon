@@ -3,9 +3,9 @@
 @section('titulo', 'Importar currículo')
 
 @section('conteudo')
-    <x-cabecalho-pagina titulo="Importar currículo" subtitulo="Envie um ou vários PDFs: o sistema lê formação, experiências e competências para você revisar." />
+    <x-cabecalho-pagina titulo="Importar currículo" subtitulo="Envie um ou vários PDFs: o sistema lê formação, experiências e competências para você revisar." class="mx-auto max-w-3xl"/>
 
-    <form method="POST" action="{{ route('importacoes.store') }}" enctype="multipart/form-data" data-ajax class="flex max-w-3xl flex-col gap-7 rounded-card border border-borda bg-superficie p-6 sm:p-8">
+    <form method="POST" action="{{ route('importacoes.store') }}" enctype="multipart/form-data" data-ajax class="mx-auto flex max-w-3xl flex-col gap-7 rounded-card border border-borda bg-superficie p-6 sm:p-8">
         @csrf
         <div data-ajax-erros role="alert" tabindex="-1" hidden class="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800"></div>
 
