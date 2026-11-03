@@ -1,8 +1,12 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
+import { runInNewContext } from 'node:vm';
 import { registrarMenu } from '../../resources/js/modulos/menu.js';
 
-function montarMenu({ desktop = true, preferencia = null, armazenamentoBloqueado = false } = {}) {
+const layout = readFileSync(new URL('../../resources/views/layouts/app.blade.php', import.meta.url), 'utf8');
+
+function montarMenu({ desktop = true, preferencia = null, armazenamentoBloqueado = false, armazenamento = new Map() } = {}) {
     const doc = { body: { style: { overflow: 'auto' } }, activeElement: null };
     function elemento(hidden = false) {
         const atributos = new Map();
@@ -67,8 +71,11 @@ function montarMenu({ desktop = true, preferencia = null, armazenamentoBloqueado
                 throw new Error('Armazenamento bloqueado');
             }
             return {
-                getItem: () => preferencia,
-                setItem: (chave, valor) => gravacoes.push([chave, valor]),
+                getItem: (chave) => armazenamento.get(chave) ?? preferencia,
+                setItem: (chave, valor) => {
+                    armazenamento.set(chave, valor);
+                    gravacoes.push([chave, valor]);
+                },
             };
         },
     };
@@ -133,6 +140,54 @@ test('restaura preferência válida e ignora valores desconhecidos', () => {
     assert.equal(recolhido.identidade.getAttribute('aria-expanded'), 'false');
     assert.equal(expandido.raiz.dataset.menuRecolhido, 'false');
     assert.equal(desconhecido.raiz.dataset.menuRecolhido, 'true');
+});
+
+for (const [preferencia, estadoEsperado] of [[null, 'true'], ['true', 'true'], ['false', 'false'], ['valor inválido', 'true']]) {
+    test(`aplica a preferência ${preferencia} antes de renderizar a lateral`, () => {
+        const antesDaLateral = layout.split('<x-menu-lateral')[0];
+        const script = antesDaLateral.match(/<script\b[^>]*>([\s\S]*?)<\/script>/)?.[1];
+        assert.ok(script, 'A preferência precisa ser restaurada antes de renderizar a lateral');
+        const raiz = { dataset: { menuRecolhido: 'true' } };
+
+        runInNewContext(script, {
+            document: { currentScript: { parentElement: raiz } },
+            window: { localStorage: { getItem: () => preferencia } },
+        });
+
+        assert.equal(raiz.dataset.menuRecolhido, estadoEsperado);
+    });
+}
+
+test('renderização inicial mantém o padrão quando o armazenamento está bloqueado', () => {
+    const script = layout.match(/<script\b[^>]*>([\s\S]*?)<\/script>/)?.[1];
+    assert.ok(script);
+    const raiz = { dataset: { menuRecolhido: 'true' } };
+
+    runInNewContext(script, {
+        document: { currentScript: { parentElement: raiz } },
+        window: { get localStorage() { throw new Error('Armazenamento bloqueado'); } },
+    });
+
+    assert.equal(raiz.dataset.menuRecolhido, 'true');
+});
+
+test('navegar entre páginas mantém o menu aberto e depois recolhido', () => {
+    const armazenamento = new Map();
+    const vagas = montarMenu({ armazenamento });
+    vagas.clicar(vagas.lateral);
+
+    const navegacao = vagas.clicar(vagas.inicio);
+    const importacao = montarMenu({ armazenamento });
+
+    assert.equal(navegacao.defaultPrevented, false);
+    assert.equal(importacao.raiz.dataset.menuRecolhido, 'false');
+    assert.equal(importacao.identidade.getAttribute('aria-expanded'), 'true');
+
+    importacao.clicar(importacao.identidade);
+    const candidatos = montarMenu({ armazenamento });
+
+    assert.equal(candidatos.raiz.dataset.menuRecolhido, 'true');
+    assert.equal(candidatos.identidade.getAttribute('aria-expanded'), 'false');
 });
 
 test('menu funciona mesmo com acesso ao armazenamento bloqueado', () => {

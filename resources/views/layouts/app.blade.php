@@ -20,6 +20,15 @@
     </a>
 
     <div data-menu data-menu-recolhido="true" class="group/menu min-h-screen">
+        <script>
+            try {
+                document.currentScript.parentElement.dataset.menuRecolhido = String(
+                    window.localStorage.getItem('banco-talentos:menu-recolhido') !== 'false'
+                );
+            } catch {
+                // Mantém o estado padrão quando o navegador bloqueia o armazenamento.
+            }
+        </script>
         <div data-menu-fundo hidden aria-hidden="true" class="fixed inset-0 z-40 bg-slate-950/45 lg:hidden"></div>
         <x-menu-lateral />
 
