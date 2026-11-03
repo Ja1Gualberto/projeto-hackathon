@@ -182,7 +182,8 @@ class BuscaCandidatosTest extends TestCase
         $resposta->assertOk()->assertSee('1 talento encontrado')->assertSee($candidato->nome)
             ->assertSee('Perfis ativos com retenção pendente')->assertSee('Com todas:')
             ->assertSee('xl:grid-cols-[15rem_minmax(0,1fr)]', false)
-            ->assertSee('grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4', false);
+            ->assertSee('grid grid-cols-1 items-start gap-3 md:grid-cols-2 xl:grid-cols-3', false)
+            ->assertDontSee('2xl:grid-cols-4', false);
         $documento = new \DOMDocument;
         $documento->loadHTML($resposta->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
         $xpath = new \DOMXPath($documento);
@@ -194,6 +195,7 @@ class BuscaCandidatosTest extends TestCase
         $this->assertCount(1, $xpath->query('//input[@name="competencias[]"][@value="'.$competencia->id.'"][@checked]'));
         $this->assertCount(1, $xpath->query('//form[@method="GET"][@data-busca-candidatos]'));
         $this->assertCount(1, $xpath->query('//section[@id="resultados-candidatos"]'));
+        $this->assertCount(1, $xpath->query('//main[@id="conteudo"][contains(@class, "px-6 sm:px-10 lg:px-12 xl:px-16")]'));
     }
 
     public function test_cards_entregam_todas_as_competencias_para_expandir_e_preservam_avisos_de_situacao(): void

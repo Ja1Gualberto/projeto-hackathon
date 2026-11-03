@@ -2,6 +2,7 @@
 
 @section('titulo', 'Candidatos')
 @section('largura-conteudo', 'max-w-none')
+@section('espacamento-horizontal', 'px-6 sm:px-10 lg:px-12 xl:px-16')
 
 @section('conteudo')
     <header class="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
