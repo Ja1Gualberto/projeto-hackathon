@@ -15,15 +15,17 @@ final readonly class ResultadoLeituraDTO
 
     /**
      * @param  'lido'|'sem_texto'|'corrompido'  $situacao
+     * @param  ?string  $destaque  Texto de maior fonte da primeira página, candidato ao nome.
      */
     public function __construct(
         public string $situacao,
         public ?string $texto = null,
+        public ?string $destaque = null,
     ) {}
 
-    public static function lido(string $texto): self
+    public static function lido(string $texto, ?string $destaque = null): self
     {
-        return new self(self::LIDO, $texto);
+        return new self(self::LIDO, $texto, $destaque);
     }
 
     public static function semTexto(): self

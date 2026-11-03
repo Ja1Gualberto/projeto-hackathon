@@ -22,16 +22,42 @@ class ExtratorCurriculo
 
     private const LIMITE_SUGESTOES = 15;
 
+    /** Parcela da maior linha a partir da qual uma linha de texto corrido é tida como quebrada. */
+    private const PROPORCAO_LINHA_CHEIA = 0.9;
+
+    private const TAMANHO_MINIMO_TEXTO_CORRIDO = 50;
+
     /** Cabeçalhos de seção já normalizados; a chave é o destino do conteúdo. */
     private const SECOES = [
-        'formacoes' => ['formacao academica', 'formacao', 'escolaridade', 'educacao', 'graduacao'],
-        'cursos' => ['cursos complementares', 'cursos', 'certificacoes', 'certificados'],
-        'experiencias' => ['experiencia profissional', 'experiencias profissionais', 'experiencias', 'experiencia', 'historico profissional', 'atuacao profissional'],
+        'formacoes' => ['formacao', 'escolaridade', 'educacao', 'graduacao', 'historico academico'],
+        'cursos' => ['cursos', 'capacitacoes', 'treinamentos'],
+        'certificados' => ['certificados', 'certificado', 'certificacoes', 'certificacao'],
+        'experiencias' => ['experiencias', 'experiencia', 'historico profissional', 'atuacao profissional', 'trajetoria profissional'],
         'projetos' => ['projetos', 'projeto', 'portfolio'],
-        'competencias' => ['competencias tecnicas', 'competencias', 'habilidades', 'conhecimentos', 'tecnologias', 'skills', 'ferramentas'],
+        'competencias' => ['competencias', 'habilidades', 'conhecimentos', 'tecnologias', 'skills', 'ferramentas', 'linguagens', 'frameworks', 'bibliotecas', 'banco de dados', 'bancos de dados'],
         'idiomas' => ['idiomas', 'idioma', 'linguas'],
-        'outros' => ['resumo profissional', 'resumo', 'objetivo', 'perfil profissional', 'perfil', 'sobre mim', 'contato', 'dados pessoais', 'informacoes adicionais', 'atividades complementares', 'referencias'],
+        'outros' => ['resumo', 'objetivo', 'objetivos', 'perfil', 'sobre mim', 'contato', 'contatos', 'dados pessoais', 'informacoes adicionais', 'atividades complementares', 'referencias'],
     ];
+
+    /** Palavras que podem acompanhar um título sem deixar de ser título ("Formação Acadêmica"). */
+    private const QUALIFICADORES_TITULO = [
+        'academica', 'academico', 'academicas', 'academicos', 'profissional', 'profissionais', 'complementar', 'complementares',
+        'tecnica', 'tecnicas', 'tecnico', 'tecnicos', 'comportamentais', 'pessoais', 'pessoal', 'relevante', 'relevantes',
+        'principais', 'adicionais', 'gerais', 'estrangeiras', 'desenvolvidos', 'realizados', 'programacao',
+        'tecs', 'tecnologias', 'ferramentas', 'frameworks', 'bibliotecas', 'competencias', 'habilidades',
+        'e', 'de', 'em',
+    ];
+
+    /** Primeira palavra de linhas que descrevem cargo ou formação, e não o nome da pessoa. */
+    private const PALAVRAS_DE_CARGO = [
+        'tecnico', 'tecnica', 'tecnologo', 'tecnologa', 'desenvolvedor', 'desenvolvedora', 'analista', 'estudante',
+        'graduando', 'graduanda', 'engenheiro', 'engenheira', 'estagiario', 'estagiaria', 'programador', 'programadora',
+        'assistente', 'auxiliar', 'gerente', 'coordenador', 'coordenadora', 'professor', 'professora', 'designer',
+        'administrador', 'administradora', 'bacharel', 'formado', 'formada', 'cursando', 'consultor', 'consultora',
+        'especialista', 'supervisor', 'supervisora', 'advogado', 'advogada', 'contador', 'contadora',
+    ];
+
+    private const MARCADOR_DE_LISTA = '/^(?:[-–—•*·▪◦●○■►➢✓]|\d{1,2}[.)])\s+/u';
 
     /** Radicais de nível de idioma, do maior para o menor. */
     private const NIVEIS_IDIOMA = [
@@ -59,7 +85,10 @@ class ExtratorCurriculo
 
     public function __construct(private CompetenciaRepositoryInterface $competencias) {}
 
-    public function extrair(string $texto): DadosExtraidosDTO
+    /**
+     * @param  ?string  $destaque  Maior título da primeira página, quando a leitura o identificou.
+     */
+    public function extrair(string $texto, ?string $destaque = null): DadosExtraidosDTO
     {
         $linhas = $this->linhas($texto);
 
@@ -73,14 +102,14 @@ class ExtratorCurriculo
         $area = $this->areaSugerida($encontradas);
 
         return new DadosExtraidosDTO(
-            nome: $this->nome($secoes['cabecalho']),
+            nome: $this->nome($secoes['cabecalho'], $destaque),
             email: $this->email($textoCompleto),
             telefone: $this->telefone($textoCompleto),
             cpf: $this->cpf($textoCompleto),
             data_nascimento: $this->dataNascimento($linhas),
-            formacoes: $this->itens([...$secoes['formacoes'], ...$secoes['cursos']]),
-            experiencias: $this->itens($secoes['experiencias']),
-            projetos: $this->itens($secoes['projetos']),
+            formacoes: $this->limitarItens([...$this->itens($secoes['formacoes']), ...$this->itens($secoes['cursos'])]),
+            experiencias: $this->limitarItens([...$this->itens($secoes['experiencias'], textoCorrido: true), ...$this->itens($secoes['certificados'])]),
+            projetos: $this->limitarItens($this->itens($secoes['projetos'], textoCorrido: true)),
             links: $this->links($textoCompleto),
             competencias: array_values(array_map(fn (array $item): array => [
                 'id' => $item['competencia']->id,
@@ -108,7 +137,8 @@ class ExtratorCurriculo
     /**
      * Divide o texto pelos cabeçalhos conhecidos. Linhas antes do primeiro cabeçalho formam o
      * bloco de identificação ("cabecalho"). Aceita cabeçalho com conteúdo na mesma linha
-     * ("Conhecimentos: Python, SQL").
+     * ("Conhecimentos: Python, SQL"). "Projeto: ..." dentro de outra seção é um item embutido:
+     * vai para os projetos e, quando a frase termina, a leitura volta à seção em que estava.
      *
      * @param  list<string>  $linhas
      * @return array<string, list<string>>
@@ -117,6 +147,7 @@ class ExtratorCurriculo
     {
         $secoes = array_fill_keys(['cabecalho', ...array_keys(self::SECOES)], []);
         $atual = 'cabecalho';
+        $retorno = null;
 
         foreach ($linhas as $linha) {
             $cabecalho = $this->identificarCabecalho($linha);
@@ -124,13 +155,24 @@ class ExtratorCurriculo
             if ($cabecalho === null) {
                 $secoes[$atual][] = $linha;
 
+                if ($retorno !== null && $this->terminaFrase($linha)) {
+                    [$atual, $retorno] = [$retorno, null];
+                }
+
                 continue;
             }
 
-            [$atual, $resto] = $cabecalho;
+            [$secao, $resto] = $cabecalho;
+            $embutido = $secao === 'projetos' && $resto !== '' && $atual !== 'projetos';
+            $retorno = $embutido ? ($retorno ?? $atual) : null;
+            $atual = $secao;
 
             if ($resto !== '') {
                 $secoes[$atual][] = $resto;
+
+                if ($embutido && $this->terminaFrase($resto)) {
+                    [$atual, $retorno] = [$retorno, null];
+                }
             }
         }
 
@@ -151,12 +193,12 @@ class ExtratorCurriculo
             $permitePrefixo = false;
         } else {
             $candidato = trim($normalizada, " :.-–—\t");
-            $permitePrefixo = str_word_count($candidato) <= 3;
+            $permitePrefixo = true;
         }
 
         foreach (self::SECOES as $secao => $prefixos) {
             foreach ($prefixos as $prefixo) {
-                if ($candidato === $prefixo || ($permitePrefixo && str_starts_with($candidato, $prefixo.' '))) {
+                if ($candidato === $prefixo || ($permitePrefixo && $this->tituloQualificado($candidato, $prefixo))) {
                     return [$secao, $resto];
                 }
             }
@@ -166,25 +208,65 @@ class ExtratorCurriculo
     }
 
     /**
+     * "Experiência Profissional" é título; "Experiência auxiliando alunos" é só uma frase.
+     */
+    private function tituloQualificado(string $candidato, string $prefixo): bool
+    {
+        if (! str_starts_with($candidato, $prefixo.' ')) {
+            return false;
+        }
+
+        $restantes = explode(' ', substr($candidato, strlen($prefixo) + 1));
+
+        return array_diff($restantes, self::QUALIFICADORES_TITULO) === [];
+    }
+
+    /**
+     * Prefere o maior título da página. Sem ele, procura no topo do texto, unindo o nome
+     * quebrado em duas linhas ("Maria" / "Clara Souza").
+     *
      * @param  list<string>  $cabecalho
      */
-    private function nome(array $cabecalho): ?string
+    private function nome(array $cabecalho, ?string $destaque): ?string
     {
-        foreach (array_slice($cabecalho, 0, 5) as $linha) {
-            $normalizada = NormalizadorTexto::normalizar($linha);
+        if ($destaque !== null && $this->pareceNome($destaque)) {
+            return $this->formatarNome($destaque);
+        }
 
-            if (in_array($normalizada, self::TITULOS_DOCUMENTO, true)
-                || preg_match('/[@\d\/]|https?|www\./i', $linha) === 1
-                || preg_match("/^[\p{L}][\p{L}'’.-]*(?:\s+[\p{L}][\p{L}'’.-]*){1,5}$/u", $linha) !== 1) {
-                continue;
+        $candidatas = array_slice($cabecalho, 0, 5);
+
+        foreach ($candidatas as $indice => $linha) {
+            if ($this->pareceNome($linha)) {
+                return $this->formatarNome($linha);
             }
 
-            $nome = mb_strtoupper($linha) === $linha ? $this->capitalizarNome($linha) : $linha;
+            $seguinte = $candidatas[$indice + 1] ?? null;
 
-            return Str::limit($nome, 150, '');
+            if ($seguinte !== null && $this->pareceNome($linha, palavrasMinimas: 1) && $this->pareceNome($seguinte)) {
+                return $this->formatarNome("{$linha} {$seguinte}");
+            }
         }
 
         return null;
+    }
+
+    private function pareceNome(string $linha, int $palavrasMinimas = 2): bool
+    {
+        $normalizada = NormalizadorTexto::normalizar($linha);
+        $adicionais = $palavrasMinimas - 1;
+
+        return ! in_array($normalizada, self::TITULOS_DOCUMENTO, true)
+            && ! in_array(strtok($normalizada, ' '), self::PALAVRAS_DE_CARGO, true)
+            && $this->identificarCabecalho($linha) === null
+            && preg_match('/[@\d\/]|https?|www\./i', $linha) !== 1
+            && preg_match("/^[\p{L}][\p{L}'’.-]*(?:\s+[\p{L}][\p{L}'’.-]*){{$adicionais},5}$/u", $linha) === 1;
+    }
+
+    private function formatarNome(string $nome): string
+    {
+        $nome = mb_strtoupper($nome) === $nome ? $this->capitalizarNome($nome) : $nome;
+
+        return Str::limit($nome, 150, '');
     }
 
     private function capitalizarNome(string $nome): string
@@ -262,11 +344,14 @@ class ExtratorCurriculo
             '/\d{1,2}\/\d{1,2}\/\d{4}/',
         ], ' ', $texto);
 
-        if (preg_match('/(?<!\d)(?:\+?55[\s.-]?)?\(?(\d{2})\)?[\s.-]?(9?\d{4})[\s.-]?(\d{4})(?!\d)/', (string) $semDocumentos, $partes) !== 1) {
+        // O nono dígito pode vir separado: "(69) 9 9988-7766".
+        if (preg_match('/(?<!\d)(?:\+?55[ \t.-]?)?\(?(\d{2})\)?[ \t.-]?(9[ \t.-]?\d{4}|\d{4})[ \t.-]?(\d{4})(?!\d)/', (string) $semDocumentos, $partes) !== 1) {
             return null;
         }
 
-        return "({$partes[1]}) {$partes[2]}-{$partes[3]}";
+        $inicio = preg_replace('/\D/', '', $partes[2]);
+
+        return "({$partes[1]}) {$inicio}-{$partes[3]}";
     }
 
     /**
@@ -316,24 +401,196 @@ class ExtratorCurriculo
     }
 
     /**
+     * Transforma as linhas de uma seção em itens: une o que foi quebrado na página e divide,
+     * sem perder conteúdo, o que excede o tamanho aceito na revisão.
+     *
      * @param  list<string>  $linhas
      * @return list<string>
      */
-    private function itens(array $linhas): array
+    private function itens(array $linhas, bool $textoCorrido = false): array
     {
         $itens = [];
 
-        foreach ($linhas as $linha) {
-            $item = trim((string) preg_replace('/^(?:[-–—•*·▪◦●○■►➢✓]|\d{1,2}[.)])\s+/u', '', $linha));
+        foreach ($this->unirLinhas($linhas, $textoCorrido) as $item) {
+            array_push($itens, ...$this->dividirItem($item));
+        }
 
-            if ($item === '' || preg_match('~^(?:https?://|www\.)\S+$|^(?:github\.com|gitlab\.com|linkedin\.com)/\S+$~i', $item) === 1) {
+        return $itens;
+    }
+
+    /**
+     * @param  list<string>  $itens
+     * @return list<string>
+     */
+    private function limitarItens(array $itens): array
+    {
+        return array_slice(array_values(array_unique($itens)), 0, self::LIMITE_ITENS);
+    }
+
+    /**
+     * Datas soltas vão para o fim do item aberto (na página, ficam alinhadas à direita do título)
+     * e durações ("Duração do Curso: 40 horas") fecham o item a que pertencem.
+     *
+     * @param  list<string>  $linhas
+     * @return list<string>
+     */
+    private function unirLinhas(array $linhas, bool $textoCorrido): array
+    {
+        $limpas = [];
+
+        foreach ($linhas as $linha) {
+            $texto = trim((string) preg_replace(self::MARCADOR_DE_LISTA, '', $linha, 1, $marcadores));
+
+            if ($texto !== '' && preg_match('~^(?:https?://|www\.)\S+$|^(?:github\.com|gitlab\.com|linkedin\.com)/\S+$~i', $texto) !== 1) {
+                $limpas[] = ['texto' => $texto, 'marcador' => $marcadores > 0];
+            }
+        }
+
+        $maiorLinha = $limpas === [] ? 0 : max(array_map(fn (array $linha): int => mb_strlen($linha['texto']), $limpas));
+        $itens = [];
+        $atual = null;
+        $ultima = '';
+        $data = null;
+
+        foreach ($limpas as ['texto' => $texto, 'marcador' => $marcador]) {
+            if (NormalizadorTexto::ehSomenteData($texto) && $atual !== null && $data === null && ! $this->terminaFrase($atual)) {
+                $data = $texto;
+
                 continue;
             }
 
-            $itens[] = Str::limit($item, self::LIMITE_ITEM);
+            if ($this->ehDuracao($texto) && ($atual !== null || $itens !== [])) {
+                if ($atual === null) {
+                    $itens[array_key_last($itens)] .= " — {$texto}";
+                } else {
+                    $itens[] = $this->fecharItem($atual, $data)." — {$texto}";
+                    [$atual, $data] = [null, null];
+                }
+
+                continue;
+            }
+
+            if ($atual !== null && ! $marcador
+                && (NormalizadorTexto::ehSomenteData($atual) || $this->continuaItem($atual, $ultima, $texto, $maiorLinha, $textoCorrido))) {
+                $atual .= " {$texto}";
+            } else {
+                if ($atual !== null) {
+                    $itens[] = $this->fecharItem($atual, $data);
+                }
+
+                [$atual, $data] = [$texto, null];
+            }
+
+            $ultima = $texto;
         }
 
-        return array_slice(array_values(array_unique($itens)), 0, self::LIMITE_ITENS);
+        if ($atual !== null) {
+            $itens[] = $this->fecharItem($atual, $data);
+        }
+
+        return $itens;
+    }
+
+    private function fecharItem(string $item, ?string $data): string
+    {
+        $item = trim((string) preg_replace(['/“\s+/u', '/\s+”/u'], ['“', '”'], $item));
+
+        return $data === null ? $item : "{$item} — {$data}";
+    }
+
+    private function continuaItem(string $item, string $ultima, string $seguinte, int $maiorLinha, bool $textoCorrido): bool
+    {
+        if ($this->terminaFrase($ultima) || preg_match('/[:;]$/u', $ultima) === 1) {
+            return false;
+        }
+
+        $linhaCheia = $textoCorrido
+            && $maiorLinha >= self::TAMANHO_MINIMO_TEXTO_CORRIDO
+            && mb_strlen($ultima) >= self::PROPORCAO_LINHA_CHEIA * $maiorLinha;
+
+        return preg_match('/^\p{Ll}/u', $seguinte) === 1
+            || str_ends_with($ultima, ',')
+            || $this->terminaEmConector($ultima, $textoCorrido)
+            || substr_count($item, '(') > substr_count($item, ')')
+            || substr_count($item, '“') > substr_count($item, '”')
+            || $linhaCheia;
+    }
+
+    /**
+     * "Cursando" não conta como gerúndio de continuação: costuma encerrar a linha de um curso.
+     */
+    private function terminaEmConector(string $linha, bool $textoCorrido): bool
+    {
+        $normalizada = NormalizadorTexto::normalizar($linha);
+
+        return preg_match('/(?:^|\s)(?:de|da|do|das|dos|e|em|na|no|nas|nos|para|com|por|pela|pelo|a|o|as|os|ao|aos|que|ou|sobre|entre|como|sem|um|uma)$/', $normalizada) === 1
+            || ($textoCorrido && preg_match('/(?<!curs)(?:ando|endo|indo)$/', $normalizada) === 1);
+    }
+
+    private function terminaFrase(string $texto): bool
+    {
+        return preg_match('/[.!?]["”\')\]]*$/u', $texto) === 1;
+    }
+
+    private function ehDuracao(string $texto): bool
+    {
+        return preg_match('/^(?:duracao|carga horaria)\b/', NormalizadorTexto::normalizar($texto)) === 1;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function dividirItem(string $item): array
+    {
+        if (mb_strlen($item) <= self::LIMITE_ITEM) {
+            return [$item];
+        }
+
+        $pedacos = [];
+
+        foreach (preg_split('/(?<=[.!?])\s+(?=\p{Lu})/u', $item) ?: [] as $frase) {
+            array_push($pedacos, ...(mb_strlen($frase) > self::LIMITE_ITEM ? $this->dividirEmPalavras($frase) : [$frase]));
+        }
+
+        $partes = [];
+        $atual = '';
+
+        foreach ($pedacos as $pedaco) {
+            if ($atual !== '' && mb_strlen("{$atual} {$pedaco}") > self::LIMITE_ITEM) {
+                $partes[] = $atual;
+                $atual = '';
+            }
+
+            $atual = trim("{$atual} {$pedaco}");
+        }
+
+        return $atual === '' ? $partes : [...$partes, $atual];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function dividirEmPalavras(string $frase): array
+    {
+        $pedacos = [];
+
+        foreach (preg_split('/\s+/u', $frase) ?: [] as $palavra) {
+            array_push($pedacos, ...mb_str_split($palavra, self::LIMITE_ITEM));
+        }
+
+        $partes = [];
+        $atual = '';
+
+        foreach ($pedacos as $pedaco) {
+            if ($atual !== '' && mb_strlen("{$atual} {$pedaco}") > self::LIMITE_ITEM) {
+                $partes[] = $atual;
+                $atual = '';
+            }
+
+            $atual = trim("{$atual} {$pedaco}");
+        }
+
+        return $atual === '' ? $partes : [...$partes, $atual];
     }
 
     /**

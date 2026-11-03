@@ -7,6 +7,7 @@ use App\Http\Controllers\CompetenciaController;
 use App\Http\Controllers\ConfirmacaoImportacaoController;
 use App\Http\Controllers\CurriculoController;
 use App\Http\Controllers\ImportacaoCurriculoController;
+use App\Http\Controllers\LoteImportacaoController;
 use App\Http\Controllers\PerfilEnergiaController;
 use Illuminate\Support\Facades\Route;
 
@@ -35,8 +36,16 @@ Route::get('/candidatos/importar', [ImportacaoCurriculoController::class, 'creat
 Route::post('/candidatos/importar', [ImportacaoCurriculoController::class, 'store'])->name('importacoes.store');
 Route::get('/candidatos/importar/{importacao}', [ImportacaoCurriculoController::class, 'show'])
     ->whereUuid('importacao')->name('importacoes.show');
+Route::delete('/candidatos/importar/{importacao}', [ImportacaoCurriculoController::class, 'destroy'])
+    ->whereUuid('importacao')->name('importacoes.destroy');
+Route::get('/candidatos/importar/{importacao}/pdf', [ImportacaoCurriculoController::class, 'pdf'])
+    ->whereUuid('importacao')->name('importacoes.pdf');
 Route::post('/candidatos/importar/{importacao}/confirmar', [ConfirmacaoImportacaoController::class, 'store'])
     ->whereUuid('importacao')->name('importacoes.confirmar');
+Route::get('/candidatos/importar/lotes/{lote}', [LoteImportacaoController::class, 'show'])
+    ->whereUuid('lote')->name('importacoes.lotes.show');
+Route::post('/candidatos/importar/lotes/{lote}/cadastrar', [LoteImportacaoController::class, 'cadastrar'])
+    ->whereUuid('lote')->name('importacoes.lotes.cadastrar');
 Route::post('/competencias', [CompetenciaController::class, 'store'])->name('competencias.store');
 
 // US5 — anotações

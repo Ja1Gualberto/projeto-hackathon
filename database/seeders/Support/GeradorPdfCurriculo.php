@@ -35,6 +35,28 @@ final class GeradorPdfCurriculo
     }
 
     /**
+     * Gera uma página com cada trecho na posição pedida, gravado na ordem recebida. Simula
+     * ferramentas de design, em que a ordem no arquivo não segue a ordem visual e o texto
+     * pode ficar dentro de um Form XObject.
+     *
+     * @param  list<array{x: int|float, y: int|float, texto: string, tamanho?: int|float}>  $trechos
+     */
+    public function gerarComPosicoes(array $trechos, bool $dentroDeFormulario = false): string
+    {
+        $comandos = ['BT'];
+
+        foreach ($trechos as $trecho) {
+            $comandos[] = '/F1 '.($trecho['tamanho'] ?? self::TAMANHO_FONTE).' Tf';
+            $comandos[] = "1 0 0 1 {$trecho['x']} {$trecho['y']} Tm";
+            $comandos[] = '('.$this->escaparTexto($trecho['texto']).') Tj';
+        }
+
+        $comandos[] = 'ET';
+
+        return $this->montarDocumento([implode("\n", $comandos)."\n"], $dentroDeFormulario);
+    }
+
+    /**
      * Gera um PDF válido só com formas desenhadas, sem nenhum operador de texto,
      * simulando um currículo digitalizado (imagem).
      */
@@ -87,7 +109,7 @@ final class GeradorPdfCurriculo
      *
      * @param  list<string>  $conteudosDasPaginas
      */
-    private function montarDocumento(array $conteudosDasPaginas): string
+    private function montarDocumento(array $conteudosDasPaginas, bool $dentroDeFormulario = false): string
     {
         $objetos = [
             1 => '<< /Type /Catalog /Pages 2 0 R >>',
@@ -101,9 +123,18 @@ final class GeradorPdfCurriculo
             $numeroPagina = $proximoNumero++;
             $numeroConteudo = $proximoNumero++;
             $referenciasDePaginas[] = "{$numeroPagina} 0 R";
+            $recursos = '/Font << /F1 3 0 R >>';
+
+            if ($dentroDeFormulario) {
+                $numeroFormulario = $proximoNumero++;
+                $recursos .= " /XObject << /X1 {$numeroFormulario} 0 R >>";
+                $objetos[$numeroFormulario] = '<< /Type /XObject /Subtype /Form /BBox [0 0 595 842] '
+                    .'/Resources << /Font << /F1 3 0 R >> >> /Length '.strlen($conteudo)." >>\nstream\n{$conteudo}endstream";
+                $conteudo = "q\n/X1 Do\nQ\n";
+            }
 
             $objetos[$numeroPagina] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] '
-                ."/Resources << /Font << /F1 3 0 R >> >> /Contents {$numeroConteudo} 0 R >>";
+                ."/Resources << {$recursos} >> /Contents {$numeroConteudo} 0 R >>";
             $objetos[$numeroConteudo] = '<< /Length '.strlen($conteudo)." >>\nstream\n{$conteudo}endstream";
         }
 

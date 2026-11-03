@@ -172,6 +172,184 @@ class ExtratorCurriculoTest extends TestCase
         $this->assertSame(['https://github.com/bruno-demo'], $dados->links);
     }
 
+    public function test_nome_em_duas_linhas_e_unido_e_cargo_nao_vira_nome(): void
+    {
+        $this->assertSame('Maria Clara Souza', $this->extrair("Maria\nClara Souza\nTécnica em Informática\nContato")->nome);
+        $this->assertNull($this->extrair("Técnico em Informática\nDesenvolvedor Full Stack")->nome);
+        $this->assertSame('Ana Lima', $this->extrair("Técnica em Informática\nAna Lima")->nome);
+    }
+
+    public function test_destaque_valido_tem_prioridade_e_invalido_e_ignorado(): void
+    {
+        $extrator = app(ExtratorCurriculo::class);
+        $texto = "Maria Clara\nEducação\nInstituto Vale Digital (fictício)";
+
+        $this->assertSame('Maria Clara Souza', $extrator->extrair($texto, 'MARIA CLARA SOUZA')->nome);
+        $this->assertSame('Maria Clara', $extrator->extrair($texto, 'Educação')->nome);
+        $this->assertSame('Maria Clara', $extrator->extrair($texto, 'Desenvolvedora Full Stack')->nome);
+    }
+
+    #[TestWith(['(69) 9 9988-7766', '(69) 99988-7766'])]
+    #[TestWith(['+55 (69) 98877-6655', '(69) 98877-6655'])]
+    #[TestWith(['69 9.9988.7766', '(69) 99988-7766'])]
+    public function test_telefone_com_nono_digito_separado(string $texto, string $esperado): void
+    {
+        $this->assertSame($esperado, $this->extrair($texto)->telefone);
+    }
+
+    public function test_periodo_nao_e_confundido_com_telefone(): void
+    {
+        $this->assertNull($this->extrair("2022 - 2027\n03/2024 - 06/2024, Porto Velho\n2024 - 2025 | Sistemas")->telefone);
+    }
+
+    #[TestWith(['Educação'])]
+    #[TestWith(['FORMAÇÃO ACADÊMICA'])]
+    #[TestWith(['Histórico Acadêmico'])]
+    public function test_variacoes_do_titulo_de_formacao(string $titulo): void
+    {
+        $dados = $this->extrair("Ana Lima\n{$titulo}\nInstituto Vale Digital (fictício)");
+
+        $this->assertSame(['Instituto Vale Digital (fictício)'], $dados->formacoes);
+    }
+
+    #[TestWith(['Experiência auxiliando alunos'])]
+    #[TestWith(['Experiência em Python'])]
+    #[TestWith(['Formação de equipes'])]
+    public function test_frase_que_comeca_como_titulo_nao_muda_de_secao(string $frase): void
+    {
+        $dados = $this->extrair("Ana Lima\nHabilidades\n{$frase}\nEducação\nInstituto Vale Digital (fictício)");
+
+        $this->assertSame([], $dados->experiencias);
+        $this->assertSame(['Instituto Vale Digital (fictício)'], $dados->formacoes);
+    }
+
+    public function test_titulos_de_competencias_em_varias_formas_nao_viram_sugestao(): void
+    {
+        $dados = $this->extrair(implode("\n", [
+            'COMPETÊNCIAS', 'LINGUAGENS E TECS', 'Terraform', 'FRAMEWORKS E BIBLIOTECAS', 'Kubernetes', 'BANCO DE DADOS E', 'FERRAMENTAS', 'Ansible', 'CONHECIMENTOS GERAIS', 'Zabbix',
+        ]));
+
+        $this->assertSame(['Terraform', 'Kubernetes', 'Ansible', 'Zabbix'], $dados->sugestoes_competencias);
+    }
+
+    public function test_projeto_rotulado_dentro_da_experiencia_vai_para_projetos_e_a_leitura_volta(): void
+    {
+        $dados = $this->extrair(implode("\n", [
+            'Ana Lima',
+            'EXPERIÊNCIAS',
+            'Estagiária de desenvolvimento',
+            'Projetos: Colaboração no sistema de escalas, atuando na construção de rotinas',
+            'para controle de horas de trabalho.',
+            'Monitora de laboratório',
+            'Projeto: “Sistema de Agendamento',
+            'de Salas”',
+            'Aplicação web para reservar salas.',
+            'Tutora de programação',
+        ]));
+
+        $this->assertSame([
+            'Colaboração no sistema de escalas, atuando na construção de rotinas para controle de horas de trabalho.',
+            '“Sistema de Agendamento de Salas”',
+            'Aplicação web para reservar salas.',
+        ], $dados->projetos);
+        $this->assertSame(['Estagiária de desenvolvimento', 'Monitora de laboratório', 'Tutora de programação'], $dados->experiencias);
+    }
+
+    public function test_certificados_vao_para_experiencias_e_cursos_continuam_em_formacao(): void
+    {
+        $dados = $this->extrair(implode("\n", [
+            'Ana Lima',
+            'Experiência',
+            'Estágio no Laboratório Horizonte',
+            'Certificados',
+            'Curso de Extensão em Algoritmos e',
+            'Estrutura de Dados',
+            'Duração do Curso: 30 horas',
+            'Git e GitHub na Prática',
+            'Duração do Curso: 10 horas',
+            'Cursos complementares',
+            'Introdução a Python',
+        ]));
+
+        $this->assertSame([
+            'Estágio no Laboratório Horizonte',
+            'Curso de Extensão em Algoritmos e Estrutura de Dados — Duração do Curso: 30 horas',
+            'Git e GitHub na Prática — Duração do Curso: 10 horas',
+        ], $dados->experiencias);
+        $this->assertSame(['Introdução a Python'], $dados->formacoes);
+    }
+
+    public function test_paragrafo_quebrado_vira_um_item_e_itens_de_lista_continuam_separados(): void
+    {
+        $dados = $this->extrair(implode("\n", [
+            'EXPERIÊNCIAS',
+            'Atuei como estagiário em informática na coordenação do Instituto',
+            'Federal, entre março e junho de',
+            '2024, em Porto Velho. Durante o período, participei da instalação',
+            'de equipamentos.',
+            'Criação de interfaces responsivas com CSS, implementando',
+            'interatividade com JavaScript e',
+            'Ajax',
+            'Gerenciamento de código com Git',
+        ]));
+
+        $this->assertSame([
+            'Atuei como estagiário em informática na coordenação do Instituto Federal, entre março e junho de 2024, em Porto Velho. Durante o período, participei da instalação de equipamentos.',
+            'Criação de interfaces responsivas com CSS, implementando interatividade com JavaScript e Ajax',
+            'Gerenciamento de código com Git',
+        ], $dados->experiencias);
+    }
+
+    public function test_cursando_nao_junta_a_linha_seguinte_na_formacao(): void
+    {
+        $dados = $this->extrair(implode("\n", [
+            'Educação',
+            'Instituto Vale Digital (fictício) 2022 - 2027',
+            'Graduação em Análise e Desenvolvimento de Sistemas - Cursando',
+            'Técnico em Informática - Concluído',
+        ]));
+
+        $this->assertSame([
+            'Instituto Vale Digital (fictício) 2022 - 2027',
+            'Graduação em Análise e Desenvolvimento de Sistemas - Cursando',
+            'Técnico em Informática - Concluído',
+        ], $dados->formacoes);
+    }
+
+    public function test_data_solta_vai_para_o_item_mesmo_no_meio_de_um_titulo_quebrado(): void
+    {
+        $dados = $this->extrair(implode("\n", [
+            'Experiência',
+            'Estágio na Coordenação de Gestão de',
+            '2024',
+            'Tecnologia da Informação',
+            '03/2024 - 06/2024, Porto Velho',
+        ]));
+
+        $this->assertSame([
+            'Estágio na Coordenação de Gestão de Tecnologia da Informação — 2024',
+            '03/2024 - 06/2024, Porto Velho',
+        ], $dados->experiencias);
+    }
+
+    public function test_item_longo_e_dividido_em_frases_sem_perder_conteudo(): void
+    {
+        $frases = [
+            'Primeira frase do parágrafo '.str_repeat('com bastante conteúdo ', 8).'até o fim.',
+            'Segunda frase do parágrafo '.str_repeat('com outro conteúdo ', 9).'até o fim.',
+            'Terceira frase bem curta.',
+        ];
+
+        $dados = $this->extrair("EXPERIÊNCIAS\n".implode(' ', $frases));
+
+        foreach ($dados->experiencias as $item) {
+            $this->assertLessThanOrEqual(300, mb_strlen($item));
+        }
+
+        $this->assertGreaterThan(1, count($dados->experiencias));
+        $this->assertSame(implode(' ', $frases), implode(' ', $dados->experiencias));
+    }
+
     public function test_area_sugerida_e_experiencia_na_area(): void
     {
         $comExperiencia = $this->extrair(implode("\n", [

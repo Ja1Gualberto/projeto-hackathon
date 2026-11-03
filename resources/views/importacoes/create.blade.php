@@ -3,7 +3,7 @@
 @section('titulo', 'Importar currículo')
 
 @section('conteudo')
-    <x-cabecalho-pagina titulo="Importar currículo" subtitulo="Envie o PDF: o sistema lê formação, experiências e competências para você revisar." />
+    <x-cabecalho-pagina titulo="Importar currículo" subtitulo="Envie um ou vários PDFs: o sistema lê formação, experiências e competências para você revisar." />
 
     <form method="POST" action="{{ route('importacoes.store') }}" enctype="multipart/form-data" data-ajax class="flex max-w-3xl flex-col gap-7 rounded-card border border-borda bg-superficie p-6 sm:p-8">
         @csrf
@@ -17,18 +17,21 @@
             </x-alerta>
         @endif
 
+        @php($erroArquivos = $errors->first('arquivos') ?: $errors->first('arquivos.*'))
         <div class="flex flex-col gap-2">
-            <label for="arquivo" class="flex cursor-pointer flex-col items-center gap-3 rounded-card border-2 border-dashed border-primaria-300 bg-primaria-50 px-6 py-10 text-center transition-colors hover:border-primaria-500 focus-within:border-primaria-600">
+            <label for="arquivos" class="flex cursor-pointer flex-col items-center gap-3 rounded-card border-2 border-dashed border-primaria-300 bg-primaria-50 px-6 py-10 text-center transition-colors hover:border-primaria-500 focus-within:border-primaria-600">
                 <span class="flex size-14 items-center justify-center rounded-full bg-superficie text-primaria-700 shadow-sm">
                     <x-icone nome="upload" class="size-7" />
                 </span>
-                <span class="text-lg font-semibold">Selecione o currículo em PDF</span>
-                <span class="text-sm text-texto-suave">PDF com texto selecionável, até 10 MB</span>
-                <input id="arquivo" type="file" name="arquivo" accept="application/pdf,.pdf" required
-                    @error('arquivo') aria-invalid="true" aria-describedby="arquivo-erro" @enderror
+                <span class="text-lg font-semibold">Selecione um ou mais currículos em PDF</span>
+                <span class="text-sm text-texto-suave">PDF com texto selecionável, até 10 MB cada. Envie até {{ config('banco_talentos.importacao_max_arquivos') }} arquivos por vez.</span>
+                <input id="arquivos" type="file" name="arquivos[]" accept="application/pdf,.pdf" multiple required
+                    data-arquivos-curriculo data-max-arquivos="{{ config('banco_talentos.importacao_max_arquivos') }}"
+                    @if ($erroArquivos) aria-invalid="true" aria-describedby="arquivos-erro" @endif
                     class="mt-2 max-w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-primaria-600 file:px-4 file:py-2 file:font-semibold file:text-white">
             </label>
-            <p id="arquivo-erro" data-erro-campo="arquivo" @error('arquivo') @else hidden @enderror class="text-sm font-medium text-red-700">@error('arquivo'){{ $message }}@enderror</p>
+            <ul data-arquivos-lista hidden aria-label="Arquivos selecionados" class="flex flex-col gap-1 rounded-lg border border-borda bg-fundo p-3 text-sm wrap-anywhere"></ul>
+            <p id="arquivos-erro" data-erro-campo="arquivos" @if (! $erroArquivos) hidden @endif class="text-sm font-medium text-red-700">{{ $erroArquivos }}</p>
         </div>
 
         <fieldset class="flex flex-col gap-3">

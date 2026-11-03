@@ -27,6 +27,7 @@ use RuntimeException;
  *     texto: ?string,
  *     dados: array<string, mixed>,
  *     adicionadas: list<int>,
+ *     lote?: ?string,
  * }
  */
 class ImportacaoCurriculoService
@@ -42,7 +43,7 @@ class ImportacaoCurriculoService
         private Session $sessao,
     ) {}
 
-    public function importar(UploadedFile $arquivo, TipoCandidato $tipo): string
+    public function importar(UploadedFile $arquivo, TipoCandidato $tipo, ?string $lote = null): string
     {
         $uuid = (string) Str::uuid();
         $disco = Storage::disk('curriculos');
@@ -53,7 +54,7 @@ class ImportacaoCurriculoService
         }
 
         $leitura = $this->leitor->extrairTexto($disco->path($caminho));
-        $dados = $leitura->foiLido() ? $this->extrator->extrair((string) $leitura->texto) : DadosExtraidosDTO::vazio();
+        $dados = $leitura->foiLido() ? $this->extrator->extrair((string) $leitura->texto, $leitura->destaque) : DadosExtraidosDTO::vazio();
 
         $this->sessao->put($this->chave($uuid), [
             'arquivo' => $caminho,
@@ -64,6 +65,7 @@ class ImportacaoCurriculoService
             'texto' => $leitura->texto === null ? null : mb_substr($leitura->texto, 0, self::LIMITE_TEXTO),
             'dados' => $dados->toArray(),
             'adicionadas' => [],
+            'lote' => $lote,
         ]);
 
         return $uuid;

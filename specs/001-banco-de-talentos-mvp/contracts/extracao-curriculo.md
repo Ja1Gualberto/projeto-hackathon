@@ -3,6 +3,10 @@
 **Feature**: `001-banco-de-talentos-mvp` | FR-008 a FR-014 | Algoritmo em
 [research R4](../research.md#r4-extração-estruturada-regras--catálogo).
 
+> Ampliado pela feature `002-importacao-multipla`: leitura pela ordem visual, novas regras de nome, seções e
+> itens, e lote de importação. Ver o [contrato](../../002-importacao-multipla/contracts/importacao-lote.md) e a
+> [pesquisa](../../002-importacao-multipla/research.md).
+
 ## Componentes
 
 Services ficam em `app/Services/Curriculo/`; os objetos de transferência de dados ficam em

@@ -112,7 +112,7 @@ ao voltar à triagem, não manter nome, contato, links ou anotações em DOM ocu
 |---|---|---|---|---|---|
 | GET | `/candidatos` | `candidatos.index` | `CandidatoController@index` | `BuscarCandidatosRequest` | Cards + contagem; filtros abaixo |
 | GET | `/candidatos/importar` | `importacoes.create` | `ImportacaoCurriculoController@create` | — | Formulário de envio do PDF + tipo |
-| POST | `/candidatos/importar` | `importacoes.store` | `ImportacaoCurriculoController@store` | `ImportarCurriculoRequest` | Extrai → redireciona para a revisão |
+| POST | `/candidatos/importar` | `importacoes.store` | `ImportacaoCurriculoController@store` | `ImportarCurriculoRequest` | Extrai → redireciona para a revisão ou, com vários PDFs, para o lote ([contrato da feature 002](../../002-importacao-multipla/contracts/importacao-lote.md), que traz também as demais rotas de lote e o PDF temporário) |
 | GET | `/candidatos/importar/{importacao}` | `importacoes.show` | `ImportacaoCurriculoController@show` | — | Revisão pré-preenchida; alerta de duplicidade; aviso se sem texto. `{importacao}` = UUID da sessão; inexistente → 404 |
 | POST | `/candidatos/importar/{importacao}/confirmar` | `importacoes.confirmar` | `ConfirmacaoImportacaoController@store` | `ConfirmarImportacaoRequest` | Cria ou atualiza o candidato → `candidatos.show` |
 | GET | `/candidatos/{candidato}` | `candidatos.show` | `CandidatoController@show` | — | Perfil completo, consentimento, retenção, anotações, PDF, ações |

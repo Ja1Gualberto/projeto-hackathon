@@ -56,7 +56,7 @@ class ImportacaoCurriculoTest extends TestCase
 
     private function importar(?UploadedFile $arquivo = null, string $tipo = 'estagiario'): string
     {
-        $resposta = $this->post(route('importacoes.store'), ['arquivo' => $arquivo ?? $this->pdf(), 'tipo' => $tipo]);
+        $resposta = $this->post(route('importacoes.store'), ['arquivos' => [$arquivo ?? $this->pdf()], 'tipo' => $tipo]);
         $resposta->assertRedirect();
         $uuid = Str::afterLast(parse_url($resposta->headers->get('Location'), PHP_URL_PATH), '/');
         $this->assertTrue(Str::isUuid($uuid));
@@ -127,15 +127,97 @@ class ImportacaoCurriculoTest extends TestCase
             ->assertSee('Confirmar e salvar');
     }
 
+    public function test_revisao_mostra_o_pdf_ao_lado_e_oferece_abrir_em_nova_aba(): void
+    {
+        $uuid = $this->importar();
+        $url = route('importacoes.pdf', $uuid);
+
+        $this->get(route('importacoes.show', $uuid))
+            ->assertOk()
+            ->assertSee('<iframe', false)
+            ->assertSee('src="'.$url.'#view=FitH&navpanes=0"', false)
+            ->assertSee('title="Pré-visualização de curriculo-ana.pdf"', false)
+            ->assertSee('href="'.$url.'"', false)
+            ->assertSee('Abrir PDF');
+    }
+
+    public function test_pdf_temporario_abre_inline_sem_cache(): void
+    {
+        $uuid = $this->importar();
+
+        $resposta = $this->get(route('importacoes.pdf', $uuid));
+
+        $resposta->assertOk()
+            ->assertHeader('Content-Type', 'application/pdf')
+            ->assertHeader('Cache-Control', 'no-store, private');
+        $this->assertStringStartsWith('inline', $resposta->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('curriculo-ana.pdf', $resposta->headers->get('Content-Disposition'));
+    }
+
+    public function test_pdf_temporario_nao_e_acessivel_fora_da_sessao_ou_depois_de_confirmar(): void
+    {
+        $this->get(route('importacoes.pdf', (string) Str::uuid()))->assertNotFound();
+        $this->get('/candidatos/importar/nao-e-uuid/pdf')->assertNotFound();
+
+        $uuid = $this->importar();
+
+        $this->flushSession();
+        $this->get(route('importacoes.pdf', $uuid))->assertNotFound();
+
+        $this->app['auth']->forgetGuards();
+        $this->app['auth']->shouldUse('web');
+        auth()->logout();
+        $this->get(route('importacoes.pdf', $uuid))->assertRedirect(route('login'));
+
+        $this->actingAs($this->recrutador);
+        $confirmada = $this->importar();
+        $this->confirmar($confirmada, $this->dadosConfirmacao())->assertRedirect();
+        $this->get(route('importacoes.pdf', $confirmada))->assertNotFound();
+    }
+
+    public function test_pdf_em_duas_colunas_preenche_cada_campo_com_a_propria_secao(): void
+    {
+        $diretorio = storage_path('framework/testing/demo-colunas-'.Str::random(6));
+        $this->artisan('demo:curriculos', ['--diretorio' => $diretorio])->assertSuccessful();
+
+        $uuid = $this->importar(new UploadedFile("{$diretorio}/demo-colunas.pdf", 'demo-colunas.pdf', 'application/pdf', null, true));
+        array_map('unlink', glob("{$diretorio}/*.pdf"));
+        rmdir($diretorio);
+
+        $dados = session("importacoes.{$uuid}.dados");
+
+        $this->assertSame('Maria Clara Souza', $dados['nome']);
+        $this->assertSame('maria.clara@exemplo.com.br', $dados['email']);
+        $this->assertSame('(00) 99800-0004', $dados['telefone']);
+        $this->assertSame(['https://github.com/maria-clara-demo'], $dados['links']);
+        $this->assertSame([
+            'Instituto Vale Digital (fictício) 2023 - 2026',
+            'Análise e Desenvolvimento de Sistemas - Cursando',
+            'Técnico em Informática - Concluído',
+        ], $dados['formacoes']);
+        $this->assertSame([
+            'Estágio no Laboratório Horizonte (fictício) em desenvolvimento de sistemas — 2025',
+            'Apoio ao desenvolvimento de sistemas internos em Laravel e Python, com consultas em SQL e versionamento no Git. Participei também da documentação e do atendimento aos usuários.',
+            'Curso de Extensão em Banco de Dados — Duração do Curso: 40 horas',
+            'Git e GitHub na Prática — Duração do Curso: 10 horas',
+        ], $dados['experiencias']);
+        $this->assertSame([
+            '“Sistema de Agendamento de Salas para a Coordenação” — 2025',
+            'Aplicação web para reservar salas, com painel de ocupação e relatórios mensais para a coordenação.',
+        ], $dados['projetos']);
+        $this->assertSame('desenvolvimento', $dados['area_sugerida']);
+        $this->assertTrue($dados['experiencia_na_area']);
+    }
+
     public function test_arquivo_que_nao_e_pdf_e_rejeitado(): void
     {
         $this->from(route('importacoes.create'))
             ->post(route('importacoes.store'), [
-                'arquivo' => UploadedFile::fake()->createWithContent('curriculo.txt', 'Ana Lima, Python e SQL'),
+                'arquivos' => [UploadedFile::fake()->createWithContent('curriculo.txt', 'Ana Lima, Python e SQL')],
                 'tipo' => 'estagiario',
             ])
             ->assertRedirect(route('importacoes.create'))
-            ->assertSessionHasErrors(['arquivo' => 'Envie um arquivo PDF de até 10 MB.']);
+            ->assertSessionHasErrors(['arquivos.0' => 'Envie um arquivo PDF de até 10 MB.']);
 
         $this->assertSame([], Storage::disk('curriculos')->allFiles());
     }
@@ -147,13 +229,13 @@ class ImportacaoCurriculoTest extends TestCase
             (new GeradorPdfCurriculo)->gerar(['Ana Lima']).str_repeat(' ', 10241 * 1024),
         );
 
-        $this->post(route('importacoes.store'), ['arquivo' => $grande, 'tipo' => 'servidor'])
-            ->assertSessionHasErrors(['arquivo' => 'Envie um arquivo PDF de até 10 MB.']);
+        $this->post(route('importacoes.store'), ['arquivos' => [$grande], 'tipo' => 'servidor'])
+            ->assertSessionHasErrors(['arquivos.0' => 'Envie um arquivo PDF de até 10 MB.']);
     }
 
     public function test_tipo_e_obrigatorio(): void
     {
-        $this->post(route('importacoes.store'), ['arquivo' => $this->pdf()])
+        $this->post(route('importacoes.store'), ['arquivos' => [$this->pdf()]])
             ->assertSessionHasErrors('tipo');
     }
 
@@ -328,7 +410,7 @@ class ImportacaoCurriculoTest extends TestCase
         $this->app['auth']->forgetGuards();
 
         $this->get(route('importacoes.create'))->assertRedirect(route('login'));
-        $this->post(route('importacoes.store'), ['arquivo' => $this->pdf(), 'tipo' => 'estagiario'])
+        $this->post(route('importacoes.store'), ['arquivos' => [$this->pdf()], 'tipo' => 'estagiario'])
             ->assertRedirect(route('login'));
         $this->post(route('competencias.store'), ['nome' => 'Kubernetes', 'categoria' => 'hard'])
             ->assertRedirect(route('login'));
@@ -354,7 +436,7 @@ class ImportacaoCurriculoTest extends TestCase
 
     public function test_upload_json_devolve_redirect_para_a_revisao(): void
     {
-        $resposta = $this->post(route('importacoes.store'), ['arquivo' => $this->pdf(), 'tipo' => 'estagiario'], ['Accept' => 'application/json']);
+        $resposta = $this->post(route('importacoes.store'), ['arquivos' => [$this->pdf()], 'tipo' => 'estagiario'], ['Accept' => 'application/json']);
 
         $resposta->assertOk()->assertJsonPath('fragments', [])->assertHeader('Cache-Control', 'no-store, private');
         $uuid = Str::afterLast($resposta->json('redirect'), '/');
@@ -366,11 +448,11 @@ class ImportacaoCurriculoTest extends TestCase
     public function test_upload_json_invalido_retorna_422_sem_criar_importacao(): void
     {
         $this->post(route('importacoes.store'), [
-            'arquivo' => UploadedFile::fake()->createWithContent('curriculo.txt', 'texto'),
+            'arquivos' => [UploadedFile::fake()->createWithContent('curriculo.txt', 'texto')],
             'tipo' => 'estagiario',
         ], ['Accept' => 'application/json'])
             ->assertUnprocessable()
-            ->assertJsonPath('errors.arquivo.0', 'Envie um arquivo PDF de até 10 MB.');
+            ->assertJsonValidationErrors(['arquivos.0' => 'Envie um arquivo PDF de até 10 MB.']);
 
         $this->assertSame([], Storage::disk('curriculos')->allFiles());
     }
@@ -454,7 +536,7 @@ class ImportacaoCurriculoTest extends TestCase
 
         $this->artisan('demo:curriculos', ['--diretorio' => $diretorio])->assertSuccessful();
 
-        foreach (['demo-curriculo.pdf', 'demo-escaneado.pdf', 'demo-duplicado.pdf'] as $arquivo) {
+        foreach (['demo-curriculo.pdf', 'demo-colunas.pdf', 'demo-escaneado.pdf', 'demo-duplicado.pdf'] as $arquivo) {
             $this->assertFileExists("{$diretorio}/{$arquivo}");
         }
 
@@ -468,7 +550,7 @@ class ImportacaoCurriculoTest extends TestCase
         $revisao->assertSee('Kubernetes')->assertSee('https://github.com/', false);
 
         $this->followRedirects($this->post(route('importacoes.store'), [
-            'arquivo' => new UploadedFile("{$diretorio}/demo-escaneado.pdf", 'demo-escaneado.pdf', 'application/pdf', null, true),
+            'arquivos' => [new UploadedFile("{$diretorio}/demo-escaneado.pdf", 'demo-escaneado.pdf', 'application/pdf', null, true)],
             'tipo' => 'servidor',
         ]))->assertSee('parece digitalizado');
 

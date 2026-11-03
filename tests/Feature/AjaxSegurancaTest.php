@@ -93,8 +93,8 @@ class AjaxSegurancaTest extends TestCase
             ->flatMap(fn (Rota $rota): array => collect($rota->methods())
                 ->reject(fn (string $metodo): bool => in_array($metodo, ['GET', 'HEAD', 'OPTIONS'], true))
                 ->map(fn (string $metodo): array => [$metodo, preg_replace(
-                    ['/\{importacao\}/', '/\{candidato\}(?=.*)/', '/\{vaga\}/'],
-                    ['11111111-1111-4111-8111-111111111111', str_contains($rota->uri(), 'vagas/') ? 'CAND-0001' : '1', '1'],
+                    ['/\{importacao\}/', '/\{lote\}/', '/\{candidato\}(?=.*)/', '/\{vaga\}/'],
+                    ['11111111-1111-4111-8111-111111111111', '11111111-1111-4111-8111-111111111111', str_contains($rota->uri(), 'vagas/') ? 'CAND-0001' : '1', '1'],
                     $rota->uri(),
                 )])
                 ->all())

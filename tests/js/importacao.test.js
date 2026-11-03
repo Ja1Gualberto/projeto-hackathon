@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { afterEach, test } from 'node:test';
 import { mesclarFragmento, mostrarErros } from '../../resources/js/modulos/ajax.js';
 import { enviarFormulario } from '../../resources/js/modulos/formularios.js';
-import { registrarImportacao } from '../../resources/js/modulos/importacao.js';
+import { mostrarArquivosSelecionados, registrarImportacao } from '../../resources/js/modulos/importacao.js';
 
 const envelope = (fragments = {}, message = null) => ({ message, fragments, redirect: null });
 const originalFetch = globalThis.fetch;
@@ -177,4 +177,65 @@ test('sucesso de outros formulários não remove sugestões', () => {
     const { eventos, focados } = registrar();
     eventos['ajax:sucesso']({ target: { matches: () => false }, detail: { novos: ['9'] } });
     assert.deepEqual(focados, []);
+});
+
+function campoDeArquivos(nomes, limite = '10') {
+    const validade = [];
+    return {
+        files: nomes.map((name) => ({ name })),
+        dataset: { maxArquivos: limite },
+        setCustomValidity: (mensagem) => validade.push(mensagem),
+        matches: (seletor) => seletor === '[data-arquivos-curriculo]',
+        validade,
+    };
+}
+
+function documentoComLista() {
+    const lista = { hidden: true, itens: [], replaceChildren(...itens) { this.itens = itens; } };
+    return {
+        lista,
+        querySelector: (seletor) => seletor === '[data-arquivos-lista]' ? lista : null,
+        createElement: () => ({ textContent: '' }),
+    };
+}
+
+test('mostra os arquivos selecionados como texto, sem interpretar o nome', () => {
+    const doc = documentoComLista();
+    const campo = campoDeArquivos(['ana.pdf', '<b>bruno</b>.pdf']);
+
+    mostrarArquivosSelecionados(campo, doc);
+
+    assert.equal(doc.lista.hidden, false);
+    assert.deepEqual(doc.lista.itens.map((item) => item.textContent), ['ana.pdf', '<b>bruno</b>.pdf']);
+    assert.deepEqual(campo.validade, ['']);
+});
+
+test('sem arquivos, a lista fica oculta', () => {
+    const doc = documentoComLista();
+    doc.lista.hidden = false;
+
+    mostrarArquivosSelecionados(campoDeArquivos([]), doc);
+
+    assert.equal(doc.lista.hidden, true);
+});
+
+test('acima do limite, o navegador recusa o envio com a mensagem certa', () => {
+    const doc = documentoComLista();
+    const campo = campoDeArquivos(['a.pdf', 'b.pdf', 'c.pdf'], '2');
+
+    mostrarArquivosSelecionados(campo, doc);
+
+    assert.deepEqual(campo.validade, ['Envie no máximo 2 currículos por vez.']);
+});
+
+test('a seleção atualiza a lista ao mudar o campo de arquivos e ignora os demais campos', () => {
+    const ouvintes = {};
+    const doc = { ...documentoComLista(), addEventListener: (nome, ouvinte) => { ouvintes[nome] = ouvinte; } };
+    registrarImportacao(doc);
+
+    ouvintes.change({ target: { matches: () => false } });
+    assert.equal(doc.lista.itens.length, 0);
+
+    ouvintes.change({ target: campoDeArquivos(['ana.pdf']) });
+    assert.deepEqual(doc.lista.itens.map((item) => item.textContent), ['ana.pdf']);
 });
