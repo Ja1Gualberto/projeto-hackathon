@@ -36,6 +36,18 @@ services:
       mysql:
         condition: service_healthy
 
+  # Opcional: docker compose --profile ia-local up -d ollama
+  # Depois: docker compose exec ollama ollama pull llama3.2:3b
+  # Sem portas publicadas: acessível apenas pela rede interna do projeto.
+  ollama:
+    image: ollama/ollama:latest
+    profiles: [ia-local]
+    environment:
+      OLLAMA_HOST: "0.0.0.0:11434"
+      OLLAMA_NO_CLOUD: "1"
+    volumes:
+      - ollama-data:/root/.ollama
+
   vite:
     build:
       context: .
@@ -88,3 +100,4 @@ services:
 volumes:
   app-storage:
   mysql-data:
+  ollama-data:

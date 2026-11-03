@@ -33,6 +33,11 @@
         <env name="QUEUE_CONNECTION" value="sync" force="true"/>
         <env name="MAIL_MAILER" value="array" force="true"/>
         <env name="ENERGIA_IA_HABILITADA" value="false" force="true"/>
+        <env name="ENERGIA_IA_PROVEDOR" value="ollama" force="true"/>
+        <env name="OLLAMA_URL" value="http://ollama:11434" force="true"/>
+        <env name="OLLAMA_MODEL" value="llama3.2:3b" force="true"/>
+        <env name="OLLAMA_TIMEOUT" value="120" force="true"/>
+        <env name="OPENAI_API_KEY" value="" force="true"/>
         <env name="ANTHROPIC_API_KEY" value="" force="true"/>
         <!-- No contêiner, DB_CONNECTION=mysql vem do Compose e vai para $_SERVER, que o Laravel lê antes de $_ENV. -->
         <server name="DB_CONNECTION" value="sqlite"/>

@@ -1,3 +1,4 @@
+@inject('analisadorEnergia', 'App\Services\Energia\AnalisadorEnergia')
 @php($energia = $candidato->perfilEnergia)
 <section class="flex max-w-3xl flex-col gap-4" aria-labelledby="energia-titulo">
     <div class="flex flex-col gap-2">
@@ -10,13 +11,14 @@
             <span class="text-texto-suave">{{ $energia->analisado_em->format('d/m/Y H:i') }}</span>
         </div>
         <x-eixos-energia :eixos="['dinamico_analitico' => $energia->dinamico_analitico, 'individual_equipe' => $energia->individual_equipe, 'execucao_planejamento' => $energia->execucao_planejamento]" />
+        <H2>Resumo</H2>
         <p class="max-w-prose text-sm leading-relaxed wrap-anywhere">{{ $energia->justificativa ?: 'Justificativa não informada.' }}</p>
     @else
         <p class="text-sm text-texto-suave">Não analisado</p>
     @endif
-    @unless (config('banco_talentos.energia.habilitada') && filled(config('services.anthropic.key')))
-        <p class="text-sm text-texto-suave">Análise indisponível: IA desligada ou sem chave. O ajuste manual continua disponível.</p>
-    @endunless
+    @if ($analisadorEnergia instanceof \App\Services\Energia\AnalisadorEnergiaIndisponivel)
+        <p class="text-sm text-texto-suave">Análise indisponível: IA desligada ou provedor não configurado. O ajuste manual continua disponível.</p>
+    @endif
     <div class="flex flex-wrap items-start gap-3">
         <form method="POST" action="{{ route('candidatos.energia.analisar', $candidato) }}" data-ajax class="flex flex-col gap-2">
             @csrf

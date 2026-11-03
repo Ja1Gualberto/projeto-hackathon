@@ -18,6 +18,17 @@ return [
         'key' => env('POSTMARK_API_KEY'),
     ],
 
+    'ollama' => [
+        'url' => env('OLLAMA_URL', 'http://ollama:11434'),
+        'model' => env('OLLAMA_MODEL', 'llama3.2:3b'),
+        'timeout' => (int) env('OLLAMA_TIMEOUT', 120),
+    ],
+
+    'openai' => [
+        'key' => env('OPENAI_API_KEY'),
+        'model' => env('OPENAI_MODEL', 'gpt-4.1-mini'),
+    ],
+
     'anthropic' => [
         'key' => env('ANTHROPIC_API_KEY'),
         'model' => env('ANTHROPIC_MODEL', 'claude-opus-5-5'),

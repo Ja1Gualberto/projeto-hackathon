@@ -7,6 +7,7 @@ return [
     'importacao_max_arquivos' => 10,
 
     'energia' => [
+        'provedor' => env('ENERGIA_IA_PROVEDOR', 'ollama'),
         'habilitada' => (bool) env('ENERGIA_IA_HABILITADA', false),
         'timeout' => (int) env('ENERGIA_IA_TIMEOUT', 20),
     ],

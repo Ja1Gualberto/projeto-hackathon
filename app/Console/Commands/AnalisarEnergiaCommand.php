@@ -16,7 +16,7 @@ class AnalisarEnergiaCommand extends Command
     public function handle(PerfilEnergiaService $energia, AnalisadorEnergia $analisador): int
     {
         if (! config('banco_talentos.energia.habilitada') || $analisador instanceof AnalisadorEnergiaIndisponivel) {
-            $this->components->warn('Análise indisponível: IA desligada ou sem chave. O restante do sistema continua funcionando.');
+            $this->components->warn('Análise indisponível: IA desligada ou provedor não configurado. O restante do sistema continua funcionando.');
 
             return self::SUCCESS;
         }

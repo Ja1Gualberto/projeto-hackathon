@@ -11,7 +11,11 @@ use App\Services\Aderencia\RankingVagaService;
 use App\Services\Energia\AnalisadorEnergia;
 use App\Services\Energia\AnalisadorEnergiaIndisponivel;
 use App\Services\Energia\ClaudeAnalisadorEnergia;
+use App\Services\Energia\OllamaAnalisadorEnergia;
+use App\Services\Energia\OpenAiAnalisadorEnergia;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\Request;
+use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\TestWith;
 use Tests\TestCase;
 
@@ -149,9 +153,151 @@ class PerfilEnergiaTest extends TestCase
     #[TestWith([true, 'chave-ficticia', ClaudeAnalisadorEnergia::class])]
     public function test_binding_respeita_habilitacao_e_chave(bool $habilitada, string $chave, string $classe): void
     {
-        config(['banco_talentos.energia.habilitada' => $habilitada, 'services.anthropic.key' => $chave]);
+        config(['banco_talentos.energia.habilitada' => $habilitada, 'banco_talentos.energia.provedor' => 'anthropic', 'services.anthropic.key' => $chave]);
 
         $this->assertInstanceOf($classe, $this->app->make(AnalisadorEnergia::class));
+    }
+
+    #[TestWith([false, 'openai', 'chave-ficticia', AnalisadorEnergiaIndisponivel::class])]
+    #[TestWith([true, 'openai', '', AnalisadorEnergiaIndisponivel::class])]
+    #[TestWith([true, 'openai', 'chave-ficticia', OpenAiAnalisadorEnergia::class])]
+    #[TestWith([true, 'invalido', 'chave-ficticia', AnalisadorEnergiaIndisponivel::class])]
+    public function test_binding_e_aviso_respeitam_provedor_e_chave_openai(bool $habilitada, string $provedor, string $chave, string $classe): void
+    {
+        config([
+            'banco_talentos.energia.habilitada' => $habilitada,
+            'banco_talentos.energia.provedor' => $provedor,
+            'services.openai.key' => $chave,
+            'services.anthropic.key' => 'chave-de-outro-provedor',
+        ]);
+        $candidato = Candidato::factory()->create();
+
+        $this->assertInstanceOf($classe, $this->app->make(AnalisadorEnergia::class));
+        $resposta = $this->actingAs(User::factory()->create())->get(route('candidatos.show', $candidato))->assertOk();
+
+        if ($classe === OpenAiAnalisadorEnergia::class) {
+            $resposta->assertDontSee('Análise indisponível: IA desligada ou provedor não configurado.');
+        } else {
+            $resposta->assertSee('Análise indisponível: IA desligada ou provedor não configurado.');
+        }
+    }
+
+    public function test_endpoint_analisa_com_openai_sem_chave_anthropic_e_preserva_anonimizacao(): void
+    {
+        config([
+            'banco_talentos.energia.habilitada' => true,
+            'banco_talentos.energia.provedor' => 'openai',
+            'services.openai.key' => 'chave-ficticia',
+            'services.anthropic.key' => '',
+        ]);
+        Http::preventStrayRequests();
+        Http::fake(['api.openai.com/v1/responses' => Http::response([
+            'status' => 'completed',
+            'output' => [['type' => 'message', 'content' => [['type' => 'output_text', 'text' => json_encode([
+                ...$this->eixos(), 'justificativa' => 'Coordenou equipe em projetos.',
+            ])]]]],
+        ])]);
+        $candidato = Candidato::factory()->create([
+            'nome' => 'Ágata Queiroz', 'email' => 'agata@exemplo.com.br',
+            'experiencias' => ['Ágata Queiroz coordenou equipe; contato agata@exemplo.com.br'],
+        ]);
+
+        $this->actingAs(User::factory()->create())->postJson(route('candidatos.energia.analisar', $candidato))
+            ->assertOk()->assertJsonPath('message', 'Perfil sugerido pela IA. Revise antes de utilizar.');
+
+        $this->assertDatabaseHas('perfis_energia', [
+            ...$this->eixos(), 'candidato_id' => $candidato->id, 'origem' => 'ia',
+            'justificativa' => 'Coordenou equipe em projetos.',
+        ]);
+        Http::assertSent(fn (Request $request): bool => str_contains($request['input'][0]['content'], 'coordenou equipe')
+            && ! str_contains($request['input'][0]['content'], 'Ágata')
+            && ! str_contains($request['input'][0]['content'], 'Queiroz')
+            && ! str_contains($request['input'][0]['content'], 'agata@exemplo.com.br'));
+        Http::assertSentCount(1);
+    }
+
+    #[TestWith([false, 'http://ollama:11434', 'llama3.2:3b', AnalisadorEnergiaIndisponivel::class])]
+    #[TestWith([true, '', 'llama3.2:3b', AnalisadorEnergiaIndisponivel::class])]
+    #[TestWith([true, 'http://ollama:11434', '', AnalisadorEnergiaIndisponivel::class])]
+    #[TestWith([true, 'http://ollama:11434', 'llama3.2:3b', OllamaAnalisadorEnergia::class])]
+    public function test_binding_e_aviso_ollama_nao_exigem_chaves(bool $habilitada, string $url, string $modelo, string $classe): void
+    {
+        config([
+            'banco_talentos.energia.habilitada' => $habilitada,
+            'banco_talentos.energia.provedor' => 'ollama',
+            'services.ollama.url' => $url,
+            'services.ollama.model' => $modelo,
+            'services.openai.key' => '',
+            'services.anthropic.key' => '',
+        ]);
+        $candidato = Candidato::factory()->create();
+
+        $this->assertInstanceOf($classe, $this->app->make(AnalisadorEnergia::class));
+        $resposta = $this->actingAs(User::factory()->create())->get(route('candidatos.show', $candidato))->assertOk();
+
+        if ($classe === OllamaAnalisadorEnergia::class) {
+            $resposta->assertDontSee('Análise indisponível: IA desligada ou provedor não configurado.');
+        } else {
+            $resposta->assertSee('Análise indisponível: IA desligada ou provedor não configurado.');
+        }
+    }
+
+    public function test_endpoint_analisa_com_ollama_sem_chaves_e_preserva_anonimizacao(): void
+    {
+        config([
+            'banco_talentos.energia.habilitada' => true,
+            'banco_talentos.energia.provedor' => 'ollama',
+            'services.openai.key' => '',
+            'services.anthropic.key' => '',
+        ]);
+        Http::preventStrayRequests();
+        Http::fake(['ollama:11434/api/chat' => Http::response([
+            'done' => true, 'done_reason' => 'stop',
+            'message' => ['role' => 'assistant', 'content' => json_encode([
+                ...$this->eixos(), 'justificativa' => 'Coordenou equipe em projetos.',
+            ])],
+        ])]);
+        $candidato = Candidato::factory()->create([
+            'nome' => 'Ágata Queiroz', 'email' => 'agata@exemplo.com.br',
+            'experiencias' => ['Ágata Queiroz coordenou equipe; contato agata@exemplo.com.br'],
+        ]);
+
+        $this->actingAs(User::factory()->create())->postJson(route('candidatos.energia.analisar', $candidato))
+            ->assertOk()->assertJsonPath('message', 'Perfil sugerido pela IA. Revise antes de utilizar.');
+
+        $this->assertDatabaseHas('perfis_energia', [
+            ...$this->eixos(), 'candidato_id' => $candidato->id, 'origem' => 'ia',
+            'justificativa' => 'Coordenou equipe em projetos.',
+        ]);
+        Http::assertSent(fn (Request $request): bool => $request->url() === 'http://ollama:11434/api/chat'
+            && str_contains($request['messages'][1]['content'], 'coordenou equipe')
+            && ! str_contains($request['messages'][1]['content'], 'Ágata')
+            && ! str_contains($request['messages'][1]['content'], 'Queiroz')
+            && ! str_contains($request['messages'][1]['content'], 'agata@exemplo.com.br'));
+        Http::assertSentCount(1);
+    }
+
+    public function test_modelo_ollama_nao_baixado_retorna_503_preserva_perfil_e_nao_usa_nuvem(): void
+    {
+        config([
+            'banco_talentos.energia.habilitada' => true,
+            'banco_talentos.energia.provedor' => 'ollama',
+            'services.openai.key' => 'chave-de-outro-provedor',
+            'services.anthropic.key' => 'chave-de-outro-provedor',
+        ]);
+        Http::preventStrayRequests();
+        Http::fake(['ollama:11434/api/chat' => Http::response(['error' => 'model not found'], 404)]);
+        $candidato = Candidato::factory()->create();
+        $this->perfil($candidato, 'humano');
+
+        $this->actingAs(User::factory()->create())->postJson(route('candidatos.energia.analisar', $candidato))
+            ->assertServiceUnavailable()->assertExactJson(['message' => 'Análise indisponível no momento.']);
+
+        $this->assertDatabaseCount('perfis_energia', 1);
+        $this->assertDatabaseHas('perfis_energia', [
+            'candidato_id' => $candidato->id, 'origem' => 'humano', 'justificativa' => 'Perfil preservado',
+        ]);
+        Http::assertSentCount(1);
     }
 
     public function test_ranking_mantem_ordem_e_aderencia_com_proximidade_separada_em_html_e_json(): void
