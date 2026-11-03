@@ -5,6 +5,7 @@ import './modulos/chips.js';
 import './modulos/kanban.js';
 import './modulos/busca.js';
 import './modulos/candidatos.js';
+import './modulos/perfil-candidato.js';
 import './modulos/importacao.js';
 import './modulos/menu.js';
 import './modulos/vagas.js';

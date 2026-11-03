@@ -114,6 +114,26 @@ test('anotação salva recolhe o formulário e devolve foco a adicionar sem fech
     assert.equal(ui.texto.focado, false);
 });
 
+test('anotação salva na modal de criação atualiza a lista e limpa o formulário sem tentar recolher uma região inexistente', async () => {
+    const ui = montarAnotacao();
+    ui.form.hasAttribute = (nome) => ['data-limpar-apos-sucesso', 'data-recolher-apos-sucesso'].includes(nome);
+    ui.form.closest = () => null;
+    globalThis.fetch = async () => resposta({
+        message: 'Anotação registrada.',
+        fragments: { 'historico-anotacoes': 'Três anotações recentes', 'competencias-candidato': 'Competências atualizadas' },
+        redirect: null,
+    });
+
+    await enviarFormulario(ui.form);
+
+    assert.equal(ui.regioes['historico-anotacoes'].innerHTML, 'Três anotações recentes');
+    assert.equal(ui.regioes['competencias-candidato'].innerHTML, 'Competências atualizadas');
+    assert.equal(ui.form.resetado, 1);
+    assert.equal(ui.texto.value, '');
+    assert.equal(ui.texto.focado, true);
+    assert.equal(ui.aviso.textContent, 'Anotação registrada.');
+});
+
 test('anotação inválida mantém formulário aberto e rascunho na modal', async () => {
     const ui = montarAnotacao();
     const regiao = { hidden: false };

@@ -248,11 +248,11 @@ class AnotacaoEntrevistaTest extends TestCase
     {
         $this->get(route('candidatos.show', $this->candidato))
             ->assertOk()
-            ->assertSee('data-abrir-modal="anotacoes-entrevista"', false)
-            ->assertSee('<dialog id="anotacoes-entrevista"', false)
+            ->assertSee('data-abrir-modal="nova-anotacao"', false)
+            ->assertDontSee('<dialog id="anotacoes-entrevista"', false)
             ->assertDontSee('data-abrir-ao-carregar', false)
-            ->assertSeeInOrder(['Adicionar nova anotação', 'data-fechar-modal', 'Nenhuma anotação ainda.', 'Registrar anotação'])
-            ->assertSee('data-regiao-recolhivel hidden', false)
+            ->assertSeeInOrder(['Adicionar nova anotação', 'Nenhuma anotação ainda.', 'Registrar anotação'])
+            ->assertSee('<dialog id="nova-anotacao"', false)
             ->assertSee('Registrar anotação')
             ->assertSee('Nenhuma anotação ainda.')
             ->assertSee('Sem vaga associada')
@@ -271,6 +271,101 @@ class AnotacaoEntrevistaTest extends TestCase
             ->assertSee('data-abrir-modal="anotacoes-entrevista"', false)
             ->assertSee('<dialog id="anotacoes-entrevista"', false)
             ->assertSeeInOrder(['Adicionar nova anotação', 'data-fechar-modal', 'Nenhuma anotação ainda.', 'Registrar anotação']);
+    }
+
+    public function test_perfil_mostra_historico_na_secao_e_botao_no_cabecalho_abre_modal_apenas_com_formulario(): void
+    {
+        Anotacao::factory()->create([
+            'candidato_id' => $this->candidato->id,
+            'user_id' => $this->recrutador->id,
+            'texto' => 'Conversa inicial sobre os projetos.',
+        ]);
+        Anotacao::factory()->create([
+            'candidato_id' => $this->candidato->id,
+            'user_id' => $this->recrutador->id,
+            'vaga_id' => $this->vaga->id,
+            'texto' => 'Entrevista para a vaga de dados.',
+        ]);
+
+        $resposta = $this->get(route('candidatos.show', $this->candidato));
+
+        $resposta->assertOk()
+            ->assertDontSee('Abrir PDF')
+            ->assertSee('Conversa inicial sobre os projetos.')
+            ->assertSee('Entrevista para a vaga de dados.');
+        $documento = new \DOMDocument;
+        $documento->loadHTML($resposta->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        $xpath = new \DOMXPath($documento);
+        $this->assertCount(1, $xpath->query('//section[@id="entrevistas"]//section[@aria-labelledby="entrevistas-titulo"]/header/button[@data-abrir-modal="nova-anotacao"][@aria-controls="nova-anotacao"][@aria-haspopup="dialog"]'));
+        $this->assertCount(0, $xpath->query('//button[@data-abrir-modal="anotacoes-entrevista"]'));
+        $this->assertCount(0, $xpath->query('//dialog[@id="anotacoes-entrevista"]'));
+        $this->assertCount(2, $xpath->query('//section[@id="entrevistas"]//div[@id="historico-anotacoes"]//article'));
+        $this->assertCount(1, $xpath->query('//section[@id="entrevistas"]//dialog[@id="nova-anotacao"][not(@open)]//form[@data-ajax][@data-limpar-apos-sucesso]'));
+        $this->assertCount(0, $xpath->query('//dialog[@id="nova-anotacao"]//div[@id="historico-anotacoes"]'));
+    }
+
+    public function test_perfil_do_banco_mostra_apenas_as_tres_anotacoes_mais_recentes_sem_apagar_as_anteriores(): void
+    {
+        foreach (['Primeira conversa.' => 4, 'Segunda conversa.' => 3, 'Terceira conversa.' => 2, 'Quarta conversa.' => 1] as $texto => $diasAtras) {
+            Anotacao::factory()->create([
+                'candidato_id' => $this->candidato->id,
+                'user_id' => $this->recrutador->id,
+                'texto' => $texto,
+                'created_at' => now()->subDays($diasAtras),
+            ]);
+        }
+
+        $resposta = $this->get(route('candidatos.show', $this->candidato));
+
+        $resposta->assertOk()
+            ->assertSeeInOrder(['Quarta conversa.', 'Terceira conversa.', 'Segunda conversa.'])
+            ->assertDontSee('Primeira conversa.');
+        $this->assertSame(4, $this->candidato->anotacoes()->count());
+    }
+
+    public function test_anotacao_por_ajax_atualiza_a_lista_com_as_tres_mais_recentes(): void
+    {
+        $this->freezeTime();
+        foreach (['Primeira conversa.', 'Segunda conversa.', 'Terceira conversa.'] as $texto) {
+            Anotacao::factory()->create([
+                'candidato_id' => $this->candidato->id,
+                'user_id' => $this->recrutador->id,
+                'texto' => $texto,
+            ]);
+        }
+
+        $resposta = $this->anotarPeloBanco(['texto' => 'Quarta conversa.'], json: true);
+
+        $resposta->assertOk()->assertJsonPath('message', 'Anotação registrada.');
+        $historico = $resposta->json('fragments.historico-anotacoes');
+        $this->assertStringNotContainsString('Primeira conversa.', $historico);
+        $documento = new \DOMDocument;
+        $documento->loadHTML($historico, LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        $xpath = new \DOMXPath($documento);
+        $this->assertCount(3, $xpath->query('//article'));
+        $this->assertSame('Quarta conversa.', trim($xpath->query('//article/p[2]')->item(0)->textContent));
+        $this->assertSame('Terceira conversa.', trim($xpath->query('//article/p[2]')->item(1)->textContent));
+        $this->assertSame('Segunda conversa.', trim($xpath->query('//article/p[2]')->item(2)->textContent));
+        $this->assertSame(4, $this->candidato->anotacoes()->count());
+    }
+
+    #[TestWith(['texto'])]
+    #[TestWith(['vaga_id'])]
+    #[TestWith(['competencias_observadas.0'])]
+    public function test_erro_de_validacao_reabre_modal_do_formulario_de_nova_anotacao(string $campo): void
+    {
+        $erros = (new ViewErrorBag)->put('default', new MessageBag([$campo => 'Revise a anotação.']));
+
+        $this->view('candidatos.partials._secao-anotacoes', [
+            'candidato' => $this->candidato,
+            'errors' => $erros,
+            'anotacoes' => collect(),
+            'catalogo' => ['soft' => collect([$this->comunicacao]), 'hard' => collect([$this->python])],
+            'vagas' => collect([$this->vaga]),
+        ])
+            ->assertSee('data-abrir-ao-carregar', false)
+            ->assertSee('<dialog id="nova-anotacao"', false)
+            ->assertDontSee('data-regiao-recolhivel', false);
     }
 
     #[TestWith(['texto'])]

@@ -97,6 +97,19 @@
 }
 
 @layer components {
+    .perfil-candidato {
+        --color-borda: #e5e7eb;
+        --radius-card: 0.5rem;
+    }
+
+    .perfil-candidato [data-abas-prontas] ~ [data-painel-perfil] {
+        border-top-width: 0;
+    }
+
+    .perfil-candidato [data-painel-perfil][hidden] {
+        display: none;
+    }
+
     .central-alertas {
         @apply pointer-events-none fixed top-4 right-4 z-[100] flex w-[340px] max-w-[calc(100%_-_2rem)] flex-col gap-2;
         max-height: calc(100dvh - 2rem);

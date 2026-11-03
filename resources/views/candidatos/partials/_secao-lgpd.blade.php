@@ -1,20 +1,19 @@
-<section class="flex flex-col gap-5 border-t border-borda pt-6" aria-labelledby="lgpd-titulo">
-    <h2 id="lgpd-titulo" class="text-xl font-semibold tracking-tight">Consentimento e retenção</h2>
+<section class="flex flex-col gap-4" aria-labelledby="lgpd-titulo">
+    <h2 id="lgpd-titulo" class="text-base font-semibold">Consentimento e retenção</h2>
     <dl class="grid gap-4 text-sm sm:grid-cols-2">
         <div><dt class="text-texto-suave">Meio do consentimento</dt><dd class="mt-1 font-medium">{{ $candidato->consentimento_meio->rotulo() }}</dd></div>
         <div><dt class="text-texto-suave">Data do consentimento</dt><dd class="mt-1 font-medium">{{ $candidato->consentimento_em->format('d/m/Y') }}</dd></div>
         <div><dt class="text-texto-suave">Registrado por</dt><dd class="mt-1 font-medium">{{ $candidato->consentimentoRegistradoPor?->name ?? 'Responsável não disponível' }}</dd></div>
         <div><dt class="text-texto-suave">Última atualização dos dados</dt><dd class="mt-1 font-medium">{{ $candidato->dados_atualizados_em?->format('d/m/Y') }}</dd></div>
     </dl>
-    <div class="flex flex-col gap-2 rounded-lg border border-borda bg-fundo p-4">
+    <div class="flex flex-col gap-2 border-t border-borda pt-4">
         <p class="font-semibold">Retenção até {{ $candidato->retencao_ate?->format('d/m/Y') }}</p>
         @if ($candidato->retencao_vencida)
             <div><x-badge cor="aviso">revisão de retenção pendente</x-badge></div>
         @endif
         <p class="text-sm leading-relaxed text-texto-suave">Prazo de {{ config('banco_talentos.retencao_anos') }} anos após o cadastro ou a última correção. Revise a necessidade de manter os dados; não há exclusão automática. Desativar não equivale a excluir.</p>
     </div>
-    <div class="flex flex-wrap items-start gap-3">
-        <x-botao :href="route('candidatos.edit', $candidato)" variante="secundario">Editar dados</x-botao>
+    <div class="flex flex-wrap items-start gap-3 border-t border-borda pt-4" aria-label="Ações administrativas">
         <form method="POST" action="{{ route('candidatos.status', $candidato) }}" data-ajax class="flex flex-col gap-2">
             @csrf
             @method('PATCH')

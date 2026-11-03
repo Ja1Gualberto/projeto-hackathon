@@ -46,6 +46,19 @@ class CurriculoProtegidoTest extends TestCase
             ->assertSessionHasNoErrors();
     }
 
+    public function test_perfil_do_banco_mostra_um_unico_link_do_pdf_no_topo_junto_da_edicao(): void
+    {
+        $resposta = $this->get(route('candidatos.show', $this->candidato));
+
+        $resposta->assertOk()->assertSee('curriculo.pdf');
+        $documento = new \DOMDocument;
+        $documento->loadHTML($resposta->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
+        $xpath = new \DOMXPath($documento);
+        $linkPdf = 'a[@href="'.route('candidatos.curriculo', $this->candidato).'"]';
+        $this->assertCount(1, $xpath->query('//'.$linkPdf));
+        $this->assertCount(1, $xpath->query('//div[@data-perfil-candidato]/header//'.$linkPdf.'/following-sibling::a[@href="'.route('candidatos.edit', $this->candidato).'"]'));
+    }
+
     public function test_pdf_responde_403_em_triagem_inclusive_por_acesso_direto(): void
     {
         $this->get($this->curriculoNaVaga())

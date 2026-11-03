@@ -1,17 +1,33 @@
-{{-- Anotações de entrevista na gestão do banco (US5): vaga opcional e competências observadas. --}}
-<section class="flex flex-col gap-4 border-t border-borda pt-6" aria-labelledby="secao-anotacoes">
-    <div>
-        <h2 id="secao-anotacoes" class="text-xl font-semibold tracking-tight">Anotações de entrevista</h2>
-        <p class="mt-2 text-sm leading-relaxed text-texto-suave">Registre o que foi percebido na conversa para não se perder entre seleções. A vaga é opcional.</p>
+@php
+    $erroAnotacao = $errors->hasAny(['texto', 'vaga_id', 'competencias_observadas', 'competencias_observadas.*']);
+@endphp
+
+<section aria-labelledby="entrevistas-titulo" class="flex flex-col gap-4 border-b border-borda pb-5">
+    <header class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div class="flex min-w-0 flex-col gap-1">
+            <h2 id="entrevistas-titulo" class="text-base font-semibold">Anotações de entrevista</h2>
+            <p class="max-w-prose text-sm leading-relaxed text-texto-suave">As três anotações mais recentes do candidato, de todas as vagas.</p>
+        </div>
+        <x-botao data-abrir-modal="nova-anotacao" aria-haspopup="dialog" aria-controls="nova-anotacao" class="max-w-full shrink-0 self-end sm:self-start">
+            <span aria-hidden="true">+</span>Adicionar nova anotação
+        </x-botao>
+    </header>
+
+    <div id="historico-anotacoes">
+        @include('anotacoes._historico', ['anotacoes' => $anotacoes->take(3)])
     </div>
 
-    <div>
-        <x-botao variante="secundario" data-abrir-modal="anotacoes-entrevista" aria-haspopup="dialog" aria-controls="anotacoes-entrevista">Ver anotações de entrevista</x-botao>
-    </div>
+    <x-modal id="nova-anotacao" titulo="Adicionar nova anotação" amplo :abrir-ao-carregar="$erroAnotacao" class="max-h-[calc(100dvh-2rem)] overflow-y-auto max-sm:max-w-[calc(100%_-_2rem)]">
+        @include('anotacoes._formulario', [
+            'acao' => route('candidatos.anotacoes.store', $candidato),
+            'catalogo' => $catalogo,
+        ])
+    </x-modal>
 
-    @include('anotacoes._modal', [
-        'anotacoes' => $anotacoes,
-        'acao' => route('candidatos.anotacoes.store', $candidato),
-        'descricao' => 'Anotações das entrevistas com '.$candidato->nome.'. A vaga é opcional ao registrar uma nova anotação.',
-    ])
+    <noscript>
+        <style>
+            #nova-anotacao { display: block; position: static; max-height: none; }
+            #entrevistas [data-abrir-modal="nova-anotacao"], #nova-anotacao [data-fechar-modal] { display: none; }
+        </style>
+    </noscript>
 </section>

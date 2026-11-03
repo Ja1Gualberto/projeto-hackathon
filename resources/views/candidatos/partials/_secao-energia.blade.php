@@ -1,7 +1,7 @@
 @php($energia = $candidato->perfilEnergia)
-<section class="flex flex-col gap-5 border-t border-borda pt-6" aria-labelledby="energia-titulo">
+<section class="flex max-w-3xl flex-col gap-4" aria-labelledby="energia-titulo">
     <div class="flex flex-col gap-2">
-        <h2 id="energia-titulo" tabindex="-1" data-foco-apos-ajax class="text-xl font-semibold tracking-tight focus:outline-none">Padrão de energia</h2>
+        <h2 id="energia-titulo" tabindex="-1" data-foco-apos-ajax class="text-base font-semibold focus:outline-none">Padrão de energia</h2>
         <p class="text-sm leading-relaxed text-texto-suave">Sugestão revisável baseada no currículo, não um diagnóstico. Não altera a aderência nem a ordem do ranking. A decisão é humana.</p>
     </div>
     @if ($energia)

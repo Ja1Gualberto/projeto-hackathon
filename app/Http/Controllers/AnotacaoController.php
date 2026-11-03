@@ -36,7 +36,7 @@ class AnotacaoController extends Controller
             return response()->json([
                 'message' => $mensagem,
                 'fragments' => [
-                    'historico-anotacoes' => view('anotacoes._historico', ['anotacoes' => $this->anotacoes->historico($candidato)])->render(),
+                    'historico-anotacoes' => view('anotacoes._historico', ['anotacoes' => $this->anotacoes->historico($candidato)->take(3)])->render(),
                     'competencias-candidato' => view('candidatos.partials._competencias', [
                         'competencias' => $this->candidatos->detalhar($candidato)->competencias,
                     ])->render(),
