@@ -3,8 +3,8 @@
 @section('titulo', 'Painel')
 
 @section('conteudo')
-    <x-cabecalho-pagina titulo="O talento que a SETIC já tem" subtitulo="Consulte as competências do banco e encontre perfis para sua equipe.">
-        <x-botao :href="route('candidatos.index')"><x-icone nome="busca" class="size-4" />Explorar talentos</x-botao>
+    <x-cabecalho-pagina titulo="Banco de Taletos da SETIC já tem" subtitulo="Consulte as competências do banco e encontre perfis para sua equipe.">
+        <x-botao :href="route('candidatos.index')"><x-icone nome="busca" class="size-4" />Explorar Candidatos</x-botao>
     </x-cabecalho-pagina>
 
     <section aria-label="Resumo do banco" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
