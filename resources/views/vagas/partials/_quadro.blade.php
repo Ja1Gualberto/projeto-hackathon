@@ -36,7 +36,9 @@
                 <h2 id="selecao-titulo" class="text-xl font-semibold tracking-tight">Seleção <span data-elegiveis class="font-normal text-texto-suave"></span></h2>
                 <p class="flex items-center gap-2 text-sm text-texto-suave"><x-icone nome="cadeado" class="size-4" />Triagem anônima: o nome aparece a partir da entrevista, só nesta vaga.</p>
             </div>
-            <div data-colunas class="grid items-start gap-4 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_minmax(0,1fr)]"></div>
+            <div class="overflow-x-auto pb-2">
+                <div data-colunas class="grid items-start gap-4 lg:min-w-[84rem] lg:grid-cols-4"></div>
+            </div>
         </section>
     </div>
 </template>

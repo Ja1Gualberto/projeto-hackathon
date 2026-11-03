@@ -77,6 +77,7 @@ class VagaTelaService
                 'naoIdentificadas' => $item->resultado->naoIdentificadas,
                 'perfilUrl' => route('vagas.candidatos.show', [$vaga, $item->codigo]),
                 'etapaUrl' => route('vagas.candidatos.etapa', [$vaga, $item->codigo]),
+                'anotacaoUrl' => route('vagas.candidatos.anotacoes.store', [$vaga, $item->codigo]),
             ])->values()->all())->all(),
         ];
     }

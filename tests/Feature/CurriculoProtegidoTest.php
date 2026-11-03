@@ -60,6 +60,7 @@ class CurriculoProtegidoTest extends TestCase
 
     #[TestWith(['entrevista'])]
     #[TestWith(['aprovado'])]
+    #[TestWith(['reprovado'])]
     public function test_pdf_abre_a_partir_da_entrevista(string $etapa): void
     {
         $this->mover($etapa);
@@ -73,14 +74,15 @@ class CurriculoProtegidoTest extends TestCase
         $this->assertSame('%PDF-1.4 conteúdo fictício', $resposta->streamedContent());
     }
 
-    public function test_voltar_para_triagem_bloqueia_o_pdf_de_novo(): void
+    public function test_retorno_a_triagem_e_rejeitado_e_nao_altera_acesso_ao_pdf(): void
     {
         $this->mover('entrevista');
         $this->get($this->curriculoNaVaga())->assertOk();
 
-        $this->mover('triagem');
+        $this->patchJson(route('vagas.candidatos.etapa', [$this->vaga, $this->candidato->codigo]), ['etapa' => 'triagem'])
+            ->assertUnprocessable()->assertJsonValidationErrors('etapa');
 
-        $this->get($this->curriculoNaVaga())->assertForbidden();
+        $this->get($this->curriculoNaVaga())->assertOk();
     }
 
     public function test_entrevista_em_outra_vaga_nao_libera_o_pdf(): void

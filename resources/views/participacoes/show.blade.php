@@ -15,4 +15,5 @@
     <section id="perfil-na-vaga" aria-label="Perfil do candidato nesta vaga" class="transition-opacity aria-busy:cursor-progress aria-busy:opacity-70">
         @include('participacoes.partials._perfil')
     </section>
+    @include('participacoes.partials._confirmar-entrevista')
 @endsection

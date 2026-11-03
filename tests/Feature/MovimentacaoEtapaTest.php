@@ -150,20 +150,75 @@ class MovimentacaoEtapaTest extends TestCase
         $this->assertSame(0, Participacao::query()->count());
     }
 
-    public function test_quadro_separa_as_tres_colunas_com_contagens_e_acoes(): void
+    public function test_quadro_separa_as_quatro_colunas_com_contagens_e_acoes(): void
     {
         $emEntrevista = $this->candidato(['nome' => 'Joana Prates']);
         $aprovado = $this->candidato(['nome' => 'Caio Teles']);
+        $reprovado = $this->candidato(['nome' => 'Ana Silva']);
         $this->mover('entrevista', $emEntrevista);
         $this->mover('aprovado', $aprovado);
+        $this->mover('reprovado', $reprovado);
 
         $this->getJson(route('vagas.show', $this->vaga))->assertOk()
             ->assertJsonPath('data.quadro-vaga.colunas.triagem.0.codigo', $this->candidato->codigo)
             ->assertJsonPath('data.quadro-vaga.colunas.entrevista.0.nome', 'Joana Prates')
             ->assertJsonPath('data.quadro-vaga.colunas.aprovado.0.nome', 'Caio Teles')
+            ->assertJsonPath('data.quadro-vaga.colunas.reprovado.0.nome', 'Ana Silva')
             ->assertJsonPath('data.quadro-vaga.colunas.triagem.0.elegivel', true)
             ->assertJsonPath('data.quadro-vaga.colunas.triagem.0.perfilUrl', route('vagas.candidatos.show', [$this->vaga, $this->candidato->codigo]))
-            ->assertJsonPath('data.quadro-vaga.totalElegiveis', 3);
+            ->assertJsonPath('data.quadro-vaga.totalElegiveis', 4);
+    }
+
+    #[TestWith(['entrevista'])]
+    #[TestWith(['aprovado'])]
+    #[TestWith(['reprovado'])]
+    public function test_retorno_a_triagem_responde_422_sem_alterar_etapa_ou_historico(string $origem): void
+    {
+        $this->mover($origem)->assertSessionHasNoErrors();
+
+        $this->mover('triagem', json: true)
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['etapa' => 'Não é possível voltar à triagem após iniciar a entrevista.']);
+
+        $this->assertSame(EtapaSelecao::from($origem), $this->etapa());
+        $this->assertSame(1, MovimentacaoEtapa::query()->count());
+    }
+
+    public function test_reprovacao_registra_autor_e_historico_e_permanece_visivel_apos_desativar(): void
+    {
+        $this->mover('entrevista');
+
+        $this->mover('reprovado', json: true)->assertOk()
+            ->assertJsonPath('data.quadro-vaga.colunas.reprovado.0.nome', $this->candidato->nome)
+            ->assertJsonCount(0, 'data.quadro-vaga.colunas.entrevista');
+
+        $movimentacao = MovimentacaoEtapa::query()->latest('id')->first();
+        $this->assertSame($this->recrutador->id, $movimentacao->user_id);
+        $this->assertSame(EtapaSelecao::Entrevista, $movimentacao->de);
+        $this->assertSame(EtapaSelecao::Reprovado, $movimentacao->para);
+        $this->candidato->update(['status' => 'desativado']);
+        $this->getJson(route('vagas.show', $this->vaga))->assertOk()
+            ->assertJsonPath('data.quadro-vaga.colunas.reprovado.0.desativado', true);
+    }
+
+    public function test_perfil_em_entrevista_nao_oferece_retorno_a_triagem_e_oferece_reprovacao(): void
+    {
+        $this->mover('entrevista');
+
+        $this->get(route('vagas.candidatos.show', [$this->vaga, $this->candidato->codigo]))
+            ->assertOk()->assertDontSee('Voltar para Triagem')->assertSee('Reprovar');
+    }
+
+    public function test_quadro_e_perfil_disponibilizam_modal_de_confirmacao_para_entrada_em_entrevista(): void
+    {
+        $this->get(route('vagas.show', $this->vaga))->assertOk()
+            ->assertSee('id="confirmar-entrevista"', false)
+            ->assertSee('não será possível voltar à triagem.');
+
+        $this->get(route('vagas.candidatos.show', [$this->vaga, $this->candidato->codigo]))->assertOk()
+            ->assertSee('id="confirmar-entrevista"', false)
+            ->assertSee('data-etapa-atual="triagem"', false)
+            ->assertSee('data-candidato-codigo="'.$this->candidato->codigo.'"', false);
     }
 
     public function test_desativado_com_participacao_continua_visivel_esmaecido_e_sem_acoes(): void

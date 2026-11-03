@@ -41,7 +41,7 @@ class MoverEtapaRequest extends FormRequest
     {
         return [
             'etapa.required' => 'Escolha a etapa de destino.',
-            'etapa.enum' => 'Escolha Triagem, Entrevista ou Aprovado.',
+            'etapa.enum' => 'Escolha Triagem, Entrevista, Aprovado ou Reprovado.',
             'contexto.in' => 'A tela de origem da movimentação é inválida.',
         ];
     }

@@ -410,11 +410,10 @@ class AjaxSegurancaTest extends TestCase
         $this->assertStringContainsString(self::NOME, html_entity_decode($revelado->json('fragments.perfil-na-vaga')));
 
         $this->assertSemIdentidadeNoCorpo([
-            $this->patchJson($mover, ['etapa' => 'triagem', 'contexto' => 'perfil'])->assertOk(),
-            $this->patchJson($mover, ['etapa' => 'triagem', 'contexto' => 'quadro'])->assertOk(),
-            $this->getJson(route('vagas.show', $this->vaga))->assertOk(),
+            $this->patchJson($mover, ['etapa' => 'triagem', 'contexto' => 'perfil'])->assertUnprocessable(),
+            $this->patchJson($mover, ['etapa' => 'triagem', 'contexto' => 'quadro'])->assertUnprocessable(),
         ]);
-        $this->get($perfil)->assertOk()->assertDontSee(self::NOME)->assertDontSee(self::EMAIL);
+        $this->get($perfil)->assertOk()->assertSee(self::NOME)->assertSee(self::EMAIL);
     }
 
     public function test_formato_da_resposta_nao_muda_a_autorizacao_na_triagem(): void

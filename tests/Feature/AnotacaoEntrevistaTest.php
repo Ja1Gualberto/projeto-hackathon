@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\EtapaSelecao;
 use App\Enums\OrigemCompetencia;
 use App\Models\Anotacao;
 use App\Models\Candidato;
 use App\Models\Competencia;
+use App\Models\MovimentacaoEtapa;
+use App\Models\Participacao;
 use App\Models\User;
 use App\Models\Vaga;
 use Database\Seeders\CandidatoSeeder;
@@ -13,11 +16,13 @@ use Database\Seeders\CompetenciaSeeder;
 use Database\Seeders\UsuarioSeeder;
 use Database\Seeders\VagaSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\MessageBag;
 use Illuminate\Support\ViewErrorBag;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\TestWith;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -354,6 +359,165 @@ class AnotacaoEntrevistaTest extends TestCase
             ->assertJsonMissingPath('fragments');
 
         $this->assertSame(0, Anotacao::query()->count());
+    }
+
+    #[TestWith(['aprovado'])]
+    #[TestWith(['reprovado'])]
+    public function test_anotacao_no_quadro_salva_a_decisao_e_o_historico_na_mesma_vaga(string $etapa): void
+    {
+        $this->moverParaEntrevista();
+        $outra = $this->vaga('Outra vaga');
+
+        $this->anotarPelaVaga([
+            'contexto' => 'quadro', 'texto' => 'Boa comunicação na entrevista.', 'etapa' => $etapa,
+            'vaga_id' => $outra->id, 'user_id' => 999,
+        ], json: true)->assertOk()
+            ->assertHeader('Cache-Control', 'no-store, private')
+            ->assertJsonPath("data.quadro-vaga.colunas.{$etapa}.0.codigo", $this->candidato->codigo)
+            ->assertJsonCount(0, 'data.quadro-vaga.colunas.entrevista')
+            ->assertJsonPath('redirect', null);
+
+        $anotacao = Anotacao::query()->sole();
+        $this->assertSame('Boa comunicação na entrevista.', $anotacao->texto);
+        $this->assertSame($this->vaga->id, $anotacao->vaga_id);
+        $this->assertSame($this->recrutador->id, $anotacao->user_id);
+        $this->assertSame(EtapaSelecao::from($etapa), Participacao::query()->sole()->etapa);
+        $movimentacao = MovimentacaoEtapa::query()->latest('id')->first();
+        $this->assertSame(EtapaSelecao::Entrevista, $movimentacao->de);
+        $this->assertSame(EtapaSelecao::from($etapa), $movimentacao->para);
+        $this->assertSame($this->recrutador->id, $movimentacao->user_id);
+    }
+
+    public function test_anotacao_no_quadro_pode_manter_entrevista_sem_nova_movimentacao(): void
+    {
+        $this->moverParaEntrevista();
+
+        $this->anotarPelaVaga(['contexto' => 'quadro', 'texto' => 'Aguardando segunda conversa.', 'etapa' => ''], json: true)
+            ->assertOk()->assertJsonPath('message', 'Anotação registrada. Candidato mantido em entrevista.')
+            ->assertJsonPath('data.quadro-vaga.colunas.entrevista.0.codigo', $this->candidato->codigo);
+
+        $this->assertSame(1, Anotacao::query()->count());
+        $this->assertSame(EtapaSelecao::Entrevista, Participacao::query()->sole()->etapa);
+        $this->assertSame(1, MovimentacaoEtapa::query()->count());
+    }
+
+    public function test_anotacao_no_quadro_por_html_redireciona_ao_quadro(): void
+    {
+        $this->moverParaEntrevista();
+
+        $this->anotarPelaVaga(['contexto' => 'quadro', 'texto' => 'Entrevista concluída.', 'etapa' => 'aprovado'])
+            ->assertRedirect(route('vagas.show', $this->vaga))->assertSessionHasNoErrors();
+
+        $this->assertSame(1, Anotacao::query()->count());
+        $this->assertSame(EtapaSelecao::Aprovado, Participacao::query()->sole()->etapa);
+    }
+
+    #[TestWith(['triagem'])]
+    #[TestWith(['entrevista'])]
+    #[TestWith(['contratado'])]
+    public function test_anotacao_no_quadro_com_destino_invalido_responde_422_sem_salvar(string $etapa): void
+    {
+        $this->moverParaEntrevista();
+
+        $this->anotarPelaVaga(['contexto' => 'quadro', 'texto' => 'Entrevista.', 'etapa' => $etapa], json: true)
+            ->assertUnprocessable()->assertJsonValidationErrors(['etapa' => 'Escolha manter em entrevista, aprovar ou reprovar.']);
+
+        $this->assertSame(0, Anotacao::query()->count());
+        $this->assertSame(EtapaSelecao::Entrevista, Participacao::query()->sole()->etapa);
+        $this->assertSame(1, MovimentacaoEtapa::query()->count());
+    }
+
+    public function test_anotacao_invalida_no_quadro_nao_aprova_o_candidato(): void
+    {
+        $this->moverParaEntrevista();
+
+        $this->anotarPelaVaga(['contexto' => 'quadro', 'texto' => '', 'etapa' => 'aprovado'], json: true)
+            ->assertUnprocessable()->assertJsonValidationErrors(['texto' => 'Escreva a anotação antes de registrar.']);
+
+        $this->assertSame(0, Anotacao::query()->count());
+        $this->assertSame(EtapaSelecao::Entrevista, Participacao::query()->sole()->etapa);
+        $this->assertSame(1, MovimentacaoEtapa::query()->count());
+    }
+
+    public function test_anotacao_no_quadro_em_triagem_responde_403_sem_revelar_identidade(): void
+    {
+        $this->anotarPelaVaga(['contexto' => 'quadro', 'texto' => 'Tentativa.', 'etapa' => 'aprovado'], json: true)
+            ->assertForbidden()->assertDontSee($this->candidato->nome);
+
+        $this->assertSame(0, Anotacao::query()->count());
+        $this->assertSame(0, Participacao::query()->count());
+    }
+
+    public function test_etapa_alterada_enquanto_modal_estava_aberta_responde_422_sem_anotar(): void
+    {
+        $this->moverParaEntrevista();
+        $this->patch(route('vagas.candidatos.etapa', [$this->vaga, $this->candidato->codigo]), ['etapa' => 'aprovado'])->assertSessionHasNoErrors();
+
+        $this->anotarPelaVaga(['contexto' => 'quadro', 'texto' => 'Decisão antiga.', 'etapa' => 'reprovado'], json: true)
+            ->assertUnprocessable()->assertJsonValidationErrors('etapa');
+
+        $this->assertSame(0, Anotacao::query()->count());
+        $this->assertSame(EtapaSelecao::Aprovado, Participacao::query()->sole()->etapa);
+        $this->assertSame(2, MovimentacaoEtapa::query()->count());
+    }
+
+    public function test_vaga_encerrada_impede_anotacao_e_decisao_no_quadro(): void
+    {
+        $this->moverParaEntrevista();
+        $this->vaga->update(['status' => 'encerrada', 'encerrada_em' => now()]);
+
+        $this->anotarPelaVaga(['contexto' => 'quadro', 'texto' => 'Tentativa.', 'etapa' => 'aprovado'], json: true)
+            ->assertUnprocessable()->assertJsonValidationErrors('etapa');
+
+        $this->assertSame(0, Anotacao::query()->count());
+        $this->assertSame(EtapaSelecao::Entrevista, Participacao::query()->sole()->etapa);
+    }
+
+    #[TestWith([['status' => 'desativado']])]
+    #[TestWith([['tipo' => 'servidor']])]
+    public function test_candidato_que_deixou_de_ser_elegivel_nao_recebe_anotacao_ou_decisao_no_quadro(array $atributos): void
+    {
+        $this->moverParaEntrevista();
+        $this->candidato->update($atributos);
+
+        $this->anotarPelaVaga(['contexto' => 'quadro', 'texto' => 'Tentativa.', 'etapa' => 'aprovado'], json: true)
+            ->assertUnprocessable()->assertJsonValidationErrors('etapa');
+
+        $this->assertSame(0, Anotacao::query()->count());
+        $this->assertSame(EtapaSelecao::Entrevista, Participacao::query()->sole()->etapa);
+        $this->assertSame(1, MovimentacaoEtapa::query()->count());
+    }
+
+    public function test_falha_ao_gravar_anotacao_desfaz_a_decisao_e_o_historico(): void
+    {
+        $this->moverParaEntrevista();
+        Exceptions::fake();
+        Anotacao::creating(static function (): void {
+            throw new RuntimeException('Falha simulada ao gravar a anotação.');
+        });
+
+        try {
+            $this->anotarPelaVaga(['contexto' => 'quadro', 'texto' => 'Não deve ser perdida.', 'etapa' => 'aprovado'], json: true)
+                ->assertInternalServerError();
+        } finally {
+            Anotacao::flushEventListeners();
+        }
+
+        Exceptions::assertReported(RuntimeException::class);
+        $this->assertSame(0, Anotacao::query()->count());
+        $this->assertSame(EtapaSelecao::Entrevista, Participacao::query()->sole()->etapa);
+        $this->assertSame(1, MovimentacaoEtapa::query()->count());
+    }
+
+    public function test_anotacao_no_perfil_nao_pode_mudar_etapa_fora_do_quadro(): void
+    {
+        $this->moverParaEntrevista();
+
+        $this->anotarPelaVaga(['texto' => 'Tentativa.', 'etapa' => 'aprovado'], json: true)
+            ->assertUnprocessable()->assertJsonValidationErrors('etapa');
+
+        $this->assertSame(0, Anotacao::query()->count());
+        $this->assertSame(EtapaSelecao::Entrevista, Participacao::query()->sole()->etapa);
     }
 
     public function test_seeder_registra_anotacoes_das_entrevistas_da_vaga_de_dados(): void

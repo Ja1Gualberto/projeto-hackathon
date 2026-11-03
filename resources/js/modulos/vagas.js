@@ -2,8 +2,9 @@ import { anunciar, ErroAjax, mesmaOrigem, mostrarErros, registrarRenderizador } 
 
 const ETAPAS = {
     triagem: { rotulo: 'Triagem', borda: 'border-t-slate-400', vazio: 'Todos os elegíveis já avançaram nesta vaga.', acoes: [['entrevista', 'Mover para Entrevista', 'primario']] },
-    entrevista: { rotulo: 'Entrevista', borda: 'border-t-primaria-600', vazio: 'Ninguém em entrevista ainda.', acoes: [['aprovado', 'Aprovar', 'primario'], ['triagem', 'Voltar para Triagem', 'secundario']] },
+    entrevista: { rotulo: 'Entrevista', borda: 'border-t-primaria-600', vazio: 'Ninguém em entrevista ainda.', acoes: [['aprovado', 'Aprovar', 'primario'], ['reprovado', 'Reprovar', 'perigo']] },
     aprovado: { rotulo: 'Aprovado', borda: 'border-t-score-alto', vazio: 'Nenhum candidato aprovado ainda.', acoes: [['entrevista', 'Voltar para Entrevista', 'secundario']] },
+    reprovado: { rotulo: 'Reprovados', borda: 'border-t-red-600', vazio: 'Nenhum candidato reprovado ainda.', acoes: [['entrevista', 'Voltar para Entrevista', 'secundario']] },
 };
 const ORIGENS = {
     curriculo: ['Declarada no currículo', 'declarada'],
@@ -211,6 +212,14 @@ function cardRanking(item, posicao, vaga, doc) {
     card.querySelector('[data-proximidade-energia]').hidden = item.proximidadeEnergia === null;
     card.querySelector('[data-energia-ausente]').hidden = item.proximidadeEnergia !== null;
     const form = card.querySelector('[data-mover-etapa]');
+    form.dataset.etapaAtual = item.etapa;
+    form.dataset.candidatoCodigo = item.codigo;
+    const anotar = card.querySelector('[data-adicionar-anotacao]');
+    anotar.hidden = !podeMover || item.etapa !== 'entrevista';
+    if (!anotar.hidden) {
+        anotar.dataset.anotacaoUrl = mesmaOrigem(item.anotacaoUrl, doc.baseURI).href;
+        anotar.setAttribute('aria-label', `Adicionar anotação da entrevista de ${identificacao}`);
+    }
     if (!podeMover) {
         form.remove();
     } else {
@@ -221,7 +230,9 @@ function cardRanking(item, posicao, vaga, doc) {
             botao.name = 'etapa';
             botao.value = destino;
             botao.className = 'inline-flex items-center justify-center gap-2 rounded-lg px-3 py-1.5 text-sm font-semibold transition-colors duration-150 motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-60 '
-                + (variante === 'primario' ? 'bg-primaria-600 text-white shadow-sm hover:bg-primaria-700' : 'bg-superficie text-primaria-700 ring-1 ring-borda ring-inset hover:bg-primaria-50');
+                + (variante === 'primario' ? 'bg-primaria-600 text-white shadow-sm hover:bg-primaria-700'
+                    : variante === 'perigo' ? 'bg-red-700 text-white shadow-sm hover:bg-red-800'
+                        : 'bg-superficie text-primaria-700 ring-1 ring-borda ring-inset hover:bg-primaria-50');
             botao.textContent = rotulo;
             const descricao = doc.createElement('span');
             descricao.className = 'sr-only';
@@ -244,7 +255,7 @@ export function validarQuadro(dados, base = globalThis.location?.href) {
         || !(vaga.encerradaEm === null || string(vaga.encerradaEm))
         || !(vaga.aberta ? string(vaga.editarUrl) : vaga.editarUrl === null)
         || !Number.isInteger(dados.totalElegiveis) || dados.totalElegiveis < 0 || !competencias(dados.requisitos)
-        || !dados.colunas || Object.keys(dados.colunas).length !== 3) {
+        || !dados.colunas || Object.keys(dados.colunas).length !== 4) {
         throw new ErroAjax('O servidor enviou dados inesperados para o quadro.');
     }
     mesmaOrigem(vaga.url, base);
@@ -256,7 +267,7 @@ export function validarQuadro(dados, base = globalThis.location?.href) {
         const itens = dados.colunas[etapa];
         if (!Array.isArray(itens) || !itens.every((item) => /^CAND-[0-9]{4}$/.test(item.codigo)
             && item.etapa === etapa && ['servidor', 'estagiario'].includes(item.tipo) && string(item.area)
-            && string(item.perfilUrl) && string(item.etapaUrl)
+            && string(item.perfilUrl) && string(item.etapaUrl) && string(item.anotacaoUrl)
             && (item.nome === null || (etapa !== 'triagem' && string(item.nome)))
             && ['elegivel', 'desativado', 'experienciaNaArea'].every((campo) => boolean(item[campo]))
             && Number.isInteger(item.percentual) && item.percentual >= 0 && item.percentual <= 100
@@ -267,6 +278,7 @@ export function validarQuadro(dados, base = globalThis.location?.href) {
         for (const item of itens) {
             mesmaOrigem(item.perfilUrl, base);
             mesmaOrigem(item.etapaUrl, base);
+            mesmaOrigem(item.anotacaoUrl, base);
         }
     }
     return dados;

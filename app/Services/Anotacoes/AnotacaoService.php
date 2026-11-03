@@ -2,6 +2,7 @@
 
 namespace App\Services\Anotacoes;
 
+use App\Enums\EtapaSelecao;
 use App\Enums\OrigemCompetencia;
 use App\Models\Anotacao;
 use App\Models\Candidato;
@@ -9,7 +10,9 @@ use App\Models\User;
 use App\Models\Vaga;
 use App\Repositories\Interfaces\AnotacaoRepositoryInterface;
 use App\Repositories\Interfaces\CandidatoRepositoryInterface;
+use App\Repositories\Interfaces\ParticipacaoRepositoryInterface;
 use App\Repositories\Interfaces\VagaRepositoryInterface;
+use App\Services\Selecao\SelecaoService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -26,6 +29,8 @@ class AnotacaoService
         private AnotacaoRepositoryInterface $anotacoes,
         private CandidatoRepositoryInterface $candidatos,
         private VagaRepositoryInterface $vagas,
+        private ParticipacaoRepositoryInterface $participacoes,
+        private SelecaoService $selecao,
     ) {}
 
     /**
@@ -72,6 +77,27 @@ class AnotacaoService
         }
 
         return $this->registrar($candidato, $vaga, $autor, $texto, $competenciasObservadas);
+    }
+
+    /**
+     * Salva a entrevista e a decisão em uma única transação, sem perder a anotação ou mover
+     * um candidato cuja etapa tenha mudado enquanto a modal estava aberta.
+     *
+     * @param  list<int>  $competenciasObservadas
+     */
+    public function registrarEntrevistaNoQuadro(Vaga $vaga, Candidato $candidato, User $autor, string $texto, array $competenciasObservadas, ?EtapaSelecao $etapa): Anotacao
+    {
+        return DB::transaction(function () use ($vaga, $candidato, $autor, $texto, $competenciasObservadas, $etapa): Anotacao {
+            $participacao = $this->participacoes->encontrar($vaga, $candidato, bloquear: true);
+
+            if ($participacao?->etapa !== EtapaSelecao::Entrevista) {
+                throw ValidationException::withMessages(['etapa' => 'Este candidato não está mais em entrevista. Atualize o quadro antes de registrar a anotação.']);
+            }
+
+            $this->selecao->moverEtapa($vaga, $candidato, $etapa ?? EtapaSelecao::Entrevista, $autor);
+
+            return $this->registrarNaVaga($vaga, $candidato, $autor, $texto, $competenciasObservadas);
+        });
     }
 
     /**

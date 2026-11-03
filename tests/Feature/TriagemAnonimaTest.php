@@ -163,19 +163,17 @@ class TriagemAnonimaTest extends TestCase
         $this->assertSemIdentidade([$quadroB, $perfilB]);
     }
 
-    public function test_aprovado_tambem_revela_e_voltar_para_triagem_oculta_de_novo(): void
+    public function test_aprovado_mantem_identidade_e_nao_pode_voltar_para_triagem(): void
     {
         $this->mover($this->vagaA, $this->candidato, 'entrevista');
         $this->mover($this->vagaA, $this->candidato, 'aprovado');
         $this->get(route('vagas.show', $this->vagaA))->assertSee(self::NOME);
 
         $this->mover($this->vagaA, $this->candidato, 'triagem')
-            ->assertSessionHas('status', fn (string $mensagem): bool => str_contains($mensagem, $this->candidato->codigo) && ! str_contains($mensagem, self::NOME));
+            ->assertSessionHasErrors(['etapa' => 'Não é possível voltar à triagem após iniciar a entrevista.']);
 
-        $this->assertSemIdentidade([
-            $this->get(route('vagas.show', $this->vagaA))->getContent(),
-            $this->perfil($this->vagaA)->assertSee('Identidade protegida na triagem anônima')->getContent(),
-        ]);
+        $this->perfil($this->vagaA)->assertSee(self::NOME)->assertSee('Etapa nesta vaga: Aprovado');
+        $this->assertSemIdentidade([$this->perfil($this->vagaB)->getContent()]);
     }
 
     public function test_anotacoes_so_aparecem_no_perfil_revelado(): void
@@ -222,20 +220,20 @@ class TriagemAnonimaTest extends TestCase
         $this->assertStringContainsString(self::NOME, json_encode($resposta->json('data.quadro-vaga'), JSON_UNESCAPED_UNICODE));
 
         $volta = $this->mover($this->vagaA, $this->candidato, 'triagem', 'quadro', json: true)
-            ->assertOk()
+            ->assertUnprocessable()
             ->assertHeader('Cache-Control', 'no-store, private');
-        $this->assertSame(['quadro-vaga'], array_keys($volta->json('data')));
-        $this->assertStringContainsString($this->candidato->codigo, $volta->json('message'));
-        $quadro = json_encode($volta->json('data.quadro-vaga'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
-        $this->assertSemIdentidade([$volta->json('message'), $quadro]);
+        $volta->assertJsonValidationErrors('etapa')->assertJsonMissingPath('data');
+        $this->assertSemIdentidade([$volta->getContent()]);
+        $quadro = json_encode($this->getJson(route('vagas.show', $this->vagaA))->assertOk()->json('data.quadro-vaga'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $this->assertStringContainsString(self::NOME, $quadro);
         $this->assertStringContainsString('Otávio Brandão', $quadro);
 
-        $this->mover($this->vagaA, $this->candidato, 'entrevista', 'perfil', json: true);
-        $perfil = $this->mover($this->vagaA, $this->candidato, 'triagem', 'perfil', json: true)->assertOk();
-        $this->assertSame(['perfil-na-vaga'], array_keys($perfil->json('fragments')));
-        $fragmentoPerfil = $perfil->json('fragments.perfil-na-vaga');
+        $perfil = $this->mover($this->vagaA, $this->candidato, 'triagem', 'perfil', json: true)->assertUnprocessable();
+        $perfil->assertJsonMissingPath('fragments');
+        $this->assertSemIdentidade([$perfil->getContent()]);
+        $fragmentoPerfil = $this->perfil($this->vagaB)->assertOk()->getContent();
         $this->assertStringContainsString('Identidade protegida na triagem anônima', $fragmentoPerfil);
-        $this->assertSemIdentidade([$perfil->json('message'), $fragmentoPerfil]);
+        $this->assertSemIdentidade([$fragmentoPerfil]);
         $this->assertStringNotContainsString('https://github.com/fernanda-demo', $fragmentoPerfil);
         $this->assertStringNotContainsString('Otávio Brandão', $fragmentoPerfil);
 

@@ -7,14 +7,19 @@ use App\Models\Candidato;
 use App\Models\Vaga;
 use App\Services\Anotacoes\AnotacaoService;
 use App\Services\Selecao\VisibilidadeCandidatoService;
+use App\Services\VagaService;
+use App\Services\VagaTelaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use stdClass;
 
 class ParticipacaoAnotacaoController extends Controller
 {
     public function __construct(
         private AnotacaoService $anotacoes,
         private VisibilidadeCandidatoService $visibilidade,
+        private VagaService $vagas,
+        private VagaTelaService $tela,
     ) {}
 
     /**
@@ -24,6 +29,31 @@ class ParticipacaoAnotacaoController extends Controller
      */
     public function store(RegistrarAnotacaoRequest $request, Vaga $vaga, Candidato $candidato): RedirectResponse|JsonResponse
     {
+        if ($request->vemDoQuadro()) {
+            $etapa = $request->etapa();
+            $this->anotacoes->registrarEntrevistaNoQuadro(
+                $vaga,
+                $candidato,
+                $request->user(),
+                $request->validated('texto'),
+                $request->competenciasObservadas(),
+                $etapa,
+            );
+
+            $mensagem = $etapa === null ? 'Anotação registrada. Candidato mantido em entrevista.' : "Anotação registrada. Candidato movido para {$etapa->rotulo()}.";
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $mensagem,
+                    'fragments' => new stdClass,
+                    'data' => ['quadro-vaga' => $this->tela->quadro($this->vagas->quadro($vaga))],
+                    'redirect' => null,
+                ])->header('Cache-Control', 'private, no-store');
+            }
+
+            return redirect()->route('vagas.show', $vaga)->with('status', $mensagem);
+        }
+
         $this->anotacoes->registrarNaVaga(
             $vaga,
             $candidato,

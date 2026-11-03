@@ -18,7 +18,7 @@ use Illuminate\Database\Eloquent\Collection;
 
 /**
  * O que o recrutador pode ver de um candidato dentro de uma vaga (contracts/visibilidade-por-contexto.md):
- * a identidade só aparece em Entrevista ou Aprovado, e apenas na vaga em questão.
+ * a identidade só aparece após a triagem, e apenas na vaga em questão.
  */
 class VisibilidadeCandidatoService
 {
@@ -74,7 +74,7 @@ class VisibilidadeCandidatoService
     }
 
     /**
-     * Aparece no quadro: é elegível ou já está em entrevista/aprovado nesta vaga (mesmo desativado).
+     * Aparece no quadro: é elegível ou já saiu da triagem nesta vaga (mesmo desativado).
      */
     public function participaDoQuadro(Vaga $vaga, Candidato $candidato): bool
     {

@@ -32,6 +32,7 @@
                     @method('PATCH')
                     <input type="hidden" name="contexto" value="quadro">
                 </form>
+                <x-botao variante="secundario" tamanho="sm" data-adicionar-anotacao hidden aria-haspopup="dialog" aria-controls="anotar-entrevista-quadro">Adicionar anotação</x-botao>
             </div>
             <button type="button" data-expandir-card aria-expanded="false" class="group ml-auto inline-flex size-9 shrink-0 cursor-pointer items-center justify-center rounded-lg text-primaria-700 transition-colors hover:bg-primaria-50 motion-reduce:transition-none">
                 <x-icone nome="seta" class="rotate-90 transition-transform group-aria-expanded:-rotate-90 motion-reduce:transition-none" />

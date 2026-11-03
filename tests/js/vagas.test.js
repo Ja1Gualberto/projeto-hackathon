@@ -28,7 +28,7 @@ function documento() {
         'modelo-vaga': ['[data-status]', '[data-tipo]', '[data-area]', '[data-titulo]', '[data-competencias-total]', '[data-elegiveis]', '[data-entrevista]', '[data-aprovado]', '[data-abrir-quadro]'],
         'modelo-quadro': ['[data-status]', '[data-tipo]', '[data-area]', '[data-titulo]', '[data-descricao]', '[data-atualizar-quadro]', '[data-editar-vaga]', '[data-encerrar-vaga]', '[data-vaga-encerrada]', '[data-encerrada-em]', '[data-soma-pesos]', '[data-requisitos]', '[data-elegiveis]', '[data-colunas]'],
         'modelo-coluna': ['[data-coluna-titulo]', '[data-coluna-total]', '[data-aviso-triagem]', '[data-sem-elegiveis]', '[data-coluna-vazia]', '[data-coluna-itens]'],
-        'modelo-card-ranking': ['[data-card-titulo]', '[data-link-perfil]', '[data-posicao]', '[data-codigo-revelado]', '[data-tipo-servidor]', '[data-tipo-estagiario]', '[data-area]', '[data-situacao]', '[data-score]', '[data-score-barra]', '[data-score-texto]', '[data-explicacao]', '[data-competencias]', '[data-experiencia]', '[data-energia]', '[data-proximidade-energia]', '[data-energia-ausente]', '[data-mover-etapa]', '[data-card-detalhes]', '[data-expandir-card]'],
+        'modelo-card-ranking': ['[data-card-titulo]', '[data-link-perfil]', '[data-posicao]', '[data-codigo-revelado]', '[data-tipo-servidor]', '[data-tipo-estagiario]', '[data-area]', '[data-situacao]', '[data-score]', '[data-score-barra]', '[data-score-texto]', '[data-explicacao]', '[data-competencias]', '[data-experiencia]', '[data-energia]', '[data-proximidade-energia]', '[data-energia-ausente]', '[data-mover-etapa]', '[data-card-detalhes]', '[data-expandir-card]', '[data-adicionar-anotacao]'],
         'modelo-tag-competencia': ['[data-tag-nome]', '[data-tag-peso]', '[data-tag-faltante]', '[data-tag-origem]'],
         'modelo-peso-competencia': ['label', 'select', '[data-erro-campo]'],
         'modelo-eixo-energia': ['label', 'select'],
@@ -60,7 +60,7 @@ function dadosQuadro() {
         colunas: { triagem: [{ codigo: 'CAND-0042', nome: null, tipo: 'estagiario', area: 'Dados', etapa: 'triagem', elegivel: true, desativado: false,
             experienciaNaArea: true, proximidadeEnergia: 83, percentual: 75, explicacao: '75% — tem 1 de 2 competências',
             atendidas: [{ nome: 'Python', peso: 3, origem: 'entrevista' }], naoIdentificadas: [{ nome: 'SQL', peso: 1 }],
-            perfilUrl: '/vagas/3/candidatos/CAND-0042', etapaUrl: '/vagas/3/candidatos/CAND-0042/etapa' }], entrevista: [], aprovado: [] },
+            perfilUrl: '/vagas/3/candidatos/CAND-0042', etapaUrl: '/vagas/3/candidatos/CAND-0042/etapa', anotacaoUrl: '/vagas/3/candidatos/CAND-0042/anotacoes' }], entrevista: [], aprovado: [], reprovado: [] },
     };
 }
 
@@ -113,7 +113,7 @@ test('quadro monta ranking anônimo, ações, tags, score e energia apenas em Ja
     assert.equal(quadro.querySelector('[data-soma-pesos]').textContent, 4);
     assert.equal(quadro.querySelector('[data-elegiveis]').textContent, '· 1 candidato elegível');
     const [triagem, entrevista, aprovado] = colunas(quadro);
-    assert.deepEqual(colunas(quadro).map((coluna) => coluna.dataset.etapa), ['triagem', 'entrevista', 'aprovado']);
+    assert.deepEqual(colunas(quadro).map((coluna) => coluna.dataset.etapa), ['triagem', 'entrevista', 'aprovado', 'reprovado']);
     assert.equal(triagem.querySelector('[data-coluna-total]').atributos['aria-label'], '1 candidato');
     assert.equal(entrevista.querySelector('[data-coluna-vazia]').hidden, false);
     assert.equal(aprovado.querySelector('[data-coluna-vazia]').textContent, 'Nenhum candidato aprovado ainda.');
@@ -133,6 +133,9 @@ test('quadro monta ranking anônimo, ações, tags, score e energia apenas em Ja
     const acao = card.querySelector('[data-mover-etapa]').children[0];
     assert.equal(acao.value, 'entrevista');
     assert.equal(acao.textContent, 'Mover para Entrevista');
+    assert.equal(card.querySelector('[data-mover-etapa]').dataset.etapaAtual, 'triagem');
+    assert.equal(card.querySelector('[data-mover-etapa]').dataset.candidatoCodigo, 'CAND-0042');
+    assert.equal(card.querySelector('[data-adicionar-anotacao]').hidden, true);
 });
 
 test('etapas reveladas oferecem ações corretas e campos de texto nunca usam innerHTML', () => {
@@ -146,12 +149,30 @@ test('etapas reveladas oferecem ações corretas e campos de texto nunca usam in
     const card = cards(colunas(quadro)[1])[0];
     assert.equal(card.querySelector('[data-link-perfil]').textContent, '<script>nome</script>');
     assert.equal(card.querySelector('[data-link-perfil]').innerHTML, undefined);
-    assert.deepEqual(card.querySelector('[data-mover-etapa]').children.map((botao) => botao.value), ['aprovado', 'triagem']);
+    assert.deepEqual(card.querySelector('[data-mover-etapa]').children.map((botao) => botao.value), ['aprovado', 'reprovado']);
+    assert.equal(card.querySelector('[data-adicionar-anotacao]').hidden, false);
+    assert.equal(card.querySelector('[data-adicionar-anotacao]').dataset.anotacaoUrl, 'https://banco.test/vagas/3/candidatos/CAND-0042/anotacoes');
     assert.equal(card.querySelector('[data-energia-ausente]').hidden, false);
     assert.ok(card.querySelector('[data-score-texto]').classList.contains('text-score-medio'));
     const aprovado = cards(colunas(quadro)[2])[0];
     assert.deepEqual(aprovado.querySelector('[data-mover-etapa]').children.map((botao) => botao.value), ['entrevista']);
     assert.ok(aprovado.querySelector('[data-score-texto]').classList.contains('text-score-baixo'));
+    assert.equal(aprovado.querySelector('[data-adicionar-anotacao]').hidden, true);
+});
+
+test('coluna de reprovados mostra contagem, identidade e retorno à entrevista sem anotação no card', () => {
+    const dados = dadosQuadro();
+    const item = dados.colunas.triagem.pop();
+    dados.colunas.reprovado.push({ ...item, etapa: 'reprovado', nome: 'Ana Silva' });
+
+    const coluna = colunas(montarQuadro(dados, documento()))[3];
+
+    assert.equal(coluna.querySelector('[data-coluna-titulo]').textContent, 'Reprovados');
+    assert.equal(coluna.querySelector('[data-coluna-total]').textContent, 1);
+    const card = cards(coluna)[0];
+    assert.equal(card.querySelector('[data-link-perfil]').textContent, 'Ana Silva');
+    assert.deepEqual(card.querySelector('[data-mover-etapa]').children.map((botao) => botao.value), ['entrevista']);
+    assert.equal(card.querySelector('[data-adicionar-anotacao]').hidden, true);
 });
 
 test('cards iniciam compactos com controles de expansão independentes e identificação acessível', () => {
@@ -189,6 +210,7 @@ test('vaga encerrada e candidatos inelegíveis removem ações e arraste', () =>
     assert.equal(card.draggable, false);
     assert.equal(card.querySelector('[data-mover-etapa]').removido, true);
     assert.equal(card.querySelector('[data-energia]').hidden, true);
+    assert.equal(card.querySelector('[data-adicionar-anotacao]').hidden, true);
     dados.vaga.aberta = true;
     dados.vaga.editarUrl = '/vagas/3/editar';
     dados.colunas.triagem[0].elegivel = false;
@@ -233,6 +255,7 @@ test('dados inválidos e links externos são recusados antes de alterar a regiã
         (dados) => { dados.colunas.triagem[0].percentual = 101; },
         (dados) => { dados.colunas.triagem[0].perfilUrl = 'https://outro.test/'; },
         (dados) => { dados.vaga.url = 'javascript:alert(1)'; },
+        (dados) => { dados.colunas.triagem[0].anotacaoUrl = 'https://outro.test/anotacoes'; },
         (dados) => { delete dados.colunas.triagem[0].perfilUrl; },
         (dados) => { delete dados.colunas.aprovado; },
     ]) {

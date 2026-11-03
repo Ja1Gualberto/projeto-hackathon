@@ -23,8 +23,7 @@ class ParticipacaoEtapaController extends Controller
     ) {}
 
     /**
-     * Move o candidato e devolve os dados do quadro ou o fragmento do perfil no estado final,
-     * para nada revelado sobrar na tela ao voltar à triagem.
+     * Move o candidato e devolve os dados do quadro ou o fragmento do perfil no estado final.
      */
     public function update(MoverEtapaRequest $request, Vaga $vaga, Candidato $candidato): RedirectResponse|JsonResponse
     {

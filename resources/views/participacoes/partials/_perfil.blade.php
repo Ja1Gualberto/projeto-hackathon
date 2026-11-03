@@ -8,8 +8,9 @@
     $identificacao = $perfil->nome ?? $perfil->codigo;
     $acoes = match ($perfil->etapa) {
         \App\Enums\EtapaSelecao::Triagem => [[\App\Enums\EtapaSelecao::Entrevista, 'Mover para Entrevista', 'primario']],
-        \App\Enums\EtapaSelecao::Entrevista => [[\App\Enums\EtapaSelecao::Aprovado, 'Aprovar', 'primario'], [\App\Enums\EtapaSelecao::Triagem, 'Voltar para Triagem', 'secundario']],
+        \App\Enums\EtapaSelecao::Entrevista => [[\App\Enums\EtapaSelecao::Aprovado, 'Aprovar', 'primario'], [\App\Enums\EtapaSelecao::Reprovado, 'Reprovar', 'perigo']],
         \App\Enums\EtapaSelecao::Aprovado => [[\App\Enums\EtapaSelecao::Entrevista, 'Voltar para Entrevista', 'secundario']],
+        \App\Enums\EtapaSelecao::Reprovado => [[\App\Enums\EtapaSelecao::Entrevista, 'Voltar para Entrevista', 'secundario']],
     };
 @endphp
 
@@ -38,7 +39,7 @@
 
         <div class="flex shrink-0 flex-wrap items-start gap-3 lg:justify-end">
             @if ($perfil->podeMover)
-                <form method="POST" action="{{ route('vagas.candidatos.etapa', [$vaga, $perfil->codigo]) }}" data-mover-etapa class="flex flex-wrap gap-2">
+                <form method="POST" action="{{ route('vagas.candidatos.etapa', [$vaga, $perfil->codigo]) }}" data-mover-etapa data-etapa-atual="{{ $perfil->etapa->value }}" data-candidato-codigo="{{ $perfil->codigo }}" class="flex flex-wrap gap-2">
                     @csrf
                     @method('PATCH')
                     <input type="hidden" name="contexto" value="perfil">

@@ -15,7 +15,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Quadro Triagem / Entrevista / Aprovado da vaga e as movimentações entre etapas (US4, R8, R12).
+ * Quadro da vaga e as movimentações entre etapas.
  */
 class SelecaoService
 {
@@ -33,11 +33,11 @@ class SelecaoService
     ) {}
 
     /**
-     * Triagem = elegíveis sem participação ou em triagem. Entrevista e Aprovado incluem quem foi
+     * Triagem = elegíveis sem participação ou em triagem. As demais etapas incluem quem foi
      * movido e depois desativado (esmaecido, sem ações). Cada coluna segue a ordem do ranking, e o
      * nome só é preenchido nas etapas que revelam a identidade.
      *
-     * @return array{triagem: Collection<int, ItemRankingDTO>, entrevista: Collection<int, ItemRankingDTO>, aprovado: Collection<int, ItemRankingDTO>}
+     * @return array{triagem: Collection<int, ItemRankingDTO>, entrevista: Collection<int, ItemRankingDTO>, aprovado: Collection<int, ItemRankingDTO>, reprovado: Collection<int, ItemRankingDTO>}
      */
     public function quadro(Vaga $vaga): array
     {
@@ -46,7 +46,7 @@ class SelecaoService
         $idsElegiveis = array_flip($elegiveis->modelKeys());
         $candidatos = $elegiveis->concat($this->participacoes->candidatosRevelados($vaga))->unique('id');
 
-        $colunas = ['triagem' => collect(), 'entrevista' => collect(), 'aprovado' => collect()];
+        $colunas = ['triagem' => collect(), 'entrevista' => collect(), 'aprovado' => collect(), 'reprovado' => collect()];
 
         foreach ($this->ranking->classificar($vaga, $candidatos) as ['candidato' => $candidato, 'resultado' => $resultado, 'proximidadeEnergia' => $proximidade]) {
             $etapa = $etapas[$candidato->id] ?? EtapaSelecao::Triagem;

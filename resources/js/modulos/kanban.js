@@ -1,4 +1,4 @@
-import { anunciar, aplicarFragmentos, ErroAjax, solicitar } from './ajax.js';
+import { anunciar, aplicarFragmentos, ErroAjax, limparErros, solicitar } from './ajax.js';
 import { fecharAlertas } from './alertas.js';
 import { enviarFormulario, suportaAjax } from './formularios.js';
 
@@ -14,6 +14,21 @@ import { enviarFormulario, suportaAjax } from './formularios.js';
  */
 const MENSAGENS_PROPRIAS = new Set([401, 403, 404, 419]);
 const REGIOES_DE_MOVIMENTACAO = '#quadro-vaga, #perfil-na-vaga';
+const DESTINOS = { triagem: ['entrevista'], entrevista: ['aprovado', 'reprovado'], aprovado: ['entrevista'], reprovado: ['entrevista'] };
+
+export function confirmarEntradaEntrevista(formulario, doc = document) {
+    const dialogo = doc.getElementById('confirmar-entrevista');
+    if (!dialogo?.showModal) {
+        anunciar('Não foi possível abrir a confirmação. Atualize a página antes de mover o candidato.', doc, 'erro');
+        return Promise.resolve(false);
+    }
+    dialogo.querySelector('[data-confirmacao-codigo]').textContent = formulario.dataset.candidatoCodigo;
+    dialogo.returnValue = '';
+    return new Promise((resolve) => {
+        dialogo.addEventListener('close', () => resolve(dialogo.returnValue === 'confirmar'), { once: true });
+        dialogo.showModal();
+    });
+}
 
 export function registrarQuadro(doc = document) {
     let pendente = false;
@@ -68,6 +83,11 @@ export function registrarQuadro(doc = document) {
         };
     }
 
+    function focarCard(regiao, codigo) {
+        const card = Array.from(regiao.querySelectorAll('[data-codigo]')).find((item) => item.dataset.codigo === codigo);
+        card?.querySelector('[data-link-perfil]')?.focus();
+    }
+
     async function mover(formulario, botao) {
         const regiao = formulario.closest(REGIOES_DE_MOVIMENTACAO);
         if (!regiao || pendente) {
@@ -75,11 +95,13 @@ export function registrarQuadro(doc = document) {
         }
         const codigo = formulario.closest('[data-codigo]')?.dataset.codigo;
         pendente = true;
-        regiao.setAttribute('aria-busy', 'true');
-        // A mensagem anterior pode citar um nome revelado: cada movimentação a substitui, para o nome
-        // não sobrar ao lado do código depois de uma volta à triagem nem empilhar alertas sobre o quadro.
-        fecharAlertas(doc);
         try {
+            if (formulario.dataset.etapaAtual === 'triagem' && botao?.value === 'entrevista'
+                && !await confirmarEntradaEntrevista(formulario, doc)) {
+                return;
+            }
+            regiao.setAttribute('aria-busy', 'true');
+            fecharAlertas(doc);
             await enviarFormulario(formulario, botao);
         } finally {
             regiao.removeAttribute('aria-busy');
@@ -87,8 +109,33 @@ export function registrarQuadro(doc = document) {
         }
         // Com sucesso, o formulário saiu do documento junto com a região antiga: o foco vai ao card movido.
         if (formulario.isConnected === false && codigo) {
-            const card = Array.from(regiao.querySelectorAll('[data-codigo]')).find((item) => item.dataset.codigo === codigo);
-            card?.querySelector('[data-link-perfil]')?.focus();
+            focarCard(regiao, codigo);
+        }
+    }
+
+    async function anotar(formulario, botao) {
+        const regiao = doc.getElementById('quadro-vaga');
+        if (!regiao || pendente) {
+            return;
+        }
+        pendente = true;
+        regiao.setAttribute('aria-busy', 'true');
+        let mensagemSucesso = null;
+        const sucesso = (evento) => { mensagemSucesso = evento.detail.resposta.message ?? 'Anotação registrada.'; };
+        formulario.addEventListener('ajax:sucesso', sucesso);
+        try {
+            await enviarFormulario(formulario, botao);
+        } finally {
+            formulario.removeEventListener('ajax:sucesso', sucesso);
+            regiao.removeAttribute('aria-busy');
+            pendente = false;
+        }
+        if (mensagemSucesso !== null) {
+            formulario.closest('dialog').close();
+            formulario.reset();
+            fecharAlertas(doc);
+            anunciar(mensagemSucesso, doc, 'sucesso');
+            focarCard(regiao, formulario.dataset.candidatoCodigo);
         }
     }
 
@@ -99,7 +146,8 @@ export function registrarQuadro(doc = document) {
     function colunaDeDestino(evento) {
         const coluna = evento.target.closest?.('[data-etapa]');
         const regiao = doc.getElementById('quadro-vaga');
-        if (!arrastado || pendente || !coluna || !regiao?.contains(coluna) || coluna.dataset.etapa === arrastado.origem) {
+        if (!arrastado || pendente || !coluna || !regiao?.contains(coluna)
+            || !DESTINOS[arrastado.origem]?.includes(coluna.dataset.etapa)) {
             return null;
         }
         return coluna;
@@ -110,6 +158,26 @@ export function registrarQuadro(doc = document) {
             return;
         }
         const regiao = doc.getElementById('quadro-vaga');
+        const adicionar = evento.target.closest?.('[data-adicionar-anotacao]');
+        if (adicionar && regiao?.contains(adicionar)) {
+            evento.preventDefault();
+            if (pendente) {
+                return;
+            }
+            const card = adicionar.closest('[data-codigo]');
+            const dialogo = doc.getElementById('anotar-entrevista-quadro');
+            const formulario = dialogo.querySelector('form[data-anotar-entrevista]');
+            if (formulario.dataset.candidatoCodigo !== card.dataset.codigo) {
+                formulario.reset();
+                limparErros(formulario);
+            }
+            formulario.action = adicionar.dataset.anotacaoUrl;
+            formulario.dataset.candidatoCodigo = card.dataset.codigo;
+            dialogo.querySelector('[data-anotacao-candidato]').textContent = card.querySelector('[data-link-perfil]').textContent;
+            dialogo.showModal();
+            formulario.querySelector('textarea').focus();
+            return;
+        }
         const expandir = evento.target.closest?.('[data-expandir-card]');
         if (expandir && regiao?.contains(expandir)) {
             const card = expandir.closest('[data-codigo]');
@@ -157,6 +225,10 @@ export function registrarQuadro(doc = document) {
 
     doc.addEventListener('submit', (evento) => {
         const formulario = evento.target;
+        if (formulario.matches?.('form[data-anotar-entrevista]')) {
+            evento.preventDefault();
+            return anotar(formulario, evento.submitter);
+        }
         if (!formulario.matches?.('form[data-mover-etapa]') && !formulario.matches?.('form[data-encerrar-vaga]')) {
             return undefined;
         }

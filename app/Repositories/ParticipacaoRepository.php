@@ -11,6 +11,7 @@ use App\Repositories\Interfaces\ParticipacaoRepositoryInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 class ParticipacaoRepository implements ParticipacaoRepositoryInterface
 {
@@ -23,11 +24,12 @@ class ParticipacaoRepository implements ParticipacaoRepositoryInterface
             ->all();
     }
 
-    public function encontrar(Vaga $vaga, Candidato $candidato): ?Participacao
+    public function encontrar(Vaga $vaga, Candidato $candidato, bool $bloquear = false): ?Participacao
     {
         return Participacao::query()
             ->where('vaga_id', $vaga->id)
             ->where('candidato_id', $candidato->id)
+            ->when($bloquear, fn (Builder $query) => $query->lockForUpdate())
             ->first();
     }
 
@@ -42,6 +44,10 @@ class ParticipacaoRepository implements ParticipacaoRepositoryInterface
                 ?? new Participacao(['vaga_id' => $vaga->id, 'candidato_id' => $candidato->id, 'etapa' => EtapaSelecao::Triagem]);
 
             $de = $participacao->etapa;
+
+            if ($etapa === EtapaSelecao::Triagem && $de !== EtapaSelecao::Triagem) {
+                throw ValidationException::withMessages(['etapa' => 'Não é possível voltar à triagem após iniciar a entrevista.']);
+            }
 
             if ($de === $etapa) {
                 return $participacao;
@@ -70,7 +76,7 @@ class ParticipacaoRepository implements ParticipacaoRepositoryInterface
         return Candidato::query()
             ->whereHas('participacoes', fn (Builder $query) => $query
                 ->where('vaga_id', $vaga->id)
-                ->whereIn('etapa', [EtapaSelecao::Entrevista->value, EtapaSelecao::Aprovado->value]))
+                ->where('etapa', '!=', EtapaSelecao::Triagem->value))
             ->with(['competencias', 'perfilEnergia'])
             ->orderBy('created_at')
             ->orderBy('id')

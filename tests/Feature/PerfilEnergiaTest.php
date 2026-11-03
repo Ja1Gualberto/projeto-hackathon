@@ -232,7 +232,7 @@ class PerfilEnergiaTest extends TestCase
             ->assertSee('data-ajax', false)->assertSee('<noscript>', false)->assertDontSee($candidato->codigo);
     }
 
-    public function test_volta_a_triagem_limpa_justificativa_manual_no_fragmento_json(): void
+    public function test_triagem_em_outra_vaga_limpa_justificativa_manual_no_fragmento_json(): void
     {
         $usuario = User::factory()->create();
         $candidato = Candidato::factory()->create(['nome' => 'Ágata Queiroz', 'email' => 'agata@exemplo.com.br']);
@@ -240,8 +240,9 @@ class PerfilEnergiaTest extends TestCase
         $this->perfil($candidato, 'humano');
         $candidato->perfilEnergia()->update(['justificativa' => 'Ágata Queiroz trabalha em equipe; agata@exemplo.com.br']);
         $this->actingAs($usuario)->patchJson(route('vagas.candidatos.etapa', [$vaga, $candidato->codigo]), ['etapa' => 'entrevista'])->assertOk();
+        $outraVaga = Vaga::factory()->create(['tipo_candidato' => 'ambos']);
 
-        $resposta = $this->patchJson(route('vagas.candidatos.etapa', [$vaga, $candidato->codigo]), ['etapa' => 'triagem', 'contexto' => 'perfil'])->assertOk();
+        $resposta = $this->patchJson(route('vagas.candidatos.etapa', [$outraVaga, $candidato->codigo]), ['etapa' => 'triagem', 'contexto' => 'perfil'])->assertOk();
 
         $html = $resposta->json('fragments.perfil-na-vaga');
         $this->assertStringContainsString('trabalha em equipe', $html);

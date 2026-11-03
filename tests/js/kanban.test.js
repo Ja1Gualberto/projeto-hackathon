@@ -214,7 +214,7 @@ function montarMovimentacao() {
         dentroDoQuadro: true, dataset: { etapa },
         setAttribute: () => alvos.add(etapa), removeAttribute: () => alvos.delete(etapa),
     });
-    const colunas = { triagem: coluna('triagem'), entrevista: coluna('entrevista'), aprovado: coluna('aprovado') };
+    const colunas = { triagem: coluna('triagem'), entrevista: coluna('entrevista'), aprovado: coluna('aprovado'), reprovado: coluna('reprovado') };
     const doc = {
         baseURI: 'https://banco.test/vagas/3',
         getElementById: (id) => id === 'quadro-vaga' ? regiao : null,
@@ -563,4 +563,231 @@ test('encerramento usa uma confirmação e impede movimentações e atualizaçã
     assert.equal(confirmacoes, 1);
     assert.equal(quadro.regiao.innerHTML, 'encerrada');
     assert.equal(quadro.atributos.has('aria-busy'), false);
+});
+
+function instalarConfirmacao(quadro) {
+    const codigo = { textContent: '' };
+    const dialogo = Object.assign(new EventTarget(), {
+        aberto: false, returnValue: '',
+        querySelector: () => codigo,
+        showModal() { this.aberto = true; },
+        close(valor = '') { this.aberto = false; this.returnValue = valor; this.dispatchEvent(new Event('close')); },
+    });
+    const getElementById = quadro.doc.getElementById;
+    quadro.doc.getElementById = (id) => id === 'confirmar-entrevista' ? dialogo : getElementById(id);
+    const candidato = quadro.formulario();
+    candidato.form.dataset.etapaAtual = 'triagem';
+    candidato.form.dataset.candidatoCodigo = 'CAND-0042';
+    return { ...candidato, dialogo, codigo };
+}
+
+test('entrada em entrevista aguarda confirmação na modal antes de enviar e bloqueia envio duplicado', async () => {
+    const quadro = montarMovimentacao();
+    const { form, dialogo, codigo } = instalarConfirmacao(quadro);
+    let chamadas = 0;
+    globalThis.fetch = async () => { chamadas++; return resposta(envelope({ 'quadro-vaga': 'em entrevista' })); };
+
+    const envio = quadro.docEventos.submit(quadro.evento(form, { submitter: { name: 'etapa', value: 'entrevista' } }));
+    await quadro.docEventos.submit(quadro.evento(form, { submitter: { name: 'etapa', value: 'entrevista' } }));
+
+    assert.equal(dialogo.aberto, true);
+    assert.equal(codigo.textContent, 'CAND-0042');
+    assert.equal(chamadas, 0);
+    assert.equal(quadro.regiao.innerHTML, 'quadro anterior');
+
+    dialogo.close('confirmar');
+    await envio;
+
+    assert.equal(chamadas, 1);
+    assert.equal(quadro.regiao.innerHTML, 'em entrevista');
+});
+
+test('cancelar a confirmação mantém candidato na triagem e permite nova tentativa', async () => {
+    const quadro = montarMovimentacao();
+    const { form, dialogo } = instalarConfirmacao(quadro);
+    let chamadas = 0;
+    globalThis.fetch = async () => { chamadas++; return resposta(envelope({ 'quadro-vaga': 'em entrevista' })); };
+
+    const cancelado = quadro.docEventos.submit(quadro.evento(form, { submitter: { name: 'etapa', value: 'entrevista' } }));
+    dialogo.close();
+    await cancelado;
+
+    assert.equal(chamadas, 0);
+    assert.equal(quadro.regiao.innerHTML, 'quadro anterior');
+    assert.equal(quadro.atributos.has('aria-busy'), false);
+
+    const confirmado = quadro.docEventos.submit(quadro.evento(form, { submitter: { name: 'etapa', value: 'entrevista' } }));
+    dialogo.close('confirmar');
+    await confirmado;
+
+    assert.equal(chamadas, 1);
+});
+
+test('modal de confirmação indisponível impede movimentação e orienta atualizar a página', async () => {
+    const quadro = montarMovimentacao();
+    const { form } = quadro.formulario();
+    form.dataset.etapaAtual = 'triagem';
+    let chamadas = 0;
+    globalThis.fetch = async () => { chamadas++; return resposta(envelope({ 'quadro-vaga': 'em entrevista' })); };
+
+    await quadro.docEventos.submit(quadro.evento(form, { submitter: { name: 'etapa', value: 'entrevista' } }));
+
+    assert.equal(chamadas, 0);
+    assert.equal(quadro.regiao.innerHTML, 'quadro anterior');
+    assert.match(quadro.aviso.textContent, /Não foi possível abrir a confirmação/);
+    assert.equal(quadro.atributos.has('aria-busy'), false);
+});
+
+test('arrastar da triagem para entrevista também exige confirmação e não move ao cancelar', async () => {
+    const quadro = montarMovimentacao();
+    const { card, dialogo } = instalarConfirmacao(quadro);
+    let chamadas = 0;
+    globalThis.fetch = async () => { chamadas++; return resposta(envelope({ 'quadro-vaga': 'em entrevista' })); };
+    quadro.docEventos.dragstart(quadro.evento(quadro.elementoEm(card), { dataTransfer: { setData() {} } }));
+
+    const envio = quadro.docEventos.drop(quadro.evento(quadro.elementoEm(quadro.colunas.entrevista)));
+
+    assert.equal(dialogo.aberto, true);
+    assert.equal(chamadas, 0);
+    dialogo.close('cancelar');
+    await envio;
+    assert.equal(chamadas, 0);
+    assert.equal(quadro.regiao.innerHTML, 'quadro anterior');
+});
+
+test('arrastar da entrevista para triagem é ignorado e para reprovados envia a etapa correta', async () => {
+    const quadro = montarMovimentacao();
+    const { card } = quadro.formulario('CAND-0042', 'entrevista');
+    const etapas = [];
+    globalThis.fetch = async (url, opcoes) => {
+        etapas.push(opcoes.body.get('etapa'));
+        return resposta(envelope({ 'quadro-vaga': 'reprovado' }));
+    };
+    quadro.docEventos.dragstart(quadro.evento(quadro.elementoEm(card), { dataTransfer: { setData() {} } }));
+
+    const triagem = quadro.evento(quadro.elementoEm(quadro.colunas.triagem));
+    quadro.docEventos.dragover(triagem);
+    await quadro.docEventos.drop(triagem);
+
+    assert.equal(triagem.prevenido, false);
+    assert.deepEqual(etapas, []);
+
+    await quadro.docEventos.drop(quadro.evento(quadro.elementoEm(quadro.colunas.reprovado)));
+
+    assert.deepEqual(etapas, ['reprovado']);
+});
+
+function instalarAnotacao(quadro) {
+    const candidato = { textContent: '' };
+    const campo = { focado: false, focus() { this.focado = true; } };
+    const resumo = { hidden: true, textContent: '', removeAttribute() {}, focus() {} };
+    let resets = 0;
+    const dialogo = {
+        aberto: false,
+        showModal() { this.aberto = true; },
+        close() { this.aberto = false; },
+        querySelector: (seletor) => seletor === '[data-anotacao-candidato]' ? candidato : form,
+    };
+    const form = Object.assign(new EventTarget(), {
+        method: 'post', dataset: {}, elements: [], ownerDocument: quadro.doc, isConnected: true,
+        texto: '', etapa: '',
+        matches: (seletor) => seletor === 'form[data-anotar-entrevista]',
+        closest: () => dialogo,
+        querySelector: (seletor) => seletor === 'textarea' ? campo : seletor === '[data-ajax-erros]' ? resumo : null,
+        querySelectorAll: () => [],
+        setAttribute() {}, removeAttribute() {},
+        reset() { resets++; this.texto = ''; this.etapa = ''; },
+    });
+    const card = { dataset: { codigo: 'CAND-0042' }, querySelector: () => ({ textContent: 'Ana Silva' }) };
+    const botao = { dentroDoQuadro: true, dataset: { anotacaoUrl: 'https://banco.test/vagas/3/candidatos/CAND-0042/anotacoes' }, closest: () => card };
+    const getElementById = quadro.doc.getElementById;
+    quadro.doc.getElementById = (id) => id === 'anotar-entrevista-quadro' ? dialogo : getElementById(id);
+    globalThis.FormData = class {
+        constructor(formulario) {
+            const dados = new formDataOriginal();
+            dados.append('texto', formulario.texto);
+            dados.append('etapa', formulario.etapa);
+            return dados;
+        }
+    };
+    return {
+        form, dialogo, candidato, campo,
+        get resets() { return resets; },
+        abrir: () => quadro.docEventos.click(quadro.evento({ closest: (seletor) => seletor === '[data-adicionar-anotacao]' ? botao : null }, { button: 0 })),
+        salvar: () => quadro.docEventos.submit(quadro.evento(form)),
+    };
+}
+
+test('anotação abre pelo card, salva texto e decisão juntos e só fecha e limpa depois do sucesso', async () => {
+    const quadro = montarMovimentacao();
+    const anotacao = instalarAnotacao(quadro);
+    await anotacao.abrir();
+    assert.equal(anotacao.dialogo.aberto, true);
+    assert.equal(anotacao.candidato.textContent, 'Ana Silva');
+    assert.equal(anotacao.campo.focado, true);
+    anotacao.form.texto = 'Boa comunicação.';
+    anotacao.form.etapa = 'aprovado';
+    const chamadas = [];
+    let liberar;
+    globalThis.fetch = (url, opcoes) => {
+        chamadas.push({ url: String(url), opcoes });
+        return new Promise((resolve) => { liberar = () => resolve(resposta(envelope({ 'quadro-vaga': 'aprovado' }))); });
+    };
+
+    const envio = anotacao.salvar();
+    await anotacao.salvar();
+
+    assert.equal(chamadas.length, 1);
+    assert.equal(anotacao.dialogo.aberto, true);
+    assert.equal(anotacao.form.texto, 'Boa comunicação.');
+    assert.equal(chamadas[0].url, 'https://banco.test/vagas/3/candidatos/CAND-0042/anotacoes');
+    assert.equal(chamadas[0].opcoes.body.get('texto'), 'Boa comunicação.');
+    assert.equal(chamadas[0].opcoes.body.get('etapa'), 'aprovado');
+
+    liberar();
+    await envio;
+
+    assert.equal(anotacao.dialogo.aberto, false);
+    assert.equal(anotacao.form.texto, '');
+    assert.equal(anotacao.form.etapa, '');
+    assert.equal(quadro.regiao.innerHTML, 'aprovado');
+    assert.equal(quadro.aviso.textContent, 'Anotação registrada.');
+    assert.deepEqual(quadro.focados, ['CAND-0042']);
+    assert.equal(quadro.atributos.has('aria-busy'), false);
+});
+
+test('falha ao salvar mantém modal, anotação e decisão sem mover o candidato nem repetir envio', async () => {
+    const quadro = montarMovimentacao();
+    const anotacao = instalarAnotacao(quadro);
+    await anotacao.abrir();
+    anotacao.form.texto = 'Precisa desenvolver SQL.';
+    anotacao.form.etapa = 'reprovado';
+    let chamadas = 0;
+    globalThis.fetch = async () => { chamadas++; throw new TypeError('Failed to fetch'); };
+
+    await anotacao.salvar();
+
+    assert.equal(chamadas, 1);
+    assert.equal(anotacao.dialogo.aberto, true);
+    assert.equal(anotacao.form.texto, 'Precisa desenvolver SQL.');
+    assert.equal(anotacao.form.etapa, 'reprovado');
+    assert.equal(quadro.regiao.innerHTML, 'quadro anterior');
+    assert.equal(quadro.atributos.has('aria-busy'), false);
+});
+
+test('validação da anotação mantém rascunho e decisão na modal e informa o erro sem mover', async () => {
+    const quadro = montarMovimentacao();
+    const anotacao = instalarAnotacao(quadro);
+    await anotacao.abrir();
+    anotacao.form.texto = 'Conversa registrada.';
+    anotacao.form.etapa = 'reprovado';
+    globalThis.fetch = async () => resposta({ message: 'Revise.', errors: { etapa: ['Este candidato não está mais em entrevista.'] } }, 422);
+
+    await anotacao.salvar();
+
+    assert.equal(anotacao.dialogo.aberto, true);
+    assert.equal(anotacao.form.texto, 'Conversa registrada.');
+    assert.equal(anotacao.form.etapa, 'reprovado');
+    assert.equal(quadro.regiao.innerHTML, 'quadro anterior');
+    assert.match(quadro.aviso.textContent, /não está mais em entrevista/);
 });

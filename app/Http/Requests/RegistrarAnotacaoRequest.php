@@ -2,11 +2,13 @@
 
 namespace App\Http\Requests;
 
+use App\Enums\EtapaSelecao;
 use App\Models\Candidato;
 use App\Models\Vaga;
 use App\Services\Selecao\VisibilidadeCandidatoService;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 /**
  * Anotação de entrevista, pela gestão do banco ou pelo perfil na vaga (data-model.md).
@@ -38,6 +40,12 @@ class RegistrarAnotacaoRequest extends FormRequest
             'vaga_id' => ['nullable', 'integer', 'exists:vagas,id'],
             'competencias_observadas' => ['nullable', 'array'],
             'competencias_observadas.*' => ['integer', 'distinct', 'exists:competencias,id'],
+            'contexto' => ['nullable', 'in:perfil,quadro'],
+            'etapa' => [
+                'nullable',
+                Rule::prohibitedIf(! $this->route('vaga') instanceof Vaga || $this->input('contexto') !== 'quadro'),
+                Rule::enum(EtapaSelecao::class)->only([EtapaSelecao::Aprovado, EtapaSelecao::Reprovado]),
+            ],
         ];
     }
 
@@ -49,6 +57,9 @@ class RegistrarAnotacaoRequest extends FormRequest
         return [
             'texto.required' => 'Escreva a anotação antes de registrar.',
             'texto.max' => 'A anotação pode ter até 5000 caracteres.',
+            'contexto.in' => 'A tela de origem da anotação é inválida.',
+            'etapa.enum' => 'Escolha manter em entrevista, aprovar ou reprovar.',
+            'etapa.prohibited' => 'A mudança de etapa pela anotação só está disponível no quadro da vaga.',
         ];
     }
 
@@ -80,5 +91,17 @@ class RegistrarAnotacaoRequest extends FormRequest
     public function competenciasObservadas(): array
     {
         return array_values(array_map('intval', $this->validated('competencias_observadas') ?? []));
+    }
+
+    public function vemDoQuadro(): bool
+    {
+        return $this->validated('contexto') === 'quadro';
+    }
+
+    public function etapa(): ?EtapaSelecao
+    {
+        $etapa = $this->validated('etapa');
+
+        return $etapa === null ? null : EtapaSelecao::from($etapa);
     }
 }

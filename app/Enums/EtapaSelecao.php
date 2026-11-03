@@ -7,6 +7,7 @@ enum EtapaSelecao: string
     case Triagem = 'triagem';
     case Entrevista = 'entrevista';
     case Aprovado = 'aprovado';
+    case Reprovado = 'reprovado';
 
     public function rotulo(): string
     {
@@ -14,6 +15,7 @@ enum EtapaSelecao: string
             self::Triagem => 'Triagem',
             self::Entrevista => 'Entrevista',
             self::Aprovado => 'Aprovado',
+            self::Reprovado => 'Reprovado',
         };
     }
 

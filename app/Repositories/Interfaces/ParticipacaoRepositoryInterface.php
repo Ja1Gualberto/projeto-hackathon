@@ -17,7 +17,8 @@ interface ParticipacaoRepositoryInterface
      */
     public function etapasPorCandidato(Vaga $vaga): array;
 
-    public function encontrar(Vaga $vaga, Candidato $candidato): ?Participacao;
+    /** O bloqueio deve ser usado dentro de uma transação. */
+    public function encontrar(Vaga $vaga, Candidato $candidato, bool $bloquear = false): ?Participacao;
 
     /**
      * Cria ou atualiza a participação e grava a movimentação, numa transação. Se o candidato já
@@ -33,7 +34,7 @@ interface ParticipacaoRepositoryInterface
     public function historico(Vaga $vaga, Candidato $candidato): Collection;
 
     /**
-     * Candidatos em Entrevista ou Aprovado nesta vaga, inclusive desativados, com as competências.
+     * Candidatos que já saíram da triagem nesta vaga, inclusive desativados, com as competências.
      *
      * @return Collection<int, Candidato>
      */
