@@ -29,19 +29,26 @@ class TriagemCandidatoController extends Controller
             return redirect()->route('vagas.show', $vaga)->withErrors(['vaga' => $mensagem]);
         }
 
-        $filtro = new FiltroCandidatosDTO(
-            competencias: $request->filtro()->competencias,
-            busca: $request->filtro()->busca,
+        $criterios = $request->filtro();
+        $competenciasDaVaga = $vaga->competencias->modelKeys();
+        $filtro = $this->candidatos->resolverCompetencias(new FiltroCandidatosDTO(
+            competencias: array_values(array_unique([...$competenciasDaVaga, ...$criterios->competencias])),
+            busca: $criterios->busca,
             excluirVagaId: $vaga->id,
             qualquerCompetencia: true,
             porPagina: 12,
             somentePorCodigo: true,
-        );
+        ));
 
         $dados = [
             'vaga' => $vaga,
             'filtro' => $filtro,
+            'competenciasDaVaga' => $competenciasDaVaga,
             'candidatos' => $this->candidatos->buscar($filtro),
+            'competenciasEmDestaque' => array_unique(array_merge([], ...array_values($filtro->competenciasEquivalentes))),
+            'competenciasDaVagaEmDestaque' => array_unique(array_merge([], ...array_values(
+                array_intersect_key($filtro->competenciasEquivalentes, array_flip($competenciasDaVaga)),
+            ))),
         ];
 
         if ($request->expectsJson()) {
@@ -56,9 +63,7 @@ class TriagemCandidatoController extends Controller
 
         return response()->view('participacoes.triagem', [
             ...$dados,
-            'competenciasSelecionadas' => $request->hasAny(['competencias', 'busca'])
-                ? $filtro->competencias
-                : $vaga->competencias->modelKeys(),
+            'competenciasSelecionadas' => $filtro->competencias,
             'catalogo' => $this->candidatos->catalogoCompetencias(),
         ])->header('Cache-Control', 'private, no-store');
     }
@@ -67,7 +72,10 @@ class TriagemCandidatoController extends Controller
     {
         if ($request->boolean('todos_filtrados')) {
             $filtro = new FiltroCandidatosDTO(
-                competencias: array_map('intval', $request->validated('competencias') ?? []),
+                competencias: array_values(array_unique([
+                    ...$vaga->competencias->modelKeys(),
+                    ...array_map('intval', $request->validated('competencias') ?? []),
+                ])),
                 busca: $request->validated('busca'),
                 excluirVagaId: $vaga->id,
                 qualquerCompetencia: true,

@@ -142,6 +142,19 @@ test('situação usa a busca existente, mantém URL e volta a Ativos ao limpar o
     assert.equal(ui.situacao.value, 'ativos');
 });
 
+test('checkboxes de um seletor com aplicação explícita não disparam consultas até enviar o formulário', (t) => {
+    const ui = montar(t);
+    ui.competencia.closest = () => ({});
+    ui.competencia.checked = true;
+
+    ui.eventos.change({ target: ui.competencia });
+
+    assert.equal(ui.chamadas.length, 0);
+    ui.eventos.submit({ preventDefault() {} });
+    assert.equal(ui.chamadas.length, 1);
+    assert.equal(ui.chamadas[0].url.searchParams.get('competencias[]'), '7');
+});
+
 test('quantidade por página atualiza imediatamente, mantém filtros e reinicia a paginação', async (t) => {
     const ui = montar(t);
     ui.competencia.checked = true;

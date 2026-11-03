@@ -10,3 +10,4 @@ import './modulos/importacao.js';
 import './modulos/menu.js';
 import './modulos/vagas.js';
 import './modulos/triagem.js';
+import './modulos/filtro-competencias.js';

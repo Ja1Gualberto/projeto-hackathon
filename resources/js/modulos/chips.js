@@ -1,6 +1,6 @@
-const normalizar = (texto) => texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
+export const normalizar = (texto) => texto.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLocaleLowerCase('pt-BR').trim();
 
-document.querySelectorAll('[data-filtrar-chips]').forEach((input) => {
+globalThis.document?.querySelectorAll('[data-filtrar-chips]').forEach((input) => {
     const alvo = document.querySelector(input.dataset.filtrarChips);
 
     if (!alvo) {

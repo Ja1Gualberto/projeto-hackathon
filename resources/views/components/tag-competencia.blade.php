@@ -3,6 +3,8 @@
     'origem' => null,
     'faltante' => false,
     'peso' => null,
+    'neutra' => false,
+    'daVaga' => false,
 ])
 
 @php
@@ -20,9 +22,12 @@
     </span>
 @else
     @php
-        $classes = $origem === \App\Enums\OrigemCompetencia::Entrevista
-            ? 'bg-emerald-50 text-emerald-800 ring-emerald-200'
-            : 'bg-primaria-50 text-primaria-800 ring-primaria-200';
+        $classes = match (true) {
+            $neutra => 'bg-fundo text-texto-suave ring-borda',
+            $daVaga => 'bg-emerald-50 text-emerald-800 ring-emerald-200',
+            $origem === \App\Enums\OrigemCompetencia::Entrevista => 'bg-emerald-50 text-emerald-800 ring-emerald-200',
+            default => 'bg-primaria-50 text-primaria-800 ring-primaria-200',
+        };
     @endphp
 
     <span @if ($origem) title="{{ $origem->rotulo() }}" @endif {{ $attributes->merge(['class' => 'inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-semibold ring-1 ring-inset '.$classes]) }}>

@@ -240,8 +240,6 @@ class VinculoCandidatoVagaTest extends TestCase
     public function test_limpar_filtros_por_ajax_inclui_candidatos_sem_competencias(): void
     {
         $vaga = Vaga::factory()->create();
-        $competencia = Competencia::factory()->hard()->create();
-        $vaga->competencias()->attach($competencia, ['peso' => 3]);
         $candidato = Candidato::factory()->create();
 
         $resposta = $this->actingAs(User::factory()->create())->getJson(route('vagas.triagem.index', [$vaga, 'busca' => '']));
@@ -274,11 +272,13 @@ class VinculoCandidatoVagaTest extends TestCase
         $resposta = $this->actingAs(User::factory()->create())->get(route('vagas.triagem.index', $vaga));
 
         $resposta->assertOk()
+            ->assertDontSee('Buscar por código do candidato')
+            ->assertDontSee('id="campo-busca"', false)
             ->assertSee('name="competencias[]" value="'.$tecnica->id.'" checked', false)
             ->assertSee('name="competencias[]" value="'.$comportamental->id.'" checked', false)
             ->assertSee($outra->nome)
             ->assertDontSee('name="competencias[]" value="'.$outra->id.'" checked', false)
-            ->assertSee('href="'.route('vagas.triagem.index', [$vaga, 'busca' => '']).'"', false);
+            ->assertSee(route('vagas.triagem.index', [$vaga, 'busca' => '', 'filtros_aplicados' => 1]));
     }
 
     public function test_selecao_de_candidatos_preserva_as_competencias_escolhidas_pelo_usuario(): void
@@ -294,14 +294,135 @@ class VinculoCandidatoVagaTest extends TestCase
 
         $resposta->assertOk()
             ->assertSee('name="competencias[]" value="'.$escolhida->id.'" checked', false)
-            ->assertDontSee('name="competencias[]" value="'.$daVaga->id.'" checked', false);
+            ->assertSee('name="competencias[]" value="'.$daVaga->id.'" checked disabled', false)
+            ->assertDontSee('aria-label="Remover '.$daVaga->nome.'"', false);
+    }
+
+    public function test_competencias_iniciais_da_vaga_filtram_e_ordenam_os_resultados_em_html_e_ajax(): void
+    {
+        $vaga = Vaga::factory()->create();
+        $competencias = Competencia::factory()->hard()->count(2)->create();
+        $vaga->competencias()->attach($competencias->modelKeys(), ['peso' => 3]);
+        $parcial = Candidato::factory()->create(['nome' => 'Ana']);
+        $completo = Candidato::factory()->create(['nome' => 'Zuleica']);
+        $semCorrespondencia = Candidato::factory()->create();
+        $parcial->competencias()->attach($competencias->first(), ['origem' => 'curriculo']);
+        $completo->competencias()->attach($competencias->modelKeys(), ['origem' => 'curriculo']);
+        $this->actingAs(User::factory()->create());
+
+        $html = $this->get(route('vagas.triagem.index', $vaga));
+        $ajax = $this->getJson(route('vagas.triagem.index', $vaga));
+
+        $html->assertOk()->assertSee('Competências (2)')->assertSee('2 candidatos disponíveis')
+            ->assertSeeInOrder([$completo->codigo, $parcial->codigo])->assertDontSee($semCorrespondencia->codigo);
+        $ajax->assertOk();
+        $fragmento = $ajax->json('fragments.resultados-candidatos');
+        $this->assertStringContainsString('2 candidatos disponíveis', $fragmento);
+        $this->assertStringNotContainsString($semCorrespondencia->codigo, $fragmento);
+        foreach ($competencias as $competencia) {
+            $this->assertStringContainsString('name="competencias[]" value="'.$competencia->id.'"', $fragmento);
+        }
+    }
+
+    public function test_competencias_da_vaga_sao_fixas_e_exibem_legenda_diferente_das_adicionais(): void
+    {
+        $vaga = Vaga::factory()->create();
+        $fixa = Competencia::factory()->hard()->create(['nome' => 'Linux']);
+        $adicional = Competencia::factory()->hard()->create(['nome' => 'SQL']);
+        $vaga->competencias()->attach($fixa, ['peso' => 3]);
+
+        $resposta = $this->actingAs(User::factory()->create())->get(route('vagas.triagem.index', [
+            $vaga, 'competencias' => [$fixa->id, $adicional->id],
+        ]));
+
+        $resposta->assertOk()->assertSee('Competências (2)')
+            ->assertSee('name="competencias[]" value="'.$fixa->id.'" checked disabled', false)
+            ->assertDontSee('aria-label="Remover Linux"', false)
+            ->assertSee('aria-label="Remover SQL"', false)
+            ->assertSee(['Da vaga · fixas', 'Adicionadas por você · removíveis', 'Limpar adicionais'])
+            ->assertSee(['Basta corresponder a 1 competência', 'Mais correspondências primeiro', 'Já vinculados ficam de fora'])
+            ->assertDontSee('O resultado deve atender a pelo menos uma das competências marcadas.');
+    }
+
+    public function test_selecionar_todos_mantem_competencias_da_vaga_mesmo_quando_omitidas_no_envio(): void
+    {
+        $vaga = Vaga::factory()->create();
+        $fixa = Competencia::factory()->hard()->create();
+        $adicional = Competencia::factory()->hard()->create();
+        $vaga->competencias()->attach($fixa, ['peso' => 3]);
+        $daVaga = Candidato::factory()->create();
+        $daVaga->competencias()->attach($fixa, ['origem' => 'curriculo']);
+        $doAdicional = Candidato::factory()->create();
+        $doAdicional->competencias()->attach($adicional, ['origem' => 'curriculo']);
+        $semCorrespondencia = Candidato::factory()->create();
+
+        $resposta = $this->actingAs(User::factory()->create())->post(route('vagas.triagem.store', $vaga), [
+            'todos_filtrados' => '1', 'competencias' => [$adicional->id],
+        ]);
+
+        $resposta->assertRedirect(route('vagas.show', $vaga))->assertSessionHasNoErrors();
+        $this->assertDatabaseCount('participacoes', 2);
+        foreach ([$daVaga, $doAdicional] as $candidato) {
+            $this->assertDatabaseHas('participacoes', ['vaga_id' => $vaga->id, 'candidato_id' => $candidato->id, 'etapa' => 'triagem']);
+        }
+        $this->assertDatabaseMissing('participacoes', ['vaga_id' => $vaga->id, 'candidato_id' => $semCorrespondencia->id]);
+    }
+
+    public function test_seletor_recolhido_usa_catalogo_real_agrupado_e_etiquetas_com_nomes_acessiveis(): void
+    {
+        $this->seed(CompetenciaSeeder::class);
+        $vaga = Vaga::factory()->create();
+        $linux = Competencia::query()->where('nome', 'Linux')->sole();
+        $redes = Competencia::query()->where('nome', 'Redes de Computadores')->sole();
+
+        $resposta = $this->actingAs(User::factory()->create())->get(route('vagas.triagem.index', [
+            $vaga, 'competencias' => [$linux->id, $redes->id],
+        ]));
+
+        $resposta->assertOk()->assertSee('Competências (2)')
+            ->assertSee('id="painel-competencias" hidden', false)
+            ->assertSee('aria-expanded="false" aria-controls="painel-competencias"', false)
+            ->assertSee('aria-label="Remover Linux"', false)
+            ->assertSee('aria-label="Remover Redes de Computadores"', false)
+            ->assertSee(['Infraestrutura e Redes', 'Desenvolvimento', 'Dados e BI', 'Comportamentais', 'Idiomas'])
+            ->assertSee(['Suporte a Hardware', 'Buscar competência', 'Aplicar filtros', 'Cancelar', 'Nenhuma competência encontrada']);
+    }
+
+    #[TestWith([false])]
+    #[TestWith([true])]
+    public function test_cards_exibem_competencias_da_vaga_em_verde_e_as_demais_em_azul_mesmo_nao_selecionadas_no_filtro(bool $json): void
+    {
+        $vaga = Vaga::factory()->create();
+        $basico = Competencia::factory()->idioma('ingles', 1)->create(['nome' => 'Inglês básico']);
+        $vaga->competencias()->attach($basico, ['peso' => 3]);
+        $avancado = Competencia::factory()->idioma('ingles', 3)->create(['nome' => 'Inglês avançado']);
+        $linux = Competencia::factory()->hard()->create(['nome' => 'Linux']);
+        $sql = Competencia::factory()->hard()->create(['nome' => 'SQL']);
+        $candidato = Candidato::factory()->create();
+        $candidato->competencias()->attach([$avancado->id, $linux->id, $sql->id], ['origem' => 'curriculo']);
+        $this->actingAs(User::factory()->create());
+
+        $url = route('vagas.triagem.index', [$vaga, 'competencias' => [$basico->id, $linux->id]]);
+        $resposta = $json ? $this->getJson($url) : $this->get($url);
+
+        $resposta->assertOk();
+        $dom = new \DOMDocument;
+        @$dom->loadHTML('<?xml encoding="UTF-8">'.($json ? $resposta->json('fragments.resultados-candidatos') : $resposta->getContent()));
+        $xpath = new \DOMXPath($dom);
+        foreach (['Linux' => 'bg-primaria-50', 'Inglês avançado' => 'bg-emerald-50'] as $nome => $cor) {
+            $tag = $xpath->query('//span[@data-correspondencia="true" and normalize-space(.)="'.$nome.'"]');
+            $this->assertCount(1, $tag);
+            $this->assertStringContainsString($cor, $tag->item(0)->getAttribute('class'));
+        }
+        $adicional = $xpath->query('//span[@data-correspondencia="false" and normalize-space(.)="SQL"]');
+        $this->assertCount(1, $adicional);
+        $this->assertStringContainsString('bg-primaria-50', $adicional->item(0)->getAttribute('class'));
     }
 
     public function test_selecao_de_candidatos_permite_filtrar_sem_competencias_e_limpar_filtros(): void
     {
         $vaga = Vaga::factory()->create();
         $competencia = Competencia::factory()->hard()->create();
-        $vaga->competencias()->attach($competencia, ['peso' => 3]);
         $semCompetencias = Candidato::factory()->create();
 
         $resposta = $this->actingAs(User::factory()->create())->get(route('vagas.triagem.index', [$vaga, 'busca' => '']));
@@ -322,6 +443,33 @@ class VinculoCandidatoVagaTest extends TestCase
         $resposta->assertOk()
             ->assertSee($competencia->nome)
             ->assertDontSee('name="competencias[]" value="'.$competencia->id.'" checked', false);
+    }
+
+    public function test_limpar_adicionais_preserva_competencias_da_vaga_inclusive_ao_paginar(): void
+    {
+        $vaga = Vaga::factory()->create();
+        $competencia = Competencia::factory()->hard()->create();
+        $vaga->competencias()->attach($competencia, ['peso' => 3]);
+        $candidatos = Candidato::factory()->count(13)->create(['nome' => 'Ana']);
+        foreach ($candidatos as $candidato) {
+            $candidato->competencias()->attach($competencia, ['origem' => 'curriculo']);
+        }
+        $semCorrespondencia = Candidato::factory()->create();
+        $this->actingAs(User::factory()->create());
+
+        $primeira = $this->get(route('vagas.triagem.index', [$vaga, 'filtros_aplicados' => 1]));
+        $segunda = $this->getJson(route('vagas.triagem.index', [$vaga, 'filtros_aplicados' => 1, 'page' => 2]));
+
+        $primeira->assertOk()->assertSee('13 candidatos disponíveis')
+            ->assertSee('filtros_aplicados=1', false)
+            ->assertSee('name="competencias[]" value="'.$competencia->id.'" checked disabled', false)
+            ->assertDontSee($semCorrespondencia->codigo);
+        $segunda->assertOk();
+        $fragmento = $segunda->json('fragments.resultados-candidatos');
+        $this->assertStringContainsString($candidatos->last()->codigo, $fragmento);
+        $this->assertStringContainsString('data-total-candidatos="13"', $fragmento);
+        $this->assertStringContainsString('name="competencias[]" value="'.$competencia->id.'"', $fragmento);
+        $this->assertStringNotContainsString($semCorrespondencia->codigo, $fragmento);
     }
 
     public function test_busca_para_triagem_aceita_uma_competencia_e_exclui_inativos_e_ja_vinculados(): void
@@ -368,7 +516,7 @@ class VinculoCandidatoVagaTest extends TestCase
         ]));
 
         $resposta->assertOk()->assertSeeInOrder([$quatro->codigo, $tres->codigo, $duas->codigo, $uma->codigo])
-            ->assertSee('pelo menos uma das competências marcadas');
+            ->assertSee('Basta corresponder a 1 competência');
     }
 
     public function test_triagem_conta_cada_competencia_selecionada_uma_vez_mesmo_com_idiomas_equivalentes(): void
