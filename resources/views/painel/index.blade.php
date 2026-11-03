@@ -3,7 +3,7 @@
 @section('titulo', 'Painel')
 
 @section('conteudo')
-    <x-cabecalho-pagina titulo="Banco de Taletos da SETIC já tem" subtitulo="Consulte as competências do banco e encontre perfis para sua equipe.">
+    <x-cabecalho-pagina titulo="Banco de Taletos da SETIC" subtitulo="Consulte as competências do banco e encontre perfis para sua equipe.">
         <x-botao :href="route('candidatos.index')"><x-icone nome="busca" class="size-4" />Explorar Candidatos</x-botao>
     </x-cabecalho-pagina>
 
@@ -53,7 +53,7 @@
                 <x-cartao-estatistica rotulo="Retenção pendente" :valor="$retencaoPendente" detalhe="Cadastros ativos que precisam de revisão" />
             </a>
             <section class="border-l-2 border-primaria-600 pl-5">
-                <h2 class="text-xl font-semibold tracking-tight">Busque pela combinação certa</h2>
+                <h2 class="text-xl font-semibold tracking-tight">Busque pela combinação</h2>
                 <p class="mt-3 leading-relaxed text-texto-suave">Combine competências, área e processo seletivo. O resultado reúne quem atende a todos os critérios.</p>
                 <a href="{{ route('candidatos.index') }}" class="mt-4 inline-flex font-semibold text-primaria-700 underline decoration-primaria-200 underline-offset-4 hover:decoration-primaria-700">Consultar o banco</a>
             </section>
