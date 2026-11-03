@@ -85,7 +85,68 @@ class VinculoCandidatoVagaTest extends TestCase
         $this->assertDatabaseHas('participacoes', ['vaga_id' => $vaga->id, 'candidato_id' => $candidato->id, 'etapa' => 'entrevista']);
     }
 
-    public function test_busca_para_triagem_combina_competencias_e_exclui_inativos_e_ja_vinculados(): void
+    public function test_selecao_de_candidatos_abre_com_as_competencias_da_vaga_marcadas(): void
+    {
+        $vaga = Vaga::factory()->create();
+        $tecnica = Competencia::factory()->hard()->create();
+        $comportamental = Competencia::factory()->soft()->create();
+        $outra = Competencia::factory()->hard()->create();
+        $vaga->competencias()->attach([$tecnica->id, $comportamental->id], ['peso' => 3]);
+
+        $resposta = $this->actingAs(User::factory()->create())->get(route('vagas.triagem.index', $vaga));
+
+        $resposta->assertOk()
+            ->assertSee('name="competencias[]" value="'.$tecnica->id.'" checked', false)
+            ->assertSee('name="competencias[]" value="'.$comportamental->id.'" checked', false)
+            ->assertSee($outra->nome)
+            ->assertDontSee('name="competencias[]" value="'.$outra->id.'" checked', false)
+            ->assertSee('href="'.route('vagas.triagem.index', [$vaga, 'busca' => '']).'"', false);
+    }
+
+    public function test_selecao_de_candidatos_preserva_as_competencias_escolhidas_pelo_usuario(): void
+    {
+        $vaga = Vaga::factory()->create();
+        $daVaga = Competencia::factory()->hard()->create();
+        $escolhida = Competencia::factory()->soft()->create();
+        $vaga->competencias()->attach($daVaga, ['peso' => 3]);
+
+        $resposta = $this->actingAs(User::factory()->create())->get(route('vagas.triagem.index', [
+            $vaga, 'competencias' => [$escolhida->id],
+        ]));
+
+        $resposta->assertOk()
+            ->assertSee('name="competencias[]" value="'.$escolhida->id.'" checked', false)
+            ->assertDontSee('name="competencias[]" value="'.$daVaga->id.'" checked', false);
+    }
+
+    public function test_selecao_de_candidatos_permite_filtrar_sem_competencias_e_limpar_filtros(): void
+    {
+        $vaga = Vaga::factory()->create();
+        $competencia = Competencia::factory()->hard()->create();
+        $vaga->competencias()->attach($competencia, ['peso' => 3]);
+        $semCompetencias = Candidato::factory()->create();
+
+        $resposta = $this->actingAs(User::factory()->create())->get(route('vagas.triagem.index', [$vaga, 'busca' => '']));
+
+        $resposta->assertOk()
+            ->assertSee($competencia->nome)
+            ->assertDontSee('name="competencias[]" value="'.$competencia->id.'" checked', false)
+            ->assertSee($semCompetencias->codigo);
+    }
+
+    public function test_selecao_de_candidatos_sem_competencias_na_vaga_abre_sem_marcacoes(): void
+    {
+        $vaga = Vaga::factory()->create();
+        $competencia = Competencia::factory()->hard()->create();
+
+        $resposta = $this->actingAs(User::factory()->create())->get(route('vagas.triagem.index', $vaga));
+
+        $resposta->assertOk()
+            ->assertSee($competencia->nome)
+            ->assertDontSee('name="competencias[]" value="'.$competencia->id.'" checked', false);
+    }
+
+    public function test_busca_para_triagem_aceita_uma_competencia_e_exclui_inativos_e_ja_vinculados(): void
     {
         $vaga = Vaga::factory()->create();
         $python = Competencia::factory()->hard()->create(['nome' => 'Python']);
@@ -98,11 +159,97 @@ class VinculoCandidatoVagaTest extends TestCase
         }
         $parcial = Candidato::factory()->create();
         $parcial->competencias()->attach($python, ['origem' => 'curriculo']);
+        $semCorrespondencia = Candidato::factory()->create();
         Participacao::query()->create(['vaga_id' => $vaga->id, 'candidato_id' => $vinculado->id, 'etapa' => 'triagem']);
 
         $this->actingAs(User::factory()->create())->get(route('vagas.triagem.index', [$vaga, 'competencias' => [$python->id, $sql->id]]))
             ->assertOk()->assertSee($selecionavel->codigo)->assertDontSee($selecionavel->nome)
-            ->assertDontSee($vinculado->codigo)->assertDontSee($inativo->codigo)->assertDontSee($parcial->codigo);
+            ->assertSeeInOrder([$selecionavel->codigo, $parcial->codigo])
+            ->assertDontSee($vinculado->codigo)->assertDontSee($inativo->codigo)->assertDontSee($semCorrespondencia->codigo);
+    }
+
+    public function test_triagem_ordena_pela_quantidade_de_competencias_selecionadas_e_nao_pelos_pesos(): void
+    {
+        $vaga = Vaga::factory()->create();
+        $competencias = Competencia::factory()->count(4)->create();
+        $vaga->competencias()->attach($competencias->modelKeys(), ['peso' => 1]);
+        $vaga->competencias()->updateExistingPivot($competencias->first()->id, ['peso' => 5]);
+        $uma = Candidato::factory()->create(['nome' => 'Ana']);
+        $duas = Candidato::factory()->create(['nome' => 'Bruna']);
+        $tres = Candidato::factory()->create(['nome' => 'Carla']);
+        $quatro = Candidato::factory()->create(['nome' => 'Zuleica']);
+        $uma->competencias()->attach($competencias->first(), ['origem' => 'curriculo']);
+        $duas->competencias()->attach($competencias->slice(1, 2)->modelKeys(), ['origem' => 'curriculo']);
+        $tres->competencias()->attach($competencias->slice(1)->modelKeys(), ['origem' => 'curriculo']);
+        $quatro->competencias()->attach($competencias->modelKeys(), ['origem' => 'curriculo']);
+        $extras = Competencia::factory()->count(4)->create();
+        $uma->competencias()->attach($extras->modelKeys(), ['origem' => 'curriculo']);
+
+        $resposta = $this->actingAs(User::factory()->create())->get(route('vagas.triagem.index', [
+            $vaga, 'competencias' => $competencias->modelKeys(),
+        ]));
+
+        $resposta->assertOk()->assertSeeInOrder([$quatro->codigo, $tres->codigo, $duas->codigo, $uma->codigo])
+            ->assertSee('pelo menos uma das competências marcadas');
+    }
+
+    public function test_triagem_conta_cada_competencia_selecionada_uma_vez_mesmo_com_idiomas_equivalentes(): void
+    {
+        $vaga = Vaga::factory()->create();
+        $basico = Competencia::factory()->idioma('ingles', 1)->create();
+        $avancado = Competencia::factory()->idioma('ingles', 3)->create();
+        $python = Competencia::factory()->hard()->create();
+        $duas = Candidato::factory()->create(['nome' => 'Zuleica']);
+        $duas->competencias()->attach([$avancado->id, $python->id], ['origem' => 'curriculo']);
+        $uma = Candidato::factory()->create(['nome' => 'Ana']);
+        $uma->competencias()->attach([$basico->id, $avancado->id], ['origem' => 'curriculo']);
+
+        $resposta = $this->actingAs(User::factory()->create())->get(route('vagas.triagem.index', [
+            $vaga, 'competencias' => [$basico->id, $python->id],
+        ]));
+
+        $resposta->assertOk()->assertSeeInOrder([$duas->codigo, $uma->codigo]);
+    }
+
+    public function test_triagem_ordena_antes_de_paginar_e_mantem_desempate_e_filtros(): void
+    {
+        $vaga = Vaga::factory()->create();
+        $competencias = Competencia::factory()->count(2)->create();
+        $parciais = Candidato::factory()->count(12)->create(['nome' => 'Ana']);
+        foreach ($parciais as $candidato) {
+            $candidato->competencias()->attach($competencias->first(), ['origem' => 'curriculo']);
+        }
+        $completo = Candidato::factory()->create(['nome' => 'Zuleica']);
+        $completo->competencias()->attach($competencias->modelKeys(), ['origem' => 'curriculo']);
+        $this->actingAs(User::factory()->create());
+        $filtros = [$vaga, 'competencias' => $competencias->modelKeys()];
+
+        $primeira = $this->get(route('vagas.triagem.index', $filtros));
+        $segunda = $this->get(route('vagas.triagem.index', [...$filtros, 'page' => 2]));
+
+        $primeira->assertOk()->assertSee('13 candidatos disponíveis')
+            ->assertSeeInOrder([$completo->codigo, ...$parciais->take(11)->pluck('codigo')->all()])
+            ->assertDontSee($parciais->last()->codigo)
+            ->assertSee('competencias%5B0%5D='.$competencias->first()->id, false);
+        $segunda->assertOk()->assertSee($parciais->last()->codigo)->assertDontSee($completo->codigo);
+    }
+
+    public function test_busca_textual_restringe_os_candidatos_mesmo_quando_alguma_competencia_corresponde(): void
+    {
+        $vaga = Vaga::factory()->create();
+        $competencias = Competencia::factory()->count(2)->create();
+        $encontrado = Candidato::factory()->create(['nome' => 'Ana Lima']);
+        $encontrado->competencias()->attach($competencias->last(), ['origem' => 'curriculo']);
+        $outro = Candidato::factory()->create(['nome' => 'Bruna Silva']);
+        $outro->competencias()->attach($competencias->modelKeys(), ['origem' => 'curriculo']);
+        $semCompetencias = Candidato::factory()->create(['nome' => 'Ana Souza']);
+
+        $resposta = $this->actingAs(User::factory()->create())->get(route('vagas.triagem.index', [
+            $vaga, 'competencias' => $competencias->modelKeys(), 'busca' => 'Ana',
+        ]));
+
+        $resposta->assertOk()->assertSee($encontrado->codigo)
+            ->assertDontSee($outro->codigo)->assertDontSee($semCompetencias->codigo);
     }
 
     public function test_adicao_rejeita_inativos_sem_adicionar_parte_da_selecao(): void

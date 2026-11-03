@@ -16,14 +16,14 @@
         <x-campo nome="busca" rotulo="Buscar no banco" tipo="search" :valor="$filtro->busca" maxlength="100" ajuda="Busque pelo código, nome ou e-mail. A identidade continua oculta nos cartões da triagem." />
         <fieldset class="flex flex-col gap-3">
             <legend class="mb-2 font-semibold">Filtrar por competências</legend>
-            <p class="text-sm text-texto-suave">O resultado deve atender a todas as competências marcadas. Candidatos já vinculados a esta vaga não aparecem.</p>
+            <p class="text-sm text-texto-suave">O resultado deve atender a pelo menos uma das competências marcadas. Quem atende a mais competências selecionadas aparece primeiro. Candidatos já vinculados a esta vaga não aparecem.</p>
             @foreach ($catalogo as $categoria => $competencias)
                 <div class="flex flex-col gap-2">
                     <h2 class="text-sm font-semibold">{{ $categoria === 'hard' ? 'Competências técnicas' : 'Competências comportamentais' }}</h2>
                     <div class="flex max-h-48 flex-wrap gap-2 overflow-y-auto p-1">
                         @foreach ($competencias as $competencia)
                             <label class="flex cursor-pointer items-center gap-2 rounded-lg border border-borda px-3 py-2 text-sm has-checked:border-primaria-600 has-checked:bg-primaria-50">
-                                <input type="checkbox" name="competencias[]" value="{{ $competencia->id }}" @checked(in_array($competencia->id, $filtro->competencias, true)) class="size-4 accent-primaria-600">
+                                <input type="checkbox" name="competencias[]" value="{{ $competencia->id }}" @checked(in_array($competencia->id, $competenciasSelecionadas, true)) class="size-4 accent-primaria-600">
                                 {{ $competencia->nome }}
                             </label>
                         @endforeach
@@ -33,7 +33,7 @@
         </fieldset>
         <div class="flex flex-wrap gap-3">
             <x-botao type="submit">Filtrar candidatos</x-botao>
-            <x-botao :href="route('vagas.triagem.index', $vaga)" variante="secundario">Limpar filtros</x-botao>
+            <x-botao :href="route('vagas.triagem.index', [$vaga, 'busca' => ''])" variante="secundario">Limpar filtros</x-botao>
         </div>
     </form>
 

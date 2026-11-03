@@ -18,6 +18,7 @@ use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Support\Facades\DB;
 
 class CandidatoRepository implements CandidatoRepositoryInterface
 {
@@ -40,9 +41,13 @@ class CandidatoRepository implements CandidatoRepositoryInterface
             }
         }
 
-        foreach ($filtro->competencias as $id) {
-            $ids = $filtro->competenciasEquivalentes[$id] ?? $this->competencias->idsQueAtendem($id);
-            $consulta->whereHas('competencias', fn (Builder $query) => $query->whereIn('competencias.id', $ids));
+        if ($filtro->qualquerCompetencia && $filtro->competencias !== []) {
+            $this->filtrarPorQualquerCompetencia($consulta, $filtro);
+        } else {
+            foreach ($filtro->competencias as $id) {
+                $ids = $filtro->competenciasEquivalentes[$id] ?? $this->competencias->idsQueAtendem($id);
+                $consulta->whereHas('competencias', fn (Builder $query) => $query->whereIn('competencias.id', $ids));
+            }
         }
 
         if ($filtro->vagaId !== null) {
@@ -69,6 +74,28 @@ class CandidatoRepository implements CandidatoRepositoryInterface
         }
 
         return $consulta->orderBy('nome')->orderBy('id')->paginate($porPagina)->withQueryString();
+    }
+
+    /** @param Builder<Candidato> $consulta */
+    private function filtrarPorQualquerCompetencia(Builder $consulta, FiltroCandidatosDTO $filtro): void
+    {
+        $contagens = [];
+        $idsEquivalentes = [];
+
+        foreach ($filtro->competencias as $id) {
+            $ids = $filtro->competenciasEquivalentes[$id] ?? $this->competencias->idsQueAtendem($id);
+            $parametros = implode(', ', array_fill(0, count($ids), '?'));
+            $contagens[] = "COALESCE(MAX(CASE WHEN competencia_id IN ({$parametros}) THEN 1 ELSE 0 END), 0)";
+            array_push($idsEquivalentes, ...$ids);
+        }
+
+        $contagem = DB::table('candidato_competencia')
+            ->whereColumn('candidato_competencia.candidato_id', 'candidatos.id')
+            ->selectRaw(implode(' + ', $contagens), $idsEquivalentes);
+
+        $consulta->whereHas('competencias', fn (Builder $query) => $query->whereIn('competencias.id', array_unique($idsEquivalentes)))
+            ->addSelect(['competencias_atendidas' => $contagem])
+            ->orderByDesc('competencias_atendidas');
     }
 
     public function detalhar(Candidato $candidato): Candidato

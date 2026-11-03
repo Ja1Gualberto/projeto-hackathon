@@ -25,11 +25,15 @@ class TriagemCandidatoController extends Controller
             competencias: $request->filtro()->competencias,
             busca: $request->filtro()->busca,
             excluirVagaId: $vaga->id,
+            qualquerCompetencia: true,
         );
 
         return response()->view('participacoes.triagem', [
             'vaga' => $vaga,
             'filtro' => $filtro,
+            'competenciasSelecionadas' => $request->hasAny(['competencias', 'busca'])
+                ? $filtro->competencias
+                : $vaga->competencias->modelKeys(),
             'candidatos' => $this->candidatos->buscar($filtro),
             'catalogo' => $this->candidatos->catalogoCompetencias(),
         ])->header('Cache-Control', 'private, no-store');
