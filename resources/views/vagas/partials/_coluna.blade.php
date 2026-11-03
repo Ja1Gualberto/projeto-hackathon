@@ -9,6 +9,6 @@
             <x-estado-vazio icone="grupo" titulo="Nenhum candidato na triagem" texto="Selecione candidatos do banco por competências ou importe currículos para esta vaga. Nenhum candidato entra automaticamente sem vínculo ao processo." />
         </div>
         <p data-coluna-vazia class="rounded-lg border border-dashed border-borda px-3 py-6 text-center text-sm text-texto-suave"></p>
-        <ol data-coluna-itens class="flex flex-col gap-3"></ol>
+        <ol data-coluna-itens class="flex flex-col gap-2"></ol>
     </section>
 </template>

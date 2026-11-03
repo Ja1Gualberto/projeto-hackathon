@@ -1,16 +1,16 @@
 <template id="modelo-card-ranking">
-    <article data-codigo class="flex flex-col gap-3 rounded-card border border-borda p-4 shadow-xs transition-shadow hover:shadow-md motion-reduce:transition-none">
-        <div class="flex items-start gap-3">
-            <span class="flex h-7 min-w-7 shrink-0 items-center justify-center rounded-full bg-primaria-50 px-2 text-sm font-bold text-primaria-800 tabular-nums"><span class="sr-only">Posição </span><span data-posicao></span></span>
+    <article data-codigo class="flex flex-col gap-2 rounded-xl border border-borda p-3 shadow-xs transition-shadow hover:shadow-md motion-reduce:transition-none">
+        <div class="flex items-start gap-2">
+            <span class="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-primaria-50 px-1.5 text-xs font-bold text-primaria-800 tabular-nums"><span class="sr-only">Posição </span><span data-posicao></span></span>
             <div class="flex min-w-0 flex-col">
-                <h4 data-card-titulo class="text-lg leading-snug font-semibold tracking-tight wrap-anywhere"><a href="#" data-link-perfil draggable="false" class="hover:text-primaria-700 hover:underline focus-visible:text-primaria-700"></a></h4>
-                <p data-codigo-revelado class="font-mono text-sm text-texto-suave"></p>
+                <h4 data-card-titulo class="text-base leading-snug font-semibold tracking-tight wrap-anywhere"><a href="#" data-link-perfil draggable="false" class="hover:text-primaria-700 hover:underline focus-visible:text-primaria-700"></a></h4>
+                <p data-codigo-revelado class="font-mono text-xs text-texto-suave"></p>
             </div>
         </div>
         <x-badge data-situacao class="self-start" />
-        <div data-score role="meter" aria-valuemin="0" aria-valuemax="100" class="flex items-center gap-3">
-            <div class="h-3 flex-1 overflow-hidden rounded-full bg-slate-200"><div data-score-barra class="h-full rounded-full transition-[width] duration-500"></div></div>
-            <span data-score-texto class="w-16 text-right text-2xl font-bold tabular-nums"></span>
+        <div data-score role="meter" aria-valuemin="0" aria-valuemax="100" class="flex items-center gap-2">
+            <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-slate-200"><div data-score-barra class="h-full rounded-full transition-[width] duration-500"></div></div>
+            <span data-score-texto class="w-11 shrink-0 text-right text-base leading-tight font-semibold tabular-nums"></span>
         </div>
         <div data-card-detalhes hidden class="flex flex-col gap-3 border-t border-borda pt-3">
             <div class="flex flex-wrap items-center gap-2">
