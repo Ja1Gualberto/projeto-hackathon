@@ -31,11 +31,9 @@ class PainelTest extends TestCase
 
         $resposta = $this->actingAs(User::factory()->create())->get(route('painel'));
 
-        $resposta->assertOk()->assertSee('Talentos')->assertSee('Servidores')->assertSee('Estagiários')
+        $resposta->assertOk()->assertSee('Talentos')->assertDontSee('Servidores')->assertDontSee('Estagiários')
             ->assertSee('Vagas abertas')->assertSeeInOrder(['Python', 'SQL'])->assertDontSee($oculta->nome);
         $this->assertSame(3, $resposta['totalTalentos']);
-        $this->assertSame(2, $resposta['servidores']);
-        $this->assertSame(1, $resposta['estagiarios']);
         $this->assertSame(2, $resposta['vagasAbertas']);
         $this->assertSame([2, 1], $resposta['topCompetencias']->pluck('total')->map(fn ($total): int => (int) $total)->all());
     }

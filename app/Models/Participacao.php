@@ -9,8 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * Participação de um candidato em uma vaga. A linha só existe a partir da primeira
- * movimentação; sem linha, o candidato elegível está em triagem (research R8).
+ * Vínculo de um candidato com um processo seletivo, desde a entrada na triagem.
  */
 #[Fillable(['vaga_id', 'candidato_id', 'etapa'])]
 class Participacao extends Model

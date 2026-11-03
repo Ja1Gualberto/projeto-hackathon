@@ -18,6 +18,7 @@ class VagaRepository implements VagaRepositoryInterface
         return Vaga::query()
             ->withCount([
                 'competencias',
+                'participacoes as elegiveis_count' => fn (Builder $query) => $query->whereHas('candidato', fn (Builder $candidatos) => $candidatos->ativos()),
                 'participacoes as entrevista_count' => fn (Builder $query) => $query->where('etapa', EtapaSelecao::Entrevista->value),
                 'participacoes as aprovado_count' => fn (Builder $query) => $query->where('etapa', EtapaSelecao::Aprovado->value),
             ])
@@ -52,9 +53,14 @@ class VagaRepository implements VagaRepositoryInterface
         $vaga->forceFill(['status' => StatusVaga::Encerrada, 'encerrada_em' => now()])->save();
     }
 
-    public function encontrar(int $id): ?Vaga
+    public function listarAbertas(): Collection
     {
-        return Vaga::query()->find($id);
+        return Vaga::query()->where('status', StatusVaga::Aberta)->orderBy('titulo')->orderBy('id')->get(['id', 'titulo']);
+    }
+
+    public function encontrar(int $id, bool $bloquear = false): ?Vaga
+    {
+        return Vaga::query()->when($bloquear, fn (Builder $query) => $query->lockForUpdate())->find($id);
     }
 
     public function requisitos(Vaga $vaga): Collection

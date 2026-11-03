@@ -6,7 +6,7 @@
         </header>
         <p data-aviso-triagem class="flex items-center gap-1.5 px-1 text-sm text-texto-suave"><x-icone nome="cadeado" class="size-4" />Só o código aparece nesta coluna.</p>
         <div data-sem-elegiveis>
-            <x-estado-vazio icone="grupo" titulo="Nenhum candidato elegível" texto="Ainda não há candidatos ativos do tipo aceito por esta vaga. Novos cadastros compatíveis entram aqui automaticamente." />
+            <x-estado-vazio icone="grupo" titulo="Nenhum candidato na triagem" texto="Selecione candidatos do banco por competências ou importe currículos para esta vaga. Nenhum candidato entra automaticamente sem vínculo ao processo." />
         </div>
         <p data-coluna-vazia class="rounded-lg border border-dashed border-borda px-3 py-6 text-center text-sm text-texto-suave"></p>
         <ol data-coluna-itens class="flex flex-col gap-3"></ol>

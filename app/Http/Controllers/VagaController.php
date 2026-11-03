@@ -97,7 +97,7 @@ class VagaController extends Controller
     {
         return $this->jsonInicial([
             ...$this->tela->formulario($vaga, $this->vagas->catalogo(), $pesos),
-            'oldInput' => $request->session()->hasOldInput() ? Arr::only($request->session()->getOldInput(), ['titulo', 'area', 'tipo_candidato', 'descricao', 'competencias', 'energia']) : null,
+            'oldInput' => $request->session()->hasOldInput() ? Arr::only($request->session()->getOldInput(), ['titulo', 'area', 'descricao', 'competencias', 'energia']) : null,
             'errors' => $request->session()->get('errors')?->getBag('default')->messages() ?? [],
         ]);
     }

@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Enums\TipoCandidato;
+use App\Enums\StatusVaga;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
@@ -36,7 +36,7 @@ class ImportarCurriculoRequest extends FormRequest
         return [
             'arquivos' => ['required', 'array', 'max:'.config('banco_talentos.importacao_max_arquivos')],
             'arquivos.*' => ['required', 'file', 'mimes:pdf', 'max:'.config('banco_talentos.upload_max_kb')],
-            'tipo' => ['required', Rule::enum(TipoCandidato::class)],
+            'vaga_id' => ['required', 'integer', Rule::exists('vagas', 'id')->where('status', StatusVaga::Aberta->value)],
         ];
     }
 
@@ -50,7 +50,8 @@ class ImportarCurriculoRequest extends FormRequest
             'arquivos.array' => 'Selecione ao menos um currículo em PDF.',
             'arquivos.max' => 'Envie no máximo '.config('banco_talentos.importacao_max_arquivos').' currículos por vez.',
             ...$this->mensagensPorArquivo(),
-            'tipo.required' => 'Informe se o candidato é servidor ou estagiário.',
+            'vaga_id.required' => 'Selecione o processo seletivo relacionado aos currículos.',
+            'vaga_id.exists' => 'Selecione uma vaga aberta.',
         ];
     }
 
@@ -62,7 +63,7 @@ class ImportarCurriculoRequest extends FormRequest
         return [
             'arquivos' => 'currículos em PDF',
             'arquivos.*' => 'currículo em PDF',
-            'tipo' => 'tipo de candidato',
+            'vaga_id' => 'processo seletivo',
         ];
     }
 

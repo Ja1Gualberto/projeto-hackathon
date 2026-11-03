@@ -4,7 +4,6 @@
             <div class="flex min-w-0 flex-col gap-2">
                 <div class="flex flex-wrap items-center gap-2">
                     <x-badge data-status />
-                    <x-badge cor="primaria" data-tipo />
                     <span data-area class="text-sm text-texto-suave"></span>
                 </div>
                 <h1 data-titulo tabindex="-1" data-foco-apos-ajax class="text-3xl font-bold tracking-tight text-texto focus:outline-none"></h1>
@@ -20,6 +19,10 @@
                 </form>
             </div>
         </header>
+        <div data-adicionar-candidatos class="flex flex-wrap gap-3">
+            <x-botao href="#" data-selecionar-candidatos>Selecionar candidatos do banco</x-botao>
+            <x-botao href="#" variante="secundario" data-importar-curriculos>Importar currículos para esta vaga</x-botao>
+        </div>
         <div data-vaga-encerrada class="flex flex-col gap-1 border-l-4 border-borda pl-4 text-sm text-texto-suave">
             <p class="font-semibold text-texto">Vaga encerrada — somente consulta</p>
             <p>Encerrada em <span data-encerrada-em></span>. O quadro e o histórico continuam disponíveis para consulta; a vaga não aceita mais edições nem movimentações.</p>

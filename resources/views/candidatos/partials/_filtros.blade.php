@@ -8,7 +8,7 @@
     {{ $campos['busca'] }}
     {{ $campos['situacao'] }}
     <div class="grid gap-5 sm:grid-cols-2 xl:grid-cols-1">
-        {{ $campos['tipo'] }}
+        {{ $campos['vaga'] }}
         {{ $campos['area'] }}
     </div>
     <label class="flex cursor-pointer items-start gap-3 text-sm leading-relaxed">

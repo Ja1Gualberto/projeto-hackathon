@@ -33,7 +33,7 @@ class SelecaoService
     ) {}
 
     /**
-     * Triagem = elegíveis sem participação ou em triagem. As demais etapas incluem quem foi
+     * Triagem = candidatos vinculados em triagem. As demais etapas incluem quem foi
      * movido e depois desativado (esmaecido, sem ações). Cada coluna segue a ordem do ranking, e o
      * nome só é preenchido nas etapas que revelam a identidade.
      *
@@ -53,7 +53,6 @@ class SelecaoService
 
             $colunas[$etapa->value]->push(new ItemRankingDTO(
                 codigo: $candidato->codigo,
-                tipo: $candidato->tipo,
                 area: $candidato->area,
                 experienciaNaArea: $candidato->experiencia_na_area,
                 resultado: $resultado,
@@ -69,8 +68,8 @@ class SelecaoService
     }
 
     /**
-     * Toda movimentação é humana e fica registrada. Vaga encerrada, candidato desativado ou de
-     * outro tipo recusam a ação com uma mensagem que não identifica o candidato.
+     * Toda movimentação é humana e fica registrada. Vaga encerrada, candidato desativado ou sem
+     * vínculo recusam a ação com uma mensagem que não identifica o candidato.
      *
      * @throws ValidationException
      */
@@ -88,6 +87,12 @@ class SelecaoService
         }
 
         $this->participacoes->moverPara($vaga, $candidato, $etapa, $usuario);
+    }
+
+    /** @param list<int> $candidatoIds */
+    public function adicionarATriagem(Vaga $vaga, array $candidatoIds): void
+    {
+        $this->participacoes->adicionarATriagem($vaga, $candidatoIds);
     }
 
     /**

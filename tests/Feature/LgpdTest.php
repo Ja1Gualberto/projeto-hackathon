@@ -115,6 +115,7 @@ class LgpdTest extends TestCase
     {
         $candidato = Candidato::factory()->estagiario()->create();
         $vaga = Vaga::factory()->paraEstagiarios()->create();
+        $vaga->participacoes()->create(['candidato_id' => $candidato->id, 'etapa' => 'triagem']);
         $competencia = Competencia::factory()->create();
         $vaga->competencias()->attach($competencia, ['peso' => 3]);
         $atualizacao = $candidato->dados_atualizados_em->toDateTimeString();
@@ -190,6 +191,7 @@ class LgpdTest extends TestCase
         $candidato->competencias()->attach($competencia, ['origem' => OrigemCompetencia::Entrevista]);
         $vaga = Vaga::factory()->paraEstagiarios()->create();
         $vaga->competencias()->attach($competencia, ['peso' => 3]);
+        $vaga->participacoes()->create(['candidato_id' => $candidato->id, 'etapa' => 'triagem']);
         $this->actingAs($usuario)->patch(route('vagas.candidatos.etapa', [$vaga, $candidato->codigo]), ['etapa' => 'entrevista'])->assertSessionHasNoErrors();
         $this->post(route('candidatos.anotacoes.store', $candidato), ['texto' => 'Anotação privada', 'competencias_observadas' => [$competencia->id]])->assertSessionHasNoErrors();
         $candidato->perfilEnergia()->create(['dinamico_analitico' => 3, 'individual_equipe' => 3, 'execucao_planejamento' => 3, 'justificativa' => 'Privado', 'origem' => 'humano', 'analisado_em' => now()]);

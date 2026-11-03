@@ -1,7 +1,7 @@
 <article data-card-candidato class="group relative flex min-w-0 flex-col gap-2 rounded-card border border-borda bg-superficie p-2.5 transition-[border-color,box-shadow] hover:border-primaria-400 hover:shadow-sm focus-within:border-primaria-600 motion-reduce:transition-none">
     <a href="{{ $urlPerfil }}" class="flex min-w-0 flex-col gap-1 after:absolute after:inset-0 after:rounded-card">
         <div class="flex flex-wrap items-center justify-between gap-2">
-            {{ $tipo }}
+            <span class="text-xs font-medium text-texto-suave">{{ $processos ?: 'Sem processo seletivo vinculado' }}</span>
             <span class="text-xs text-texto-suave group-hover:text-primaria-700">Ver perfil</span>
         </div>
         <h3 class="text-base leading-snug font-semibold tracking-tight text-texto group-hover:text-primaria-700">{{ $nome }}</h3>

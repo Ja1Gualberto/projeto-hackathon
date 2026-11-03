@@ -7,6 +7,8 @@ use App\Enums\OrigemCompetencia;
 use App\Models\Candidato;
 use App\Models\User;
 use App\Repositories\Interfaces\CandidatoRepositoryInterface;
+use App\Repositories\Interfaces\VagaRepositoryInterface;
+use App\Services\Selecao\SelecaoService;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -23,22 +25,32 @@ class CadastroCandidatoService
 {
     /** Campos que a revisão humana pode definir. */
     private const CAMPOS_REVISADOS = [
-        'nome', 'email', 'telefone', 'cpf', 'data_nascimento', 'tipo', 'area', 'experiencia_na_area',
+        'nome', 'email', 'telefone', 'cpf', 'data_nascimento', 'area', 'experiencia_na_area',
         'formacoes', 'experiencias', 'projetos', 'links', 'consentimento_meio', 'consentimento_em',
     ];
 
-    public function __construct(private CandidatoRepositoryInterface $candidatos) {}
+    public function __construct(
+        private CandidatoRepositoryInterface $candidatos,
+        private SelecaoService $selecao,
+        private VagaRepositoryInterface $vagas,
+    ) {}
 
     /**
      * Cria o candidato (modo `novo`) ou atualiza o cadastro duplicado (modo `atualizar`).
      * O PDF temporário vira o currículo original; no modo `atualizar`, o PDF anterior é
      * apagado só depois do commit. Competências nunca têm a origem rebaixada.
      *
-     * @param  array{arquivo: string, nome_original: string, tamanho: int, texto: ?string, dados: array<string, mixed>}  $importacao
+     * @param  array{arquivo: string, nome_original: string, tamanho: int, texto: ?string, dados: array<string, mixed>, vaga_id: int}  $importacao
      * @param  array<string, mixed>  $revisados  Dados já validados por ConfirmarImportacaoRequest.
      */
     public function confirmar(array $importacao, array $revisados, User $recrutador): Candidato
     {
+        $vaga = isset($importacao['vaga_id']) ? $this->vagas->encontrar($importacao['vaga_id']) : null;
+
+        if ($vaga === null) {
+            throw ValidationException::withMessages(['vaga' => 'O processo seletivo não está disponível. Importe o currículo novamente selecionando uma vaga.']);
+        }
+
         $existente = ($revisados['modo'] ?? 'novo') === 'atualizar'
             ? $this->cadastroParaAtualizar($importacao, $revisados)
             : null;
@@ -66,17 +78,19 @@ class CadastroCandidatoService
         );
 
         try {
-            $candidato = DB::transaction(function () use ($existente, $atributos, $revisadas): Candidato {
+            $candidato = DB::transaction(function () use ($existente, $atributos, $revisadas, $vaga): Candidato {
+                $this->vagas->encontrar($vaga->id, bloquear: true);
+
                 if ($existente === null) {
                     $candidato = $this->candidatos->criar($atributos);
                     $this->candidatos->sincronizarCompetencias($candidato, $revisadas);
-
-                    return $candidato;
+                } else {
+                    $origens = $this->mesclarSemRebaixar($this->candidatos->origensDasCompetencias($existente), $revisadas);
+                    $candidato = $this->candidatos->atualizar($existente, $atributos);
+                    $this->candidatos->sincronizarCompetencias($candidato, $origens);
                 }
 
-                $origens = $this->mesclarSemRebaixar($this->candidatos->origensDasCompetencias($existente), $revisadas);
-                $candidato = $this->candidatos->atualizar($existente, $atributos);
-                $this->candidatos->sincronizarCompetencias($candidato, $origens);
+                $this->selecao->adicionarATriagem($vaga, [$candidato->id]);
 
                 return $candidato;
             });

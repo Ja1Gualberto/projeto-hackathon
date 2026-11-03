@@ -7,7 +7,6 @@ use App\Enums\MotivoExclusao;
 use App\Enums\OrigemCompetencia;
 use App\Enums\OrigemPerfilEnergia;
 use App\Enums\StatusCandidato;
-use App\Enums\TipoCandidato;
 use App\Models\Candidato;
 use App\Models\Competencia;
 use App\Models\PerfilEnergia;
@@ -28,6 +27,7 @@ class CandidatoRepository implements CandidatoRepositoryInterface
     {
         $consulta = Candidato::query()->with([
             'competencias' => fn (BelongsToMany $query): BelongsToMany => $query->orderBy('nome'),
+            'participacoes.vaga',
         ]);
 
         if ($filtro->situacao === 'desativados') {
@@ -45,8 +45,12 @@ class CandidatoRepository implements CandidatoRepositoryInterface
             $consulta->whereHas('competencias', fn (Builder $query) => $query->whereIn('competencias.id', $ids));
         }
 
-        if ($filtro->tipo !== null) {
-            $consulta->where('tipo', $filtro->tipo->value);
+        if ($filtro->vagaId !== null) {
+            $consulta->whereHas('participacoes', fn (Builder $query) => $query->where('vaga_id', $filtro->vagaId));
+        }
+
+        if ($filtro->excluirVagaId !== null) {
+            $consulta->whereDoesntHave('participacoes', fn (Builder $query) => $query->where('vaga_id', $filtro->excluirVagaId));
         }
 
         if ($filtro->area !== null) {
@@ -59,7 +63,8 @@ class CandidatoRepository implements CandidatoRepositoryInterface
 
         if ($filtro->busca !== null) {
             $consulta->where(fn (Builder $query) => $query
-                ->where('nome', 'like', '%'.$filtro->busca.'%')
+                ->where('codigo', 'like', '%'.$filtro->busca.'%')
+                ->orWhere('nome', 'like', '%'.$filtro->busca.'%')
                 ->orWhere('email', 'like', '%'.$filtro->busca.'%'));
         }
 
@@ -74,18 +79,13 @@ class CandidatoRepository implements CandidatoRepositoryInterface
             'anotacoes.vaga',
             'perfilEnergia',
             'consentimentoRegistradoPor',
+            'participacoes.vaga',
         ]);
     }
 
-    public function contarAtivosPorTipo(): array
+    public function contarAtivos(): int
     {
-        $totais = Candidato::query()->ativos()->select('tipo')->selectRaw('COUNT(*) as total')
-            ->groupBy('tipo')->pluck('total', 'tipo');
-
-        return [
-            'servidores' => (int) ($totais[TipoCandidato::Servidor->value] ?? 0),
-            'estagiarios' => (int) ($totais[TipoCandidato::Estagiario->value] ?? 0),
-        ];
+        return Candidato::query()->ativos()->count();
     }
 
     public function salvarPerfilEnergia(Candidato $candidato, array $atributos): PerfilEnergia

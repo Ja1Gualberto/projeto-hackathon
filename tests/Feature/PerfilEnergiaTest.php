@@ -162,6 +162,9 @@ class PerfilEnergiaTest extends TestCase
         $primeiro = Candidato::factory()->create();
         $primeiro->competencias()->attach($competencia, ['origem' => 'curriculo']);
         $segundo = Candidato::factory()->create();
+        foreach ([$primeiro, $segundo] as $candidato) {
+            $vaga->participacoes()->create(['candidato_id' => $candidato->id, 'etapa' => 'triagem']);
+        }
         $this->perfil($primeiro);
         $this->perfil($segundo);
         $segundo->perfilEnergia()->update($this->eixos());
@@ -217,6 +220,7 @@ class PerfilEnergiaTest extends TestCase
         $candidato->perfilEnergia()->update(['justificativa' => 'Ágata Queiroz trabalha em equipe; agata@exemplo.com.br']);
         $vaga = Vaga::factory()->create(['tipo_candidato' => 'ambos']);
 
+        $vaga->participacoes()->create(['candidato_id' => $candidato->id, 'etapa' => 'triagem']);
         $this->actingAs(User::factory()->create())->get(route('vagas.candidatos.show', [$vaga, $candidato->codigo]))
             ->assertOk()->assertSee('Padrão de energia')->assertSee('Revisado por humano')->assertSee('trabalha em equipe')
             ->assertDontSee($candidato->nome)->assertDontSee($candidato->email)
@@ -239,8 +243,10 @@ class PerfilEnergiaTest extends TestCase
         $vaga = Vaga::factory()->create(['tipo_candidato' => 'ambos']);
         $this->perfil($candidato, 'humano');
         $candidato->perfilEnergia()->update(['justificativa' => 'Ágata Queiroz trabalha em equipe; agata@exemplo.com.br']);
+        $vaga->participacoes()->create(['candidato_id' => $candidato->id, 'etapa' => 'triagem']);
         $this->actingAs($usuario)->patchJson(route('vagas.candidatos.etapa', [$vaga, $candidato->codigo]), ['etapa' => 'entrevista'])->assertOk();
         $outraVaga = Vaga::factory()->create(['tipo_candidato' => 'ambos']);
+        $outraVaga->participacoes()->create(['candidato_id' => $candidato->id, 'etapa' => 'triagem']);
 
         $resposta = $this->patchJson(route('vagas.candidatos.etapa', [$outraVaga, $candidato->codigo]), ['etapa' => 'triagem', 'contexto' => 'perfil'])->assertOk();
 

@@ -6,7 +6,6 @@ use App\Enums\Area;
 use App\Enums\MeioConsentimento;
 use App\Enums\StatusCandidato;
 use App\Enums\TipoCandidato;
-use App\Enums\TipoCandidatoVaga;
 use Carbon\CarbonInterface;
 use Database\Factories\CandidatoFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
@@ -158,7 +157,7 @@ class Candidato extends Model
     }
 
     /**
-     * Candidatos ativos do tipo aceito pela vaga.
+     * Candidatos ativos vinculados ao processo seletivo.
      *
      * @param  Builder<Candidato>  $query
      */
@@ -167,9 +166,7 @@ class Candidato extends Model
     {
         $query->where('status', StatusCandidato::Ativo->value);
 
-        if ($vaga->tipo_candidato !== TipoCandidatoVaga::Ambos) {
-            $query->where('tipo', $vaga->tipo_candidato->value);
-        }
+        $query->whereHas('participacoes', fn (Builder $participacoes) => $participacoes->where('vaga_id', $vaga->id));
     }
 
     /**

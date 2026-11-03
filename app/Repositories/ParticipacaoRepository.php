@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Enums\EtapaSelecao;
+use App\Enums\StatusCandidato;
 use App\Models\Candidato;
 use App\Models\Participacao;
 use App\Models\User;
@@ -69,6 +70,30 @@ class ParticipacaoRepository implements ParticipacaoRepositoryInterface
             ->orderByDesc('id')
             ->get()
             ?? new Collection;
+    }
+
+    public function adicionarATriagem(Vaga $vaga, array $candidatoIds): void
+    {
+        DB::transaction(function () use ($vaga, $candidatoIds): void {
+            $vaga = Vaga::query()->lockForUpdate()->findOrFail($vaga->id);
+
+            if (! $vaga->estaAberta()) {
+                throw ValidationException::withMessages(['vaga' => 'Vaga encerrada — somente consulta. Não é possível adicionar candidatos.']);
+            }
+
+            $candidatos = Candidato::query()->whereIn('id', $candidatoIds)->lockForUpdate()->get();
+
+            if ($candidatos->count() !== count(array_unique($candidatoIds)) || $candidatos->contains(fn (Candidato $candidato): bool => $candidato->status !== StatusCandidato::Ativo)) {
+                throw ValidationException::withMessages(['candidatos' => 'Selecione apenas candidatos ativos do banco de talentos.']);
+            }
+
+            foreach ($candidatos as $candidato) {
+                Participacao::query()->firstOrCreate(
+                    ['vaga_id' => $vaga->id, 'candidato_id' => $candidato->id],
+                    ['etapa' => EtapaSelecao::Triagem],
+                );
+            }
+        });
     }
 
     public function candidatosRevelados(Vaga $vaga): Collection

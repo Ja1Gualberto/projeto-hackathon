@@ -33,7 +33,6 @@
                 </div>
                 <div class="flex flex-wrap items-center gap-2">
                     <x-badge data-status />
-                    <x-badge cor="primaria" data-tipo />
                     <span data-competencias-total class="text-sm text-texto-suave"></span>
                 </div>
                 <dl class="mt-auto grid grid-cols-2 gap-3 border-t border-borda pt-4 text-sm">

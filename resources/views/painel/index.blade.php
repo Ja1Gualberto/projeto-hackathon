@@ -7,10 +7,8 @@
         <x-botao :href="route('candidatos.index')"><x-icone nome="busca" class="size-4" />Explorar Candidatos</x-botao>
     </x-cabecalho-pagina>
 
-    <section aria-label="Resumo do banco" class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section aria-label="Resumo do banco" class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <x-cartao-estatistica rotulo="Talentos" :valor="$totalTalentos" detalhe="Cadastros ativos" class="border-t-2 border-transparent" />
-        <x-cartao-estatistica rotulo="Servidores" :valor="$servidores" detalhe="Experiência no serviço público" class="border-t-2 border-servidor-700" />
-        <x-cartao-estatistica rotulo="Estagiários" :valor="$estagiarios" detalhe="Talentos em formação" class="border-t-2 border-estagiario-700" />
         <x-cartao-estatistica rotulo="Vagas abertas" :valor="$vagasAbertas" detalhe="Processos em andamento" class="border-t-2 border-transparent" />
     </section>
 
@@ -56,7 +54,7 @@
             </a>
             <section class="border-l-2 border-primaria-600 pl-5">
                 <h2 class="text-xl font-semibold tracking-tight">Busque pela combinação certa</h2>
-                <p class="mt-3 leading-relaxed text-texto-suave">Combine competências, área e tipo de candidato. O resultado reúne quem atende a todos os critérios.</p>
+                <p class="mt-3 leading-relaxed text-texto-suave">Combine competências, área e processo seletivo. O resultado reúne quem atende a todos os critérios.</p>
                 <a href="{{ route('candidatos.index') }}" class="mt-4 inline-flex font-semibold text-primaria-700 underline decoration-primaria-200 underline-offset-4 hover:decoration-primaria-700">Consultar o banco</a>
             </section>
             <section class="flex flex-col gap-3 border-t border-borda pt-6">

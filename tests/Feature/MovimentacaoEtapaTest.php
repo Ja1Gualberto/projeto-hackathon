@@ -41,6 +41,7 @@ class MovimentacaoEtapaTest extends TestCase
         $this->actingAs($this->recrutador);
         $this->candidato = $this->candidato();
         $this->vaga = $this->vaga();
+        $this->vaga->participacoes()->create(['candidato_id' => $this->candidato->id, 'etapa' => 'triagem']);
     }
 
     private function vaga(array $atributos = []): Vaga
@@ -73,9 +74,9 @@ class MovimentacaoEtapaTest extends TestCase
             ->first()?->etapa;
     }
 
-    public function test_mover_cria_a_participacao_e_registra_quem_moveu(): void
+    public function test_mover_preserva_a_participacao_e_registra_quem_moveu(): void
     {
-        $this->assertSame(0, Participacao::query()->count());
+        $this->assertSame(1, Participacao::query()->count());
 
         $this->mover('entrevista')
             ->assertRedirect(route('vagas.show', $this->vaga))
@@ -110,6 +111,7 @@ class MovimentacaoEtapaTest extends TestCase
     public function test_etapa_pertence_a_cada_vaga(): void
     {
         $outra = $this->vaga();
+        $outra->participacoes()->create(['candidato_id' => $this->candidato->id, 'etapa' => 'triagem']);
         $this->mover('entrevista', vaga: $outra);
 
         $this->mover('aprovado');
@@ -125,7 +127,7 @@ class MovimentacaoEtapaTest extends TestCase
         $this->mover('entrevista', vaga: $encerrada)
             ->assertSessionHasErrors(['etapa' => 'Vaga encerrada — somente consulta. Não é possível mover candidatos.']);
 
-        $this->assertSame(0, Participacao::query()->count());
+        $this->assertSame(1, Participacao::query()->count());
     }
 
     public function test_candidato_desativado_ou_inelegivel_nao_pode_ser_movido(): void
@@ -138,7 +140,7 @@ class MovimentacaoEtapaTest extends TestCase
         $this->mover('entrevista', $servidor)
             ->assertSessionHasErrors(['etapa' => 'Este candidato não é elegível para esta vaga.']);
 
-        $this->assertSame(0, Participacao::query()->count());
+        $this->assertSame(1, Participacao::query()->count());
     }
 
     #[TestWith(['contratado'])]
@@ -147,7 +149,7 @@ class MovimentacaoEtapaTest extends TestCase
     {
         $this->mover($etapa)->assertSessionHasErrors('etapa');
 
-        $this->assertSame(0, Participacao::query()->count());
+        $this->assertSame(1, Participacao::query()->count());
     }
 
     public function test_quadro_separa_as_quatro_colunas_com_contagens_e_acoes(): void
@@ -155,6 +157,9 @@ class MovimentacaoEtapaTest extends TestCase
         $emEntrevista = $this->candidato(['nome' => 'Joana Prates']);
         $aprovado = $this->candidato(['nome' => 'Caio Teles']);
         $reprovado = $this->candidato(['nome' => 'Ana Silva']);
+        foreach ([$emEntrevista, $aprovado, $reprovado] as $candidato) {
+            $this->vaga->participacoes()->create(['candidato_id' => $candidato->id, 'etapa' => 'triagem']);
+        }
         $this->mover('entrevista', $emEntrevista);
         $this->mover('aprovado', $aprovado);
         $this->mover('reprovado', $reprovado);
@@ -323,7 +328,7 @@ class MovimentacaoEtapaTest extends TestCase
         $this->mover('entrevista')->assertRedirect(route('login'));
         $this->mover('entrevista', json: true)->assertUnauthorized();
 
-        $this->assertSame(0, Participacao::query()->count());
+        $this->assertSame(1, Participacao::query()->count());
     }
 
     public function test_seeder_deixa_dois_servidores_em_entrevista_na_vaga_de_dados(): void

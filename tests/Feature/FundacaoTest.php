@@ -50,14 +50,18 @@ class FundacaoTest extends TestCase
         $this->assertSame([$vencido->id], Candidato::comRetencaoVencida()->pluck('id')->all());
     }
 
-    public function test_elegiveis_respeitam_o_tipo_da_vaga_e_o_status(): void
+    public function test_elegiveis_respeitam_o_vinculo_com_a_vaga_e_o_status(): void
     {
         $estagiario = Candidato::factory()->estagiario()->create();
         $servidor = Candidato::factory()->servidor()->create();
-        Candidato::factory()->estagiario()->desativado()->create();
+        $desativado = Candidato::factory()->estagiario()->desativado()->create();
 
         $vagaDeEstagio = Vaga::factory()->paraEstagiarios()->create();
         $vagaParaAmbos = Vaga::factory()->create(['tipo_candidato' => 'ambos']);
+        $vagaDeEstagio->participacoes()->create(['candidato_id' => $estagiario->id, 'etapa' => 'triagem']);
+        foreach ([$estagiario, $servidor, $desativado] as $candidato) {
+            $vagaParaAmbos->participacoes()->create(['candidato_id' => $candidato->id, 'etapa' => 'triagem']);
+        }
 
         $this->assertSame([$estagiario->id], Candidato::elegiveisPara($vagaDeEstagio)->pluck('id')->all());
         $this->assertEqualsCanonicalizing(

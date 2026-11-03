@@ -3,7 +3,6 @@
 namespace App\Http\Requests;
 
 use App\Enums\Area;
-use App\Enums\TipoCandidatoVaga;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -65,7 +64,6 @@ class SalvarVagaRequest extends FormRequest
         return [
             'titulo' => ['required', 'string', 'max:120'],
             'area' => ['required', Rule::enum(Area::class)],
-            'tipo_candidato' => ['required', Rule::enum(TipoCandidatoVaga::class)],
             'descricao' => ['nullable', 'string', 'max:1000'],
             'competencias' => ['required', 'array', 'min:1'],
             'competencias.*.id' => ['required', 'integer', 'distinct', 'exists:competencias,id'],
@@ -99,7 +97,6 @@ class SalvarVagaRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'tipo_candidato' => 'tipo de candidato',
             'descricao' => 'descrição',
             'competencias.*.id' => 'competência',
             'competencias.*.peso' => 'peso',
@@ -107,14 +104,13 @@ class SalvarVagaRequest extends FormRequest
     }
 
     /**
-     * @return array{titulo: string, area: Area, tipo_candidato: TipoCandidatoVaga, descricao: ?string, energia_dinamico_analitico: ?int, energia_individual_equipe: ?int, energia_execucao_planejamento: ?int}
+     * @return array{titulo: string, area: Area, descricao: ?string, energia_dinamico_analitico: ?int, energia_individual_equipe: ?int, energia_execucao_planejamento: ?int}
      */
     public function dadosVaga(): array
     {
         return [
             'titulo' => $this->validated('titulo'),
             'area' => Area::from($this->validated('area')),
-            'tipo_candidato' => TipoCandidatoVaga::from($this->validated('tipo_candidato')),
             'descricao' => $this->validated('descricao'),
             'energia_dinamico_analitico' => $this->validated('energia.dinamico_analitico') !== null ? (int) $this->validated('energia.dinamico_analitico') : null,
             'energia_individual_equipe' => $this->validated('energia.individual_equipe') !== null ? (int) $this->validated('energia.individual_equipe') : null,

@@ -14,8 +14,6 @@
         </div>
         <div data-card-detalhes hidden class="flex flex-col gap-3 border-t border-borda pt-3">
             <div class="flex flex-wrap items-center gap-2">
-                <span data-tipo-servidor class="inline-flex items-center gap-1.5 rounded-full bg-servidor-100 px-2.5 py-1 text-xs font-bold text-servidor-800 ring-1 ring-servidor-300 ring-inset"><x-icone nome="vaga" class="size-3.5" />Servidor</span>
-                <span data-tipo-estagiario class="inline-flex items-center gap-1.5 rounded-full bg-estagiario-100 px-2.5 py-1 text-xs font-bold text-estagiario-800 ring-1 ring-estagiario-300 ring-inset"><x-icone nome="formacao" class="size-3.5" />Estagiário</span>
                 <span data-area class="text-sm text-texto-suave"></span>
             </div>
             <p data-explicacao class="text-sm leading-relaxed"></p>

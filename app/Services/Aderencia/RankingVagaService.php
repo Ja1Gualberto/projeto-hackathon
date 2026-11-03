@@ -33,7 +33,6 @@ class RankingVagaService
         return $this->classificar($vaga, $this->vagas->candidatosElegiveis($vaga))
             ->map(fn (array $linha): ItemRankingDTO => new ItemRankingDTO(
                 codigo: $linha['candidato']->codigo,
-                tipo: $linha['candidato']->tipo,
                 area: $linha['candidato']->area,
                 experienciaNaArea: $linha['candidato']->experiencia_na_area,
                 resultado: $linha['resultado'],

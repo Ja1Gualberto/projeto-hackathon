@@ -32,6 +32,7 @@
         <div class="flex min-w-0 flex-col gap-6">
             <form id="formulario-revisao" method="POST" action="{{ route('importacoes.confirmar', $uuid) }}" data-ajax class="flex min-w-0 flex-col gap-8 rounded-card border border-borda bg-superficie p-6 sm:p-8" aria-label="Revisão do currículo">
                 @csrf
+                <p class="rounded-lg border border-primaria-200 bg-primaria-50 p-3 text-sm">Processo seletivo: <strong>{{ $vagaRelacionada?->titulo ?? 'Indisponível — importe novamente selecionando uma vaga' }}</strong>. O cadastro será vinculado a esta vaga sem remover participações anteriores.</p>
                 <div data-ajax-erros role="alert" tabindex="-1" hidden class="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-800"></div>
 
                 @if ($errors->any())

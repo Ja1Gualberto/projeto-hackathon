@@ -54,6 +54,7 @@ class AnotacaoEntrevistaTest extends TestCase
         $this->candidato = Candidato::factory()->estagiario()->create(['nome' => 'Joana Prates']);
         $this->candidato->competencias()->attach($this->comunicacao, ['origem' => OrigemCompetencia::Curriculo->value]);
         $this->vaga = $this->vaga('Estagiário de Dados');
+        $this->vaga->participacoes()->create(['candidato_id' => $this->candidato->id, 'etapa' => 'triagem']);
     }
 
     private function vaga(string $titulo, array $atributos = []): Vaga
@@ -66,6 +67,7 @@ class AnotacaoEntrevistaTest extends TestCase
 
     private function moverParaEntrevista(?Vaga $vaga = null): void
     {
+        ($vaga ?? $this->vaga)->participacoes()->firstOrCreate(['candidato_id' => $this->candidato->id], ['etapa' => 'triagem']);
         $this->patch(route('vagas.candidatos.etapa', [$vaga ?? $this->vaga, $this->candidato->codigo]), ['etapa' => 'entrevista'])
             ->assertSessionHasNoErrors();
     }
@@ -187,6 +189,7 @@ class AnotacaoEntrevistaTest extends TestCase
     public function test_perfil_em_triagem_nao_mostra_anotacoes_nem_formulario_e_revelado_em_outra_vaga_mostra_todas(): void
     {
         $outra = $this->vaga('Vaga B');
+        $outra->participacoes()->create(['candidato_id' => $this->candidato->id, 'etapa' => 'triagem']);
         $this->moverParaEntrevista();
         $this->anotarPelaVaga(['texto' => 'Anotação feita na vaga A.']);
 
@@ -540,7 +543,7 @@ class AnotacaoEntrevistaTest extends TestCase
             ->assertForbidden()->assertDontSee($this->candidato->nome);
 
         $this->assertSame(0, Anotacao::query()->count());
-        $this->assertSame(0, Participacao::query()->count());
+        $this->assertSame(1, Participacao::query()->count());
     }
 
     public function test_etapa_alterada_enquanto_modal_estava_aberta_responde_422_sem_anotar(): void
@@ -569,7 +572,6 @@ class AnotacaoEntrevistaTest extends TestCase
     }
 
     #[TestWith([['status' => 'desativado']])]
-    #[TestWith([['tipo' => 'servidor']])]
     public function test_candidato_que_deixou_de_ser_elegivel_nao_recebe_anotacao_ou_decisao_no_quadro(array $atributos): void
     {
         $this->moverParaEntrevista();
@@ -581,6 +583,19 @@ class AnotacaoEntrevistaTest extends TestCase
         $this->assertSame(0, Anotacao::query()->count());
         $this->assertSame(EtapaSelecao::Entrevista, Participacao::query()->sole()->etapa);
         $this->assertSame(1, MovimentacaoEtapa::query()->count());
+    }
+
+    public function test_classificacao_antiga_nao_impede_anotacao_e_decisao_do_candidato_vinculado(): void
+    {
+        $this->moverParaEntrevista();
+        $this->candidato->update(['tipo' => 'servidor']);
+
+        $this->anotarPelaVaga(['contexto' => 'quadro', 'texto' => 'Entrevista concluída.', 'etapa' => 'aprovado'], json: true)
+            ->assertOk();
+
+        $this->assertDatabaseCount('anotacoes', 1);
+        $this->assertSame(EtapaSelecao::Aprovado, Participacao::query()->sole()->etapa);
+        $this->assertDatabaseCount('movimentacoes_etapa', 2);
     }
 
     public function test_falha_ao_gravar_anotacao_desfaz_a_decisao_e_o_historico(): void

@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Collection;
 interface ParticipacaoRepositoryInterface
 {
     /**
-     * @return array<int, EtapaSelecao> Id do candidato => etapa, só de quem já foi movido nesta vaga.
+     * @return array<int, EtapaSelecao> Id do candidato => etapa, de todos os vinculados nesta vaga.
      */
     public function etapasPorCandidato(Vaga $vaga): array;
 
@@ -22,9 +22,12 @@ interface ParticipacaoRepositoryInterface
 
     /**
      * Cria ou atualiza a participação e grava a movimentação, numa transação. Se o candidato já
-     * estiver na etapa pedida, nada é registrado (sem participação, a etapa é a triagem).
+     * estiver na etapa pedida, nada é registrado.
      */
     public function moverPara(Vaga $vaga, Candidato $candidato, EtapaSelecao $etapa, User $usuario): Participacao;
+
+    /** @param list<int> $candidatoIds */
+    public function adicionarATriagem(Vaga $vaga, array $candidatoIds): void;
 
     /**
      * Movimentações do candidato nesta vaga, das mais recentes para as mais antigas, com o usuário.

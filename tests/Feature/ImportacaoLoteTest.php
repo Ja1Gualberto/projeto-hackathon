@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Candidato;
 use App\Models\User;
+use App\Models\Vaga;
 use App\Services\Curriculo\CadastroCandidatoService;
 use Database\Seeders\CompetenciaSeeder;
 use Database\Seeders\Support\GeradorPdfCurriculo;
@@ -59,7 +60,7 @@ class ImportacaoLoteTest extends TestCase
     /** @param list<UploadedFile> $arquivos */
     private function enviarLote(array $arquivos): string
     {
-        $resposta = $this->post(route('importacoes.store'), ['arquivos' => $arquivos, 'tipo' => 'estagiario']);
+        $resposta = $this->post(route('importacoes.store'), ['arquivos' => $arquivos, 'vaga_id' => Vaga::factory()->create()->id]);
         $resposta->assertRedirect();
         $lote = Str::afterLast(parse_url($resposta->headers->get('Location'), PHP_URL_PATH), '/');
         $this->assertSame(route('importacoes.lotes.show', $lote), $resposta->headers->get('Location'));
@@ -102,7 +103,7 @@ class ImportacaoLoteTest extends TestCase
 
     public function test_um_unico_pdf_mantem_o_fluxo_direto_para_a_revisao(): void
     {
-        $resposta = $this->post(route('importacoes.store'), ['arquivos' => [$this->pdf('ana-lima', 'ana@exemplo.com.br')], 'tipo' => 'estagiario']);
+        $resposta = $this->post(route('importacoes.store'), ['arquivos' => [$this->pdf('ana-lima', 'ana@exemplo.com.br')], 'vaga_id' => Vaga::factory()->create()->id]);
 
         $uuid = Str::afterLast($resposta->headers->get('Location'), '/');
         $resposta->assertRedirect(route('importacoes.show', $uuid));
@@ -139,7 +140,7 @@ class ImportacaoLoteTest extends TestCase
 
     public function test_lote_json_devolve_redirect_para_o_resumo(): void
     {
-        $resposta = $this->post(route('importacoes.store'), ['arquivos' => $this->tresPdfs(), 'tipo' => 'servidor'], ['Accept' => 'application/json']);
+        $resposta = $this->post(route('importacoes.store'), ['arquivos' => $this->tresPdfs(), 'vaga_id' => Vaga::factory()->create()->id], ['Accept' => 'application/json']);
 
         $resposta->assertOk()->assertJsonPath('fragments', [])->assertJsonPath('message', 'Currículos lidos. Escolha como continuar.');
         $this->assertStringContainsString('/candidatos/importar/lotes/', $resposta->json('redirect'));
@@ -259,7 +260,7 @@ class ImportacaoLoteTest extends TestCase
 
         $candidato = Candidato::query()->where('email', 'ana.lima@exemplo.com.br')->sole();
         $this->assertSame('Ana Lima', $candidato->nome);
-        $this->assertSame('estagiario', $candidato->tipo->value);
+        $this->assertNull($candidato->tipo);
         $this->assertSame('email', $candidato->consentimento_meio->value);
         $this->assertTrue($candidato->consentimento_em->isToday());
         $this->assertSame($this->recrutador->id, $candidato->consentimento_registrado_por);
@@ -387,7 +388,7 @@ class ImportacaoLoteTest extends TestCase
 
     public function test_descartar_fora_de_lote_volta_para_a_tela_de_envio(): void
     {
-        $resposta = $this->post(route('importacoes.store'), ['arquivos' => [$this->pdf('ana-lima', 'ana@exemplo.com.br')], 'tipo' => 'estagiario']);
+        $resposta = $this->post(route('importacoes.store'), ['arquivos' => [$this->pdf('ana-lima', 'ana@exemplo.com.br')], 'vaga_id' => Vaga::factory()->create()->id]);
         $uuid = Str::afterLast($resposta->headers->get('Location'), '/');
 
         $this->delete(route('importacoes.destroy', $uuid))->assertRedirect(route('importacoes.create'));

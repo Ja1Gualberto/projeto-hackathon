@@ -64,25 +64,38 @@ class RankingVagaTest extends TestCase
         return $this->getJson(route('vagas.show', $vaga));
     }
 
-    public function test_vaga_de_estagio_lista_somente_estagiarios_e_a_de_servidor_somente_servidores(): void
+    private function vincular(Vaga $vaga, Candidato ...$candidatos): void
+    {
+        foreach ($candidatos as $candidato) {
+            $vaga->participacoes()->create(['candidato_id' => $candidato->id, 'etapa' => 'triagem']);
+        }
+    }
+
+    public function test_quadro_lista_apenas_vinculados_sem_considerar_classificacao_antiga(): void
     {
         $estagiario = $this->candidato('estagiario', ['Python']);
         $servidor = $this->candidato('servidor', ['Python']);
 
-        $this->get(route('vagas.show', $this->vaga(['Python' => 3], 'estagiario')))
-            ->assertOk()->assertSee($estagiario->codigo)->assertDontSee($servidor->codigo);
-
-        $this->get(route('vagas.show', $this->vaga(['Python' => 3], 'servidor')))
+        $vaga = $this->vaga(['Python' => 3], 'estagiario');
+        $this->vincular($vaga, $servidor);
+        $this->get(route('vagas.show', $vaga))
             ->assertOk()->assertSee($servidor->codigo)->assertDontSee($estagiario->codigo);
+
+        $outra = $this->vaga(['Python' => 3], 'servidor');
+        $this->vincular($outra, $estagiario);
+        $this->get(route('vagas.show', $outra))
+            ->assertOk()->assertSee($estagiario->codigo)->assertDontSee($servidor->codigo);
     }
 
-    public function test_vaga_para_ambos_lista_os_dois_tipos_e_nunca_os_desativados(): void
+    public function test_triagem_lista_vinculados_ativos_e_nunca_os_desativados(): void
     {
         $estagiario = $this->candidato('estagiario', ['Python']);
         $servidor = $this->candidato('servidor', []);
         $desativado = $this->candidato('estagiario', ['Python'], ['status' => 'desativado']);
 
-        $this->get(route('vagas.show', $this->vaga(['Python' => 3], 'ambos')))
+        $vaga = $this->vaga(['Python' => 3], 'ambos');
+        $this->vincular($vaga, $estagiario, $servidor, $desativado);
+        $this->get(route('vagas.show', $vaga))
             ->assertOk()
             ->assertSee($estagiario->codigo)
             ->assertSee($servidor->codigo)
@@ -108,6 +121,7 @@ class RankingVagaTest extends TestCase
             $empateMaisAntigo, $empateMesmaData, $empateMesmaDataDepois, $semNada,
         ];
         $codigos = array_map(fn (Candidato $candidato): string => $candidato->codigo, $esperado);
+        $this->vincular($vaga, ...$esperado);
 
         $ranking = app(RankingVagaService::class)->ranquear($vaga);
 
@@ -120,22 +134,25 @@ class RankingVagaTest extends TestCase
     {
         $candidato = $this->candidato('estagiario', ['Python']);
 
-        $item = app(RankingVagaService::class)->ranquear($this->vaga(['Python' => 3]))->sole();
+        $vaga = $this->vaga(['Python' => 3]);
+        $this->vincular($vaga, $candidato);
+        $item = app(RankingVagaService::class)->ranquear($vaga)->sole();
 
         $this->assertSame($candidato->codigo, $item->codigo);
         $this->assertSame(EtapaSelecao::Triagem, $item->etapa);
         $this->assertNull($item->nome);
         $this->assertNull($item->proximidadeEnergia);
-        $this->assertSame($candidato->tipo, $item->tipo);
         $this->assertSame($candidato->area, $item->area);
     }
 
     public function test_todos_os_cards_tem_percentual_e_explicacao(): void
     {
         $vaga = $this->vaga(['Python' => 3, 'SQL' => 3, 'Git' => 2]);
-        $this->candidato('estagiario', ['Python', 'SQL', 'Git']);
-        $this->candidato('estagiario', ['Python']);
-        $this->candidato('estagiario', ['Figma']);
+        $this->vincular($vaga,
+            $this->candidato('estagiario', ['Python', 'SQL', 'Git']),
+            $this->candidato('estagiario', ['Python']),
+            $this->candidato('estagiario', ['Figma']),
+        );
 
         $resposta = $this->get(route('vagas.show', $vaga))->assertOk();
 
@@ -157,6 +174,7 @@ class RankingVagaTest extends TestCase
         $vaga = $this->vaga(['Python' => 3, 'Scrum' => 1]);
         $pythonista = $this->candidato('estagiario', ['Python']);
         $agilista = $this->candidato('estagiario', ['Scrum']);
+        $this->vincular($vaga, $pythonista, $agilista);
 
         $this->get(route('vagas.show', $vaga))->assertSeeInOrder([$pythonista->codigo, $agilista->codigo]);
 
@@ -175,12 +193,14 @@ class RankingVagaTest extends TestCase
             ->assertSee('75% — tem 1 de 2 competências; não identificado: Python (peso 1)');
     }
 
-    public function test_candidato_cadastrado_depois_da_vaga_aparece_no_ranking(): void
+    public function test_candidato_cadastrado_depois_so_aparece_no_ranking_apos_vinculo(): void
     {
         $vaga = $this->vaga(['Python' => 3]);
-        $this->get(route('vagas.show', $vaga))->assertSee('Nenhum candidato elegível');
+        $this->get(route('vagas.show', $vaga))->assertSee('Nenhum candidato na triagem');
 
         $novo = $this->candidato('estagiario', ['Python']);
+        $this->get(route('vagas.show', $vaga))->assertDontSee($novo->codigo);
+        $this->vincular($vaga, $novo);
 
         $this->get(route('vagas.show', $vaga))->assertSee($novo->codigo)->assertSee('100% — tem a competência solicitada');
     }
@@ -195,6 +215,7 @@ class RankingVagaTest extends TestCase
         ]);
         $vaga = $this->vaga(['Python' => 3]);
 
+        $this->vincular($vaga, $candidato);
         $html = $this->get(route('vagas.show', $vaga))->assertOk()->assertSee($candidato->codigo)->getContent();
         $fragmento = json_encode($this->quadroJson($vaga)->assertOk()->json('data.quadro-vaga'), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
@@ -215,6 +236,7 @@ class RankingVagaTest extends TestCase
             $this->candidato('estagiario', ['Python', 'SQL']),
             $this->candidato('estagiario', ['Python', 'SQL', 'Git']),
         ];
+        $this->vincular($vaga, ...$candidatos);
 
         $resposta = $this->quadroJson($vaga)
             ->assertOk()
@@ -275,6 +297,7 @@ class RankingVagaTest extends TestCase
         ];
         $codigos = collect(array_keys($ordem))
             ->map(fn (string $nome): string => Candidato::query()->where('nome', $nome)->value('codigo'))->all();
+        $this->vincular($vaga, ...Candidato::query()->whereIn('nome', array_keys($ordem))->get());
 
         $ranking = app(RankingVagaService::class)->ranquear($vaga);
 

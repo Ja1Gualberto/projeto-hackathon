@@ -32,6 +32,7 @@ class CurriculoProtegidoTest extends TestCase
             'curriculo_nome_original' => 'curriculo.pdf',
         ]);
         $this->vaga = Vaga::factory()->paraEstagiarios()->create();
+        $this->vaga->participacoes()->create(['candidato_id' => $this->candidato->id, 'etapa' => 'triagem']);
         $this->actingAs(User::factory()->create());
     }
 
@@ -42,6 +43,7 @@ class CurriculoProtegidoTest extends TestCase
 
     private function mover(string $etapa, ?Vaga $vaga = null): void
     {
+        ($vaga ?? $this->vaga)->participacoes()->firstOrCreate(['candidato_id' => $this->candidato->id], ['etapa' => 'triagem']);
         $this->patch(route('vagas.candidatos.etapa', [$vaga ?? $this->vaga, $this->candidato->codigo]), ['etapa' => $etapa])
             ->assertSessionHasNoErrors();
     }

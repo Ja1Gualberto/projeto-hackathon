@@ -7,6 +7,7 @@ use App\Enums\Area;
 use App\Models\Candidato;
 use App\Models\Competencia;
 use App\Models\User;
+use App\Models\Vaga;
 use App\Repositories\Interfaces\CandidatoRepositoryInterface;
 use App\Repositories\Interfaces\CompetenciaRepositoryInterface;
 use App\Services\ApresentacaoCandidatosService;
@@ -39,7 +40,7 @@ class BuscaCandidatosTest extends TestCase
             ->assertViewHas('candidatos', fn ($resultado): bool => $resultado->total() === 1);
     }
 
-    public function test_tipo_area_e_experiencia_restringem_a_lista_juntos(): void
+    public function test_processo_area_e_experiencia_restringem_a_lista_juntos(): void
     {
         $esperado = Candidato::factory()->estagiario()->create([
             'area' => Area::Desenvolvimento, 'experiencia_na_area' => true,
@@ -47,9 +48,11 @@ class BuscaCandidatosTest extends TestCase
         Candidato::factory()->servidor()->create(['area' => Area::Desenvolvimento, 'experiencia_na_area' => true]);
         Candidato::factory()->estagiario()->create(['area' => Area::Dados, 'experiencia_na_area' => true]);
         Candidato::factory()->estagiario()->create(['area' => Area::Desenvolvimento, 'experiencia_na_area' => false]);
+        $vaga = Vaga::factory()->create();
+        $vaga->participacoes()->create(['candidato_id' => $esperado->id, 'etapa' => 'triagem']);
 
         $this->actingAs(User::factory()->create())
-            ->get(route('candidatos.index', ['tipo' => 'estagiario', 'area' => 'desenvolvimento', 'experiencia' => 1]))
+            ->get(route('candidatos.index', ['vaga_id' => $vaga->id, 'area' => 'desenvolvimento', 'experiencia' => 1]))
             ->assertOk()->assertSee($esperado->nome)
             ->assertViewHas('candidatos', fn ($resultado): bool => $resultado->total() === 1);
     }
@@ -99,7 +102,7 @@ class BuscaCandidatosTest extends TestCase
         $candidato = Candidato::factory()->estagiario()->create(['experiencia_na_area' => false]);
 
         $this->actingAs(User::factory()->create())->get(route('candidatos.index'))
-            ->assertOk()->assertSee($candidato->nome)->assertSee('Estagiário')
+            ->assertOk()->assertSee($candidato->nome)->assertSee('Sem processo seletivo vinculado')
             ->assertSee('Experiência na área: não informado')->assertDontSee('CAND-');
     }
 
@@ -138,8 +141,10 @@ class BuscaCandidatosTest extends TestCase
         ]);
         $candidato->competencias()->attach($competencia, ['origem' => 'curriculo']);
 
+        $vaga = Vaga::factory()->create();
+        $vaga->participacoes()->create(['candidato_id' => $candidato->id, 'etapa' => 'triagem']);
         $resposta = $this->actingAs(User::factory()->create())->get(route('candidatos.index', [
-            'busca' => 'Marina', 'situacao' => 'retencao', 'tipo' => 'estagiario',
+            'busca' => 'Marina', 'situacao' => 'retencao', 'vaga_id' => $vaga->id,
             'area' => 'dados', 'experiencia' => 1, 'competencias' => [$competencia->id],
         ]));
 
@@ -150,7 +155,7 @@ class BuscaCandidatosTest extends TestCase
         $documento = new \DOMDocument;
         $documento->loadHTML($resposta->getContent(), LIBXML_NOERROR | LIBXML_NOWARNING | LIBXML_NONET);
         $xpath = new \DOMXPath($documento);
-        foreach (['situacao' => 'retencao', 'tipo' => 'estagiario', 'area' => 'dados'] as $nome => $valor) {
+        foreach (['situacao' => 'retencao', 'vaga_id' => $vaga->id, 'area' => 'dados'] as $nome => $valor) {
             $this->assertCount(1, $xpath->query('//select[@name="'.$nome.'"]/option[@value="'.$valor.'"][@selected]'));
         }
         $this->assertCount(1, $xpath->query('//input[@name="busca"][@value="Marina"]'));
@@ -257,7 +262,7 @@ class BuscaCandidatosTest extends TestCase
         $this->assertStringContainsString('tipo=estagiario', $resposta['candidatos']->nextPageUrl());
     }
 
-    #[TestWith([['tipo' => 'invalido'], 'tipo'])]
+    #[TestWith([['vaga_id' => 'invalido'], 'vaga_id'])]
     #[TestWith([['area' => 'invalida'], 'area'])]
     #[TestWith([['competencias' => ['999999']], 'competencias.0'])]
     #[TestWith([['competencias' => 'texto'], 'competencias'])]
@@ -284,6 +289,10 @@ class BuscaCandidatosTest extends TestCase
         foreach ($perfis as $perfil) {
             $perfil->competencias()->attach([$python->id, $avancado->id], ['origem' => 'curriculo']);
         }
+        $vaga = Vaga::factory()->create();
+        foreach ($perfis as $perfil) {
+            $vaga->participacoes()->create(['candidato_id' => $perfil->id, 'etapa' => 'triagem']);
+        }
         foreach ([
             ['tipo' => 'servidor'], ['area' => Area::Dados], ['experiencia_na_area' => false],
             ['status' => 'desativado'], ['nome' => 'Outra pessoa'],
@@ -298,7 +307,7 @@ class BuscaCandidatosTest extends TestCase
         ]);
         $parcial->competencias()->attach($python->id, ['origem' => 'curriculo']);
         $url = route('candidatos.index', [
-            'competencias' => [$python->id, $basico->id], 'tipo' => 'estagiario',
+            'competencias' => [$python->id, $basico->id], 'vaga_id' => $vaga->id,
             'area' => 'desenvolvimento', 'experiencia' => 1, 'busca' => 'Talento', 'page' => $pagina,
         ]);
         $this->actingAs(User::factory()->create());
@@ -313,7 +322,7 @@ class BuscaCandidatosTest extends TestCase
         $this->assertStringContainsString($fragmento, $html->getContent());
         $this->assertStringContainsString($presente, $fragmento);
         $this->assertStringContainsString('13 talentos encontrados', $fragmento);
-        $this->assertStringContainsString('tipo=estagiario', $fragmento);
+        $this->assertStringContainsString('vaga_id='.$vaga->id, $fragmento);
         $this->assertStringContainsString('experiencia=1', $fragmento);
         $this->assertStringContainsString('competencias%5B0%5D=', $fragmento);
         $documento = new \DOMDocument;
@@ -427,7 +436,7 @@ class BuscaCandidatosTest extends TestCase
         $this->get('/candidatos/importar')->assertOk()->assertSee('Ler currículo');
     }
 
-    public function test_demo_tem_24_perfis_com_pdf_e_sete_estagiarios_com_python_e_sql(): void
+    public function test_demo_tem_24_perfis_com_pdf_e_busca_competencias_sem_dividir_por_tipo(): void
     {
         Storage::fake('curriculos');
         $this->freezeTime();
@@ -435,8 +444,8 @@ class BuscaCandidatosTest extends TestCase
         $ids = Competencia::query()->whereIn('nome', ['Python', 'SQL'])->pluck('id')->all();
 
         $this->actingAs(User::factory()->create())
-            ->get(route('candidatos.index', ['competencias' => $ids, 'tipo' => 'estagiario']))
-            ->assertOk()->assertSee('7 talentos encontrados');
+            ->get(route('candidatos.index', ['competencias' => $ids]))
+            ->assertOk()->assertViewHas('candidatos', fn ($resultado): bool => $resultado->total() > 7);
 
         $this->assertDatabaseCount('candidatos', 24);
         Storage::disk('curriculos')->assertCount('/', 24);

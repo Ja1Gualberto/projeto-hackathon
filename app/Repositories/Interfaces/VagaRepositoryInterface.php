@@ -3,7 +3,6 @@
 namespace App\Repositories\Interfaces;
 
 use App\Enums\Area;
-use App\Enums\TipoCandidatoVaga;
 use App\Models\Candidato;
 use App\Models\Competencia;
 use App\Models\User;
@@ -20,14 +19,17 @@ interface VagaRepositoryInterface
      */
     public function listar(): Collection;
 
+    /** @return Collection<int, Vaga> */
+    public function listarAbertas(): Collection;
+
     /**
-     * @param  array{titulo: string, area: Area, tipo_candidato: TipoCandidatoVaga, descricao: ?string}  $dados
+     * @param  array{titulo: string, area: Area, descricao: ?string}  $dados
      * @param  array<int, int>  $competenciasComPeso  Id da competência => peso (1 a 3).
      */
     public function criar(array $dados, array $competenciasComPeso, User $criador): Vaga;
 
     /**
-     * @param  array{titulo: string, area: Area, tipo_candidato: TipoCandidatoVaga, descricao: ?string}  $dados
+     * @param  array{titulo: string, area: Area, descricao: ?string}  $dados
      * @param  array<int, int>  $competenciasComPeso  Id da competência => peso; as ausentes saem da vaga.
      */
     public function atualizar(Vaga $vaga, array $dados, array $competenciasComPeso): Vaga;
@@ -35,7 +37,7 @@ interface VagaRepositoryInterface
     /** Encerra uma vaga aberta; numa vaga já encerrada, mantém a data original. */
     public function encerrar(Vaga $vaga): void;
 
-    public function encontrar(int $id): ?Vaga;
+    public function encontrar(int $id, bool $bloquear = false): ?Vaga;
 
     /**
      * Competências pedidas pela vaga, lidas do banco a cada chamada (FR-020), com `pivot->peso`.
@@ -45,7 +47,7 @@ interface VagaRepositoryInterface
     public function requisitos(Vaga $vaga): Collection;
 
     /**
-     * Ativos do tipo aceito pela vaga, com as competências, em ordem de cadastro (`created_at`, `id`).
+     * Ativos vinculados à vaga, com as competências, em ordem de cadastro (`created_at`, `id`).
      *
      * @return Collection<int, Candidato>
      */

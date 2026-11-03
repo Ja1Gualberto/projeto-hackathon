@@ -25,8 +25,7 @@ interface CandidatoRepositoryInterface
     /** @return Collection<int, Candidato> */
     public function candidatosParaAnaliseEnergia(bool $todos): Collection;
 
-    /** @return array{servidores: int, estagiarios: int} */
-    public function contarAtivosPorTipo(): array;
+    public function contarAtivos(): int;
 
     public function contarRetencaoVencida(): int;
 

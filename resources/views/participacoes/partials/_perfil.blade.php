@@ -18,7 +18,6 @@
     <header class="flex flex-col gap-4 border-b border-borda pb-6 lg:flex-row lg:items-start lg:justify-between">
         <div class="flex min-w-0 flex-col gap-3">
             <div class="flex flex-wrap items-center gap-2">
-                <x-badge-tipo :tipo="$perfil->tipo" class="normal-case tracking-normal" />
                 <x-badge :cor="$revelado ? 'primaria' : 'neutro'">Etapa nesta vaga: {{ $perfil->etapa->rotulo() }}</x-badge>
                 @if ($perfil->desativado)
                     <x-badge>Desativado</x-badge>

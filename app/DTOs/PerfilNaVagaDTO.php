@@ -5,7 +5,6 @@ namespace App\DTOs;
 use App\Enums\Area;
 use App\Enums\EtapaSelecao;
 use App\Enums\OrigemPerfilEnergia;
-use App\Enums\TipoCandidato;
 use App\Models\Anotacao;
 use App\Models\Competencia;
 use App\Models\MovimentacaoEtapa;
@@ -32,7 +31,6 @@ final readonly class PerfilNaVagaDTO
         public string $codigo,
         public bool $identidadeRevelada,
         public EtapaSelecao $etapa,
-        public TipoCandidato $tipo,
         public Area $area,
         public bool $experienciaNaArea,
         public array $formacoes,

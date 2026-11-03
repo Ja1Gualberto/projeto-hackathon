@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\DTOs\ItemRankingDTO;
 use App\Enums\Area;
-use App\Enums\TipoCandidatoVaga;
 use App\Models\Competencia;
 use App\Models\Vaga;
 
@@ -44,7 +43,6 @@ class VagaTelaService
             'valores' => [
                 'titulo' => $vaga->titulo,
                 'area' => $vaga->area?->value,
-                'tipo_candidato' => $vaga->tipo_candidato?->value,
                 'descricao' => $vaga->descricao,
                 'competencias' => collect($pesos)->mapWithKeys(fn (int $peso, int $id): array => [$id => ['peso' => $peso]])->all(),
                 'energia' => [
@@ -54,7 +52,6 @@ class VagaTelaService
                 ],
             ],
             'areas' => array_map(fn (Area $area): array => ['valor' => $area->value, 'rotulo' => $area->rotulo()], Area::cases()),
-            'tipos' => array_map(fn (TipoCandidatoVaga $tipo): array => ['valor' => $tipo->value, 'rotulo' => $tipo->rotulo()], TipoCandidatoVaga::cases()),
             'catalogo' => collect($catalogo)->map(fn (iterable $itens): array => collect($itens)->map(fn (Competencia $competencia): array => [
                 'id' => $competencia->id, 'nome' => $competencia->nome,
             ])->all())->all(),
@@ -75,7 +72,6 @@ class VagaTelaService
             'colunas' => collect($quadro['colunas'])->map(fn (iterable $itens): array => collect($itens)->map(fn (ItemRankingDTO $item): array => [
                 'codigo' => $item->codigo,
                 'nome' => $item->nome,
-                'tipo' => $item->tipo->value,
                 'area' => $item->area->rotulo(),
                 'etapa' => $item->etapa->value,
                 'elegivel' => $item->elegivel,
@@ -99,13 +95,14 @@ class VagaTelaService
             'titulo' => $vaga->titulo,
             'descricao' => $vaga->descricao,
             'area' => $vaga->area->rotulo(),
-            'tipo' => $vaga->tipo_candidato->rotulo(),
             'status' => $vaga->status->rotulo(),
             'aberta' => $vaga->estaAberta(),
             'encerradaEm' => $vaga->encerrada_em?->format('d/m/Y'),
             'temEnergia' => $vaga->temPadraoEnergia(),
             'url' => route('vagas.show', $vaga),
             'editarUrl' => $vaga->estaAberta() ? route('vagas.edit', $vaga) : null,
+            'selecionarUrl' => $vaga->estaAberta() ? route('vagas.triagem.index', $vaga) : null,
+            'importarUrl' => $vaga->estaAberta() ? route('importacoes.create', ['vaga_id' => $vaga->id]) : null,
             'statusUrl' => route('vagas.status', $vaga),
         ];
     }

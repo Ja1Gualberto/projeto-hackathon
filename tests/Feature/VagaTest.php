@@ -164,14 +164,14 @@ class VagaTest extends TestCase
         $this->assertSame(0, Vaga::query()->count());
     }
 
-    public function test_titulo_area_tipo_e_descricao_sao_validados(): void
+    public function test_titulo_area_e_descricao_sao_validados(): void
     {
         $this->post(route('vagas.store'), $this->dados(sobrescrever: [
             'titulo' => '',
             'area' => 'astronomia',
             'tipo_candidato' => 'terceirizado',
             'descricao' => str_repeat('a', 1001),
-        ]))->assertSessionHasErrors(['titulo', 'area', 'tipo_candidato', 'descricao']);
+        ]))->assertSessionHasErrors(['titulo', 'area', 'descricao']);
 
         $this->post(route('vagas.store'), $this->dados(sobrescrever: ['titulo' => str_repeat('a', 121)]))
             ->assertSessionHasErrors('titulo');
@@ -197,6 +197,7 @@ class VagaTest extends TestCase
     public function test_edicao_atualiza_dados_competencias_e_pesos(): void
     {
         $vaga = $this->vaga(['Python' => 3, 'SQL' => 3]);
+        $classificacaoAnterior = $vaga->tipo_candidato;
 
         $this->put(route('vagas.update', $vaga), $this->dados(['Python' => 1, 'Git' => 2, 'SQL' => ''], [
             'titulo' => 'Estagiário de Dados',
@@ -207,7 +208,7 @@ class VagaTest extends TestCase
 
         $vaga->refresh();
         $this->assertSame('Estagiário de Dados', $vaga->titulo);
-        $this->assertSame('ambos', $vaga->tipo_candidato->value);
+        $this->assertSame($classificacaoAnterior, $vaga->tipo_candidato);
         $this->assertSame(['Git' => 2, 'Python' => 1], $this->pesosDa($vaga));
     }
 
@@ -227,6 +228,7 @@ class VagaTest extends TestCase
         $vaga = $this->vaga();
         $candidato = Candidato::factory()->create(['tipo' => 'estagiario']);
         $vaga->update(['tipo_candidato' => 'estagiario']);
+        $vaga->participacoes()->create(['candidato_id' => $candidato->id, 'etapa' => 'triagem']);
 
         $this->patch(route('vagas.status', $vaga))
             ->assertRedirect(route('vagas.show', $vaga))
@@ -270,14 +272,21 @@ class VagaTest extends TestCase
         $this->assertSame(['Python' => 3], $this->pesosDa($vaga));
     }
 
-    public function test_lista_mostra_status_tipo_aceito_e_candidatos_elegiveis(): void
+    public function test_lista_mostra_status_e_total_de_candidatos_vinculados_ativos(): void
     {
         Candidato::factory()->count(2)->estagiario()->create();
         Candidato::factory()->servidor()->create();
         Candidato::factory()->estagiario()->desativado()->create();
         $estagio = $this->vaga(['Python' => 3], ['titulo' => 'Vaga de estágio', 'tipo_candidato' => 'estagiario']);
-        $this->vaga(['Python' => 3], ['titulo' => 'Vaga para todos', 'tipo_candidato' => 'ambos']);
-        $this->vaga(['Python' => 3], ['titulo' => 'Vaga encerrada', 'tipo_candidato' => 'servidor', 'status' => 'encerrada', 'encerrada_em' => now()]);
+        $todos = $this->vaga(['Python' => 3], ['titulo' => 'Vaga para todos', 'tipo_candidato' => 'ambos']);
+        $encerrada = $this->vaga(['Python' => 3], ['titulo' => 'Vaga encerrada', 'tipo_candidato' => 'servidor', 'status' => 'encerrada', 'encerrada_em' => now()]);
+        foreach (Candidato::query()->get() as $candidato) {
+            $todos->participacoes()->create(['candidato_id' => $candidato->id, 'etapa' => 'triagem']);
+        }
+        foreach (Candidato::query()->where('tipo', 'estagiario')->get() as $candidato) {
+            $estagio->participacoes()->create(['candidato_id' => $candidato->id, 'etapa' => 'triagem']);
+        }
+        $encerrada->participacoes()->create(['candidato_id' => Candidato::query()->where('tipo', 'servidor')->sole()->id, 'etapa' => 'triagem']);
 
         $this->get(route('vagas.index'))
             ->assertOk()
@@ -288,8 +297,8 @@ class VagaTest extends TestCase
                     && $vagas['Vaga para todos']['totalElegiveis'] === 3
                     && $vagas['Vaga encerrada']['totalElegiveis'] === 1;
             })
-            ->assertSeeInOrder(['Vaga de estágio', 'Estagiários'])
-            ->assertSeeInOrder(['Vaga para todos', 'Servidores e estagiários'])
+            ->assertSee('Vaga de estágio')
+            ->assertSee('Vaga para todos')
             ->assertSeeInOrder(['Vaga encerrada', 'Encerrada'])
             ->assertSee(route('vagas.show', $estagio))
             ->assertSee('Nova vaga');
@@ -383,6 +392,7 @@ class VagaTest extends TestCase
     {
         $vaga = $this->vaga(['Python' => 3], ['tipo_candidato' => 'estagiario']);
         $candidato = Candidato::factory()->estagiario()->create(['nome' => 'Otávio Brandão', 'email' => 'otavio@exemplo.com.br']);
+        $vaga->participacoes()->create(['candidato_id' => $candidato->id, 'etapa' => 'triagem']);
 
         $resposta = $this->patchJson(route('vagas.status', $vaga))
             ->assertOk()

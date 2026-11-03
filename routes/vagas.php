@@ -4,6 +4,7 @@ use App\Http\Controllers\ParticipacaoAnotacaoController;
 use App\Http\Controllers\ParticipacaoController;
 use App\Http\Controllers\ParticipacaoCurriculoController;
 use App\Http\Controllers\ParticipacaoEtapaController;
+use App\Http\Controllers\TriagemCandidatoController;
 use App\Http\Controllers\VagaController;
 use App\Http\Controllers\VagaStatusController;
 use Illuminate\Support\Facades\Route;
@@ -34,6 +35,10 @@ Route::patch('/vagas/{vaga}/status', [VagaStatusController::class, 'update'])
     ->whereNumber('vaga')->name('vagas.status');
 
 // US4 — seleção
+Route::get('/vagas/{vaga}/triagem/candidatos', [TriagemCandidatoController::class, 'index'])
+    ->whereNumber('vaga')->name('vagas.triagem.index');
+Route::post('/vagas/{vaga}/triagem/candidatos', [TriagemCandidatoController::class, 'store'])
+    ->whereNumber('vaga')->name('vagas.triagem.store');
 Route::get('/vagas/{vaga}/candidatos/{candidato:codigo}', [ParticipacaoController::class, 'show'])
     ->whereNumber('vaga')->where('candidato', 'CAND-[0-9]{4}')
     ->withoutScopedBindings()->name('vagas.candidatos.show');

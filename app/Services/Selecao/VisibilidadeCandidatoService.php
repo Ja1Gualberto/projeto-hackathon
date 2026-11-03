@@ -53,7 +53,7 @@ class VisibilidadeCandidatoService
     }
 
     /**
-     * Sem participação registrada, o candidato elegível está em triagem (research R8).
+     * A etapa pertence à participação neste processo seletivo.
      */
     public function etapaNaVaga(Vaga $vaga, Candidato $candidato): EtapaSelecao
     {
@@ -66,11 +66,11 @@ class VisibilidadeCandidatoService
     }
 
     /**
-     * Ativo e do tipo aceito pela vaga.
+     * Ativo e vinculado à vaga.
      */
     public function elegivel(Vaga $vaga, Candidato $candidato): bool
     {
-        return $candidato->status === StatusCandidato::Ativo && $vaga->tipo_candidato->aceita($candidato->tipo);
+        return $candidato->status === StatusCandidato::Ativo && $this->participacoes->encontrar($vaga, $candidato) !== null;
     }
 
     /**
@@ -96,7 +96,6 @@ class VisibilidadeCandidatoService
             codigo: $candidato->codigo,
             identidadeRevelada: $revelado,
             etapa: $etapa,
-            tipo: $candidato->tipo,
             area: $candidato->area,
             experienciaNaArea: $candidato->experiencia_na_area,
             formacoes: $textos($candidato->formacoes),

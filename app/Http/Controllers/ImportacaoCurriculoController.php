@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\TipoCandidato;
 use App\Http\Requests\ImportarCurriculoRequest;
+use App\Repositories\Interfaces\VagaRepositoryInterface;
 use App\Services\Curriculo\ImportacaoCurriculoService;
 use App\Services\Curriculo\LoteImportacaoService;
 use Illuminate\Http\JsonResponse;
@@ -20,25 +20,29 @@ class ImportacaoCurriculoController extends Controller
     public function __construct(
         private ImportacaoCurriculoService $importacoes,
         private LoteImportacaoService $lotes,
+        private VagaRepositoryInterface $vagas,
     ) {}
 
-    public function create(): View
+    public function create(Request $request): View
     {
-        return view('importacoes.create');
+        return view('importacoes.create', [
+            'vagas' => $this->vagas->listarAbertas(),
+            'vagaSelecionada' => $request->integer('vaga_id'),
+        ]);
     }
 
     public function store(ImportarCurriculoRequest $request): RedirectResponse|JsonResponse
     {
         $arquivos = array_values($request->file('arquivos'));
-        $tipo = TipoCandidato::from($request->validated('tipo'));
+        $vagaId = (int) $request->validated('vaga_id');
 
         if (count($arquivos) === 1) {
-            $uuid = $this->importacoes->importar($arquivos[0], $tipo);
+            $uuid = $this->importacoes->importar($arquivos[0], $vagaId);
 
             return $this->responder($request, 'Currículo lido. Revise os dados antes de salvar.', route('importacoes.show', $uuid));
         }
 
-        $lote = $this->lotes->criar($arquivos, $tipo);
+        $lote = $this->lotes->criar($arquivos, $vagaId);
         $request->session()->put('abrir_escolha_lote', true);
 
         return $this->responder($request, 'Currículos lidos. Escolha como continuar.', route('importacoes.lotes.show', $lote));
@@ -57,6 +61,7 @@ class ImportacaoCurriculoController extends Controller
         return response()->view('importacoes.show', [
             'uuid' => $importacao,
             'importacao' => $dados,
+            'vagaRelacionada' => isset($dados['vaga_id']) ? $this->vagas->encontrar($dados['vaga_id']) : null,
             'posicaoLote' => isset($dados['lote']) ? $this->lotes->posicao($dados['lote'], $importacao) : null,
             ...$this->importacoes->dadosRevisao($dados),
         ])->header('Cache-Control', 'private, no-store');

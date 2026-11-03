@@ -4,7 +4,6 @@ namespace Tests\Unit\DTOs;
 
 use App\DTOs\FiltroCandidatosDTO;
 use App\Enums\Area;
-use App\Enums\TipoCandidato;
 use PHPUnit\Framework\TestCase;
 
 class FiltroCandidatosDTOTest extends TestCase
@@ -13,14 +12,14 @@ class FiltroCandidatosDTOTest extends TestCase
     {
         $filtro = FiltroCandidatosDTO::fromArray([
             'competencias' => ['3', '7', '3'],
-            'tipo' => 'estagiario',
+            'vaga_id' => '12',
             'area' => 'desenvolvimento',
             'experiencia' => '1',
             'busca' => '  Marina  ',
         ]);
 
         $this->assertSame([3, 7], $filtro->competencias);
-        $this->assertSame(TipoCandidato::Estagiario, $filtro->tipo);
+        $this->assertSame(12, $filtro->vagaId);
         $this->assertSame(Area::Desenvolvimento, $filtro->area);
         $this->assertTrue($filtro->somenteComExperiencia);
         $this->assertSame('Marina', $filtro->busca);
@@ -32,7 +31,7 @@ class FiltroCandidatosDTOTest extends TestCase
         $filtro = FiltroCandidatosDTO::fromArray([]);
 
         $this->assertSame([], $filtro->competencias);
-        $this->assertNull($filtro->tipo);
+        $this->assertNull($filtro->vagaId);
         $this->assertNull($filtro->area);
         $this->assertFalse($filtro->somenteComExperiencia);
         $this->assertNull($filtro->busca);
@@ -41,7 +40,7 @@ class FiltroCandidatosDTOTest extends TestCase
 
     public function test_equivalencias_geram_novo_dto_sem_alterar_os_filtros_originais(): void
     {
-        $original = FiltroCandidatosDTO::fromArray(['competencias' => ['3'], 'tipo' => 'servidor']);
+        $original = FiltroCandidatosDTO::fromArray(['competencias' => ['3'], 'vaga_id' => '8']);
 
         $resolvido = $original->comCompetenciasEquivalentes([3 => [3, 4, 5]]);
 
@@ -49,6 +48,6 @@ class FiltroCandidatosDTOTest extends TestCase
         $this->assertSame([], $original->competenciasEquivalentes);
         $this->assertSame([3 => [3, 4, 5]], $resolvido->competenciasEquivalentes);
         $this->assertSame([3], $resolvido->competencias);
-        $this->assertSame(TipoCandidato::Servidor, $resolvido->tipo);
+        $this->assertSame(8, $resolvido->vagaId);
     }
 }

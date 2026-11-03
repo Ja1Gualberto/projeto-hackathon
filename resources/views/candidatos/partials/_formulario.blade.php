@@ -29,7 +29,6 @@
     <fieldset class="flex flex-col gap-5 border-t border-borda pt-6">
         <legend class="mb-1 text-xl font-semibold tracking-tight">Perfil</legend>
         <div class="grid gap-5 sm:grid-cols-2">
-            <x-campo nome="tipo" rotulo="Tipo de candidato" tipo="select" :valor="$valores['tipo'] ?? null" vazio="Selecione o tipo" :opcoes="$opcoes(\App\Enums\TipoCandidato::cases())" obrigatorio />
             <x-campo nome="area" rotulo="Área de atuação" tipo="select" :valor="$valores['area'] ?? null" vazio="Selecione a área" :opcoes="$opcoes(\App\Enums\Area::cases())" obrigatorio ajuda="Sugerida pelas competências encontradas. Confira." />
         </div>
         <div class="flex flex-col gap-1">

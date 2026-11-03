@@ -4,7 +4,6 @@ namespace App\Services;
 
 use App\DTOs\ItemRankingDTO;
 use App\Enums\Area;
-use App\Enums\TipoCandidatoVaga;
 use App\Models\Competencia;
 use App\Models\User;
 use App\Models\Vaga;
@@ -26,28 +25,22 @@ class VagaService
     public function __construct(
         private VagaRepositoryInterface $vagas,
         private CompetenciaRepositoryInterface $competencias,
-        private CandidatoService $candidatos,
         private SelecaoService $selecao,
     ) {}
 
     /**
-     * Vagas e a quantidade de candidatos elegíveis de cada uma (ativos do tipo aceito).
+     * Vagas e a quantidade de candidatos ativos vinculados a cada processo.
      *
      * @return array{vagas: Collection<int, Vaga>, elegiveis: array<int, int>}
      */
     public function listar(): array
     {
         $vagas = $this->vagas->listar();
-        $totais = $this->candidatos->contarAtivosPorTipo();
 
         return [
             'vagas' => $vagas,
             'elegiveis' => $vagas->mapWithKeys(fn (Vaga $vaga): array => [
-                $vaga->id => match ($vaga->tipo_candidato) {
-                    TipoCandidatoVaga::Servidor => $totais['servidores'],
-                    TipoCandidatoVaga::Estagiario => $totais['estagiarios'],
-                    TipoCandidatoVaga::Ambos => array_sum($totais),
-                },
+                $vaga->id => $vaga->elegiveis_count,
             ])->all(),
         ];
     }
@@ -69,7 +62,7 @@ class VagaService
     }
 
     /**
-     * @param  array{titulo: string, area: Area, tipo_candidato: TipoCandidatoVaga, descricao: ?string}  $dados
+     * @param  array{titulo: string, area: Area, descricao: ?string}  $dados
      * @param  array<int, int>  $competenciasComPeso
      */
     public function criar(array $dados, array $competenciasComPeso, User $criador): Vaga
@@ -80,7 +73,7 @@ class VagaService
     /**
      * Vaga encerrada fica somente para consulta: a edição é recusada com erro de validação.
      *
-     * @param  array{titulo: string, area: Area, tipo_candidato: TipoCandidatoVaga, descricao: ?string}  $dados
+     * @param  array{titulo: string, area: Area, descricao: ?string}  $dados
      * @param  array<int, int>  $competenciasComPeso
      *
      * @throws ValidationException

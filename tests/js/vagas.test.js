@@ -27,17 +27,17 @@ function elemento(seletores = []) {
 function documento() {
     const estruturas = {
         'modelo-filtro-area': ['[data-cor]', '[data-rotulo]'],
-        'modelo-vaga': ['[data-capa]', '[data-status]', '[data-tipo]', '[data-area]', '[data-titulo]', '[data-competencias-total]', '[data-elegiveis]', '[data-entrevista]', '[data-aprovado]', '[data-abrir-quadro]'],
-        'modelo-quadro': ['[data-status]', '[data-tipo]', '[data-area]', '[data-titulo]', '[data-descricao]', '[data-atualizar-quadro]', '[data-editar-vaga]', '[data-encerrar-vaga]', '[data-vaga-encerrada]', '[data-encerrada-em]', '[data-soma-pesos]', '[data-requisitos]', '[data-elegiveis]', '[data-colunas]'],
+        'modelo-vaga': ['[data-capa]', '[data-status]', '[data-area]', '[data-titulo]', '[data-competencias-total]', '[data-elegiveis]', '[data-entrevista]', '[data-aprovado]', '[data-abrir-quadro]'],
+        'modelo-quadro': ['[data-status]', '[data-area]', '[data-titulo]', '[data-descricao]', '[data-atualizar-quadro]', '[data-editar-vaga]', '[data-encerrar-vaga]', '[data-vaga-encerrada]', '[data-encerrada-em]', '[data-soma-pesos]', '[data-requisitos]', '[data-elegiveis]', '[data-colunas]', '[data-adicionar-candidatos]', '[data-selecionar-candidatos]', '[data-importar-curriculos]'],
         'modelo-coluna': ['[data-coluna-titulo]', '[data-coluna-total]', '[data-aviso-triagem]', '[data-sem-elegiveis]', '[data-coluna-vazia]', '[data-coluna-itens]'],
-        'modelo-card-ranking': ['[data-card-titulo]', '[data-link-perfil]', '[data-posicao]', '[data-codigo-revelado]', '[data-tipo-servidor]', '[data-tipo-estagiario]', '[data-area]', '[data-situacao]', '[data-score]', '[data-score-barra]', '[data-score-texto]', '[data-explicacao]', '[data-competencias]', '[data-experiencia]', '[data-energia]', '[data-proximidade-energia]', '[data-energia-ausente]', '[data-mover-etapa]', '[data-card-detalhes]', '[data-expandir-card]', '[data-adicionar-anotacao]'],
+        'modelo-card-ranking': ['[data-card-titulo]', '[data-link-perfil]', '[data-posicao]', '[data-codigo-revelado]', '[data-area]', '[data-situacao]', '[data-score]', '[data-score-barra]', '[data-score-texto]', '[data-explicacao]', '[data-competencias]', '[data-experiencia]', '[data-energia]', '[data-proximidade-energia]', '[data-energia-ausente]', '[data-mover-etapa]', '[data-card-detalhes]', '[data-expandir-card]', '[data-adicionar-anotacao]'],
         'modelo-tag-competencia': ['[data-tag-nome]', '[data-tag-peso]', '[data-tag-faltante]', '[data-tag-origem]'],
         'modelo-peso-competencia': ['label', 'select', '[data-erro-campo]'],
         'modelo-eixo-energia': ['label', 'select'],
     };
     const raizes = new Map(['[data-lista-vagas]', '[data-lista-vazia]', '[data-filtro-areas]', '[data-ajax-anuncios]'].map((seletor) => [seletor, elemento()]));
     const form = elemento(['[data-catalogo="hard"]', '[data-catalogo="soft"]', '[data-eixos-energia]']);
-    const campos = new Map(['titulo', 'area', 'tipo_candidato', 'descricao'].map((nome) => [nome, elemento()]));
+    const campos = new Map(['titulo', 'area', 'descricao'].map((nome) => [nome, elemento()]));
     form.elements = { namedItem: (nome) => campos.get(nome) };
     raizes.set('[data-formulario-vaga]', form);
     const regiao = elemento();
@@ -55,11 +55,11 @@ function documento() {
 
 function dadosQuadro() {
     return {
-        vaga: { titulo: 'Desenvolvimento', descricao: null, area: 'Dados', tipo: 'Estagiários', status: 'Aberta', aberta: true, encerradaEm: null, temEnergia: true,
-            url: '/vagas/3', editarUrl: '/vagas/3/editar', statusUrl: '/vagas/3/status' },
+        vaga: { titulo: 'Desenvolvimento', descricao: null, area: 'Dados', status: 'Aberta', aberta: true, encerradaEm: null, temEnergia: true,
+            url: '/vagas/3', editarUrl: '/vagas/3/editar', statusUrl: '/vagas/3/status', selecionarUrl: '/vagas/3/triagem/candidatos', importarUrl: '/candidatos/importar?vaga_id=3' },
         totalElegiveis: 1,
         requisitos: [{ nome: 'Python', peso: 3 }, { nome: 'SQL', peso: 1 }],
-        colunas: { triagem: [{ codigo: 'CAND-0042', nome: null, tipo: 'estagiario', area: 'Dados', etapa: 'triagem', elegivel: true, desativado: false,
+        colunas: { triagem: [{ codigo: 'CAND-0042', nome: null, area: 'Dados', etapa: 'triagem', elegivel: true, desativado: false,
             experienciaNaArea: true, proximidadeEnergia: 83, percentual: 75, explicacao: '75% — tem 1 de 2 competências',
             atendidas: [{ nome: 'Python', peso: 3, origem: 'entrevista' }], naoIdentificadas: [{ nome: 'SQL', peso: 1 }],
             perfilUrl: '/vagas/3/candidatos/CAND-0042', etapaUrl: '/vagas/3/candidatos/CAND-0042/etapa', anotacaoUrl: '/vagas/3/candidatos/CAND-0042/anotacoes' }], entrevista: [], aprovado: [], reprovado: [] },
@@ -126,7 +126,7 @@ test('formulário preenche dados, catálogo, pesos e energia sem lógica Blade',
         oldInput: null, areas: [{ valor: 'dados', rotulo: 'Dados' }], tipos: [{ valor: 'ambos', rotulo: 'Servidores e estagiários' }], catalogo: { hard: [{ id: 7, nome: 'Python' }], soft: [] } }, doc);
     assert.equal(doc.campos.get('titulo').value, 'Analista');
     assert.equal(doc.campos.get('area').value, 'dados');
-    assert.equal(doc.campos.get('tipo_candidato').children[0].textContent, 'Servidores e estagiários');
+    assert.equal(doc.campos.has('tipo_candidato'), false);
     const linha = doc.form.querySelector('[data-catalogo="hard"]').children[0];
     assert.equal(linha.querySelector('select').name, 'competencias[7][peso]');
     assert.equal(linha.querySelector('select').value, 3);
@@ -158,7 +158,8 @@ test('quadro monta ranking anônimo, ações, tags, score e energia apenas em Ja
     assert.equal(card.draggable, true);
     assert.equal(card.querySelector('[data-link-perfil]').textContent, 'CAND-0042');
     assert.equal(card.querySelector('[data-codigo-revelado]').hidden, true);
-    assert.equal(card.querySelector('[data-tipo-servidor]').hidden, true);
+    assert.equal(quadro.querySelector('[data-selecionar-candidatos]').href, 'https://banco.test/vagas/3/triagem/candidatos');
+    assert.equal(quadro.querySelector('[data-importar-curriculos]').href, 'https://banco.test/candidatos/importar?vaga_id=3');
     assert.equal(card.querySelector('[data-score]').atributos['aria-label'], 'Aderência de 75%');
     assert.equal(card.querySelector('[data-score-barra]').style.width, '75%');
     assert.ok(card.querySelector('[data-score-barra]').classList.contains('bg-score-alto'));
@@ -238,9 +239,12 @@ test('vaga encerrada e candidatos inelegíveis removem ações e arraste', () =>
     dados.vaga.aberta = false;
     dados.vaga.temEnergia = false;
     dados.vaga.editarUrl = null;
+    dados.vaga.selecionarUrl = null;
+    dados.vaga.importarUrl = null;
     dados.vaga.encerradaEm = '02/11/2026';
     let quadro = montarQuadro(dados, documento());
     assert.equal(quadro.querySelector('[data-editar-vaga]').removido, true);
+    assert.equal(quadro.querySelector('[data-adicionar-candidatos]').removido, true);
     assert.equal(quadro.querySelector('[data-encerrar-vaga]').removido, true);
     assert.equal(quadro.querySelector('[data-encerrada-em]').textContent, '02/11/2026');
     let card = cards(colunas(quadro)[0])[0];
@@ -250,6 +254,8 @@ test('vaga encerrada e candidatos inelegíveis removem ações e arraste', () =>
     assert.equal(card.querySelector('[data-adicionar-anotacao]').hidden, true);
     dados.vaga.aberta = true;
     dados.vaga.editarUrl = '/vagas/3/editar';
+    dados.vaga.selecionarUrl = '/vagas/3/triagem/candidatos';
+    dados.vaga.importarUrl = '/candidatos/importar?vaga_id=3';
     dados.colunas.triagem[0].elegivel = false;
     dados.colunas.triagem[0].desativado = true;
     quadro = montarQuadro(dados, documento());
@@ -292,6 +298,8 @@ test('dados inválidos e links externos são recusados antes de alterar a regiã
         (dados) => { dados.colunas.triagem[0].percentual = 101; },
         (dados) => { dados.colunas.triagem[0].perfilUrl = 'https://outro.test/'; },
         (dados) => { dados.vaga.url = 'javascript:alert(1)'; },
+        (dados) => { dados.vaga.selecionarUrl = 'https://outro.test/'; },
+        (dados) => { dados.vaga.importarUrl = 'https://outro.test/'; },
         (dados) => { dados.colunas.triagem[0].anotacaoUrl = 'https://outro.test/anotacoes'; },
         (dados) => { delete dados.colunas.triagem[0].perfilUrl; },
         (dados) => { delete dados.colunas.aprovado; },

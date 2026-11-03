@@ -14,7 +14,9 @@
                 <div class="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-texto-suave">
                     <span>{{ $candidato->area->rotulo() }}</span>
                     @if ($candidato->idade !== null)<span>{{ $candidato->idade }} anos</span>@endif
-                    <span class="rounded-md border border-borda px-2 py-0.5 text-xs font-medium">{{ $candidato->tipo->rotulo() }}</span>
+                    @foreach ($candidato->participacoes as $participacao)
+                        <a href="{{ route('vagas.show', $participacao->vaga) }}" class="rounded-md border border-borda px-2 py-0.5 text-xs font-medium text-primaria-700 underline underline-offset-4">{{ $participacao->vaga->titulo }}</a>
+                    @endforeach
                     <div id="situacao-candidato">@include('candidatos.partials._situacao')</div>
                 </div>
             </div>

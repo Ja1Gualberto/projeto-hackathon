@@ -4,16 +4,12 @@
     <h2 id="dados-vaga-titulo" class="text-lg font-semibold">Dados da vaga</h2>
     <div class="flex flex-col gap-1.5">
         <label for="campo-titulo" class="text-sm font-semibold text-texto">Título <span class="text-red-700" aria-hidden="true">*</span></label>
-        <input id="campo-titulo" name="titulo" type="text" maxlength="120" required placeholder="Ex.: Estagiário de Desenvolvimento" class="block w-full rounded-lg border border-borda-campo bg-superficie px-3 py-2 text-texto shadow-xs transition-colors focus:border-primaria-600 focus:ring-2 focus:ring-primaria-400 focus:outline-none motion-reduce:transition-none">
+        <input id="campo-titulo" name="titulo" type="text" maxlength="120" required placeholder="Ex.: Desenvolvimento de Sistemas" class="block w-full rounded-lg border border-borda-campo bg-superficie px-3 py-2 text-texto shadow-xs transition-colors focus:border-primaria-600 focus:ring-2 focus:ring-primaria-400 focus:outline-none motion-reduce:transition-none">
     </div>
     <div class="grid gap-5 sm:grid-cols-2">
         <div class="flex flex-col gap-1.5">
             <label for="campo-area" class="text-sm font-semibold text-texto">Área <span class="text-red-700" aria-hidden="true">*</span></label>
             <select id="campo-area" name="area" required class="block w-full rounded-lg border border-borda-campo bg-superficie px-3 py-2 text-texto shadow-xs transition-colors focus:border-primaria-600 focus:ring-2 focus:ring-primaria-400 focus:outline-none motion-reduce:transition-none"><option value="">Selecione a área</option></select>
-        </div>
-        <div class="flex flex-col gap-1.5">
-            <label for="campo-tipo-candidato" class="text-sm font-semibold text-texto">Tipo de candidato <span class="text-red-700" aria-hidden="true">*</span></label>
-            <select id="campo-tipo-candidato" name="tipo_candidato" required class="block w-full rounded-lg border border-borda-campo bg-superficie px-3 py-2 text-texto shadow-xs transition-colors focus:border-primaria-600 focus:ring-2 focus:ring-primaria-400 focus:outline-none motion-reduce:transition-none"><option value="">Selecione quem pode participar</option></select>
         </div>
     </div>
     <div class="flex flex-col gap-1.5">

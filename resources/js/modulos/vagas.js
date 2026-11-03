@@ -46,7 +46,6 @@ function status(raiz, vaga) {
     badge.classList.remove(...CORES_STATUS.encerrada.split(' '));
     badge.classList.add(...CORES_STATUS[vaga.aberta ? 'aberta' : 'encerrada'].split(' '));
     badge.textContent = vaga.status;
-    texto(raiz, '[data-tipo]', vaga.tipo);
     texto(raiz, '[data-area]', vaga.area);
 }
 
@@ -122,8 +121,7 @@ export function preencherFormulario(dados, doc = document) {
     const form = doc.querySelector('[data-formulario-vaga]');
     const valores = dados.oldInput ?? dados.valores;
     opcoes(form.elements.namedItem('area'), dados.areas, doc);
-    opcoes(form.elements.namedItem('tipo_candidato'), dados.tipos, doc);
-    for (const nome of ['titulo', 'area', 'tipo_candidato', 'descricao']) {
+    for (const nome of ['titulo', 'area', 'descricao']) {
         form.elements.namedItem(nome).value = valores[nome] ?? '';
     }
     for (const categoria of ['hard', 'soft']) {
@@ -219,12 +217,10 @@ function cardRanking(item, posicao, vaga, doc) {
     expandir.setAttribute('aria-label', `Mostrar competências de ${identificacao}`);
     texto(card, '[data-codigo-revelado]', item.codigo);
     card.querySelector('[data-codigo-revelado]').hidden = item.nome === null;
-    card.querySelector('[data-tipo-servidor]').hidden = item.tipo !== 'servidor';
-    card.querySelector('[data-tipo-estagiario]').hidden = item.tipo !== 'estagiario';
     texto(card, '[data-area]', item.area);
     const situacao = card.querySelector('[data-situacao]');
     situacao.hidden = !item.desativado && item.elegivel;
-    situacao.textContent = item.desativado ? 'Desativado' : 'Fora do tipo aceito pela vaga';
+    situacao.textContent = item.desativado ? 'Desativado' : 'Não disponível para movimentação';
     const score = card.querySelector('[data-score]');
     score.setAttribute('aria-valuenow', item.percentual);
     score.setAttribute('aria-label', `Aderência de ${item.percentual}%`);
@@ -285,10 +281,11 @@ export function validarQuadro(dados, base = globalThis.location?.href) {
     const boolean = (valor) => typeof valor === 'boolean';
     const competencias = (itens) => Array.isArray(itens) && itens.every((item) => string(item.nome) && [1, 2, 3].includes(item.peso)
         && (item.origem === undefined || Object.hasOwn(ORIGENS, item.origem)));
-    if (!vaga || !['titulo', 'area', 'tipo', 'status', 'url', 'statusUrl'].every((campo) => string(vaga[campo]))
+    if (!vaga || !['titulo', 'area', 'status', 'url', 'statusUrl'].every((campo) => string(vaga[campo]))
         || !boolean(vaga.aberta) || !boolean(vaga.temEnergia) || !(vaga.descricao === null || string(vaga.descricao))
         || !(vaga.encerradaEm === null || string(vaga.encerradaEm))
         || !(vaga.aberta ? string(vaga.editarUrl) : vaga.editarUrl === null)
+        || !(vaga.aberta ? string(vaga.selecionarUrl) && string(vaga.importarUrl) : vaga.selecionarUrl === null && vaga.importarUrl === null)
         || !Number.isInteger(dados.totalElegiveis) || dados.totalElegiveis < 0 || !competencias(dados.requisitos)
         || !dados.colunas || Object.keys(dados.colunas).length !== 4) {
         throw new ErroAjax('O servidor enviou dados inesperados para o quadro.');
@@ -297,11 +294,13 @@ export function validarQuadro(dados, base = globalThis.location?.href) {
     mesmaOrigem(vaga.statusUrl, base);
     if (vaga.aberta) {
         mesmaOrigem(vaga.editarUrl, base);
+        mesmaOrigem(vaga.selecionarUrl, base);
+        mesmaOrigem(vaga.importarUrl, base);
     }
     for (const etapa of Object.keys(ETAPAS)) {
         const itens = dados.colunas[etapa];
         if (!Array.isArray(itens) || !itens.every((item) => /^CAND-[0-9]{4}$/.test(item.codigo)
-            && item.etapa === etapa && ['servidor', 'estagiario'].includes(item.tipo) && string(item.area)
+            && item.etapa === etapa && string(item.area)
             && string(item.perfilUrl) && string(item.etapaUrl) && string(item.anotacaoUrl)
             && (item.nome === null || (etapa !== 'triagem' && string(item.nome)))
             && ['elegivel', 'desativado', 'experienciaNaArea'].every((campo) => boolean(item[campo]))
@@ -330,10 +329,13 @@ export function montarQuadro(dados, doc = document) {
     link(quadro, '[data-atualizar-quadro]', vaga.url, doc);
     if (vaga.aberta) {
         link(quadro, '[data-editar-vaga]', vaga.editarUrl, doc);
+        link(quadro, '[data-selecionar-candidatos]', vaga.selecionarUrl, doc);
+        link(quadro, '[data-importar-curriculos]', vaga.importarUrl, doc);
         quadro.querySelector('[data-encerrar-vaga]').action = mesmaOrigem(vaga.statusUrl, doc.baseURI).href;
         quadro.querySelector('[data-vaga-encerrada]').remove();
     } else {
         quadro.querySelector('[data-editar-vaga]').remove();
+        quadro.querySelector('[data-adicionar-candidatos]').remove();
         quadro.querySelector('[data-encerrar-vaga]').remove();
         texto(quadro, '[data-encerrada-em]', vaga.encerradaEm);
     }

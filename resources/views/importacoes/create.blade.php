@@ -34,34 +34,11 @@
             <p id="arquivos-erro" data-erro-campo="arquivos" @if (! $erroArquivos) hidden @endif class="text-sm font-medium text-red-700">{{ $erroArquivos }}</p>
         </div>
 
-        <fieldset class="flex flex-col gap-3">
-            <legend class="mb-2 font-semibold">O candidato é…</legend>
-            <div class="grid gap-4 sm:grid-cols-2">
-                @foreach (\App\Enums\TipoCandidato::cases() as $tipo)
-                    <label class="relative cursor-pointer">
-                        <input type="radio" id="tipo-{{ $tipo->value }}" name="tipo" value="{{ $tipo->value }}" required @checked(old('tipo') === $tipo->value) class="peer sr-only">
-                        <span @class([
-                            'flex h-full items-start gap-4 rounded-card border-2 border-borda bg-superficie p-5 transition-colors peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primaria-600',
-                            'hover:border-servidor-400 peer-checked:border-servidor-600 peer-checked:bg-servidor-50' => $tipo === \App\Enums\TipoCandidato::Servidor,
-                            'hover:border-estagiario-400 peer-checked:border-estagiario-600 peer-checked:bg-estagiario-50' => $tipo === \App\Enums\TipoCandidato::Estagiario,
-                        ])>
-                            <span @class([
-                                'flex size-11 shrink-0 items-center justify-center rounded-xl',
-                                'bg-servidor-100 text-servidor-800' => $tipo === \App\Enums\TipoCandidato::Servidor,
-                                'bg-estagiario-100 text-estagiario-800' => $tipo === \App\Enums\TipoCandidato::Estagiario,
-                            ])>
-                                <x-icone :nome="$tipo->icone()" class="size-6" />
-                            </span>
-                            <span class="flex flex-col gap-1">
-                                <span class="text-lg font-semibold">{{ $tipo->rotulo() }}</span>
-                                <span class="text-sm text-texto-suave">{{ $tipo === \App\Enums\TipoCandidato::Servidor ? 'Integra o quadro do serviço público.' : 'Indicado pelo CIEE ou instituição de ensino.' }}</span>
-                            </span>
-                        </span>
-                    </label>
-                @endforeach
-            </div>
-            <p id="tipo-erro" data-erro-campo="tipo" @error('tipo') @else hidden @enderror class="text-sm font-medium text-red-700">@error('tipo'){{ $message }}@enderror</p>
-        </fieldset>
+        <x-campo nome="vaga_id" rotulo="Processo seletivo" tipo="select" :valor="$vagaSelecionada" vazio="Selecione a vaga" :opcoes="$vagas->pluck('titulo', 'id')->all()" obrigatorio ajuda="Todos os currículos enviados serão vinculados à triagem desta vaga após a confirmação. O mesmo candidato pode participar de outros processos." />
+
+        @if ($vagas->isEmpty())
+            <x-alerta tipo="aviso">Não há vagas abertas. <a href="{{ route('vagas.create') }}" class="font-semibold underline">Crie um processo seletivo</a> antes de importar os currículos.</x-alerta>
+        @endif
 
         <div class="flex flex-col gap-4 border-t border-borda pt-6 sm:flex-row sm:items-center sm:justify-between">
             <p class="flex items-start gap-2 text-sm text-texto-suave">

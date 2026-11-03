@@ -58,6 +58,7 @@ class AjaxSegurancaTest extends TestCase
         $this->candidato->competencias()->attach($python->id, ['origem' => 'curriculo']);
         $this->vaga = Vaga::factory()->paraEstagiarios()->create();
         $this->vaga->competencias()->attach($python->id, ['peso' => 3]);
+        $this->vaga->participacoes()->create(['candidato_id' => $this->candidato->id, 'etapa' => 'triagem']);
     }
 
     protected function tearDown(): void

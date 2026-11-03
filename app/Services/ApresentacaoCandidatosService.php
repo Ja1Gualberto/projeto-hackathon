@@ -5,9 +5,10 @@ namespace App\Services;
 use App\DTOs\FiltroCandidatosDTO;
 use App\Enums\Area;
 use App\Enums\StatusCandidato;
-use App\Enums\TipoCandidato;
 use App\Models\Candidato;
 use App\Models\Competencia;
+use App\Models\Participacao;
+use App\Repositories\Interfaces\VagaRepositoryInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\HtmlString;
@@ -17,6 +18,8 @@ use Illuminate\View\ComponentSlot;
 
 final class ApresentacaoCandidatosService
 {
+    public function __construct(private VagaRepositoryInterface $vagas) {}
+
     /**
      * @param  array{hard: Collection<int, Competencia>, soft: Collection<int, Competencia>}  $catalogo
      * @return array{urlBusca: string, urlImportacao: string, campos: array<string, HtmlString>, experiencia: ComponentAttributeBag, catalogoHtml: array<string, HtmlString>, catalogoVazio: array<string, ComponentAttributeBag>, errosFiltros: HtmlString, alertaErros: ComponentAttributeBag, urlArteErro: string, filtrosHtml: HtmlString}
@@ -60,10 +63,10 @@ final class ApresentacaoCandidatosService
                     'opcoes' => ['ativos' => 'Ativos', 'desativados' => 'Desativados', 'retencao' => 'Retenção pendente'],
                     'attributes' => new ComponentAttributeBag(['data-valor-padrao' => 'ativos']),
                 ]),
-                'tipo' => $this->componente('campo', [
-                    'nome' => 'tipo', 'rotulo' => 'Tipo de candidato', 'tipo' => 'select', 'valor' => $filtro->tipo,
-                    'vazio' => 'Todos os tipos',
-                    'opcoes' => collect(TipoCandidato::cases())->mapWithKeys(fn (TipoCandidato $tipo): array => [$tipo->value => $tipo->rotulo()])->all(),
+                'vaga' => $this->componente('campo', [
+                    'nome' => 'vaga_id', 'rotulo' => 'Processo seletivo', 'tipo' => 'select', 'valor' => $filtro->vagaId,
+                    'vazio' => 'Todos os processos',
+                    'opcoes' => $this->vagas->listar()->pluck('titulo', 'id')->all(),
                 ]),
                 'area' => $this->componente('campo', [
                     'nome' => 'area', 'rotulo' => 'Área de atuação', 'tipo' => 'select', 'valor' => $filtro->area,
@@ -107,7 +110,7 @@ final class ApresentacaoCandidatosService
         $estadoVazio = $cards === []
             ? $this->componente('estado-vazio', [
                 'titulo' => 'Nenhum talento com esses critérios',
-                'texto' => 'Remova uma competência ou amplie a área e o tipo de candidato para tentar novamente.',
+                'texto' => 'Remova uma competência ou amplie a área e o processo seletivo para tentar novamente.',
             ], $this->componente('botao', [
                 'href' => route('candidatos.index'), 'variante' => 'secundario',
                 'attributes' => new ComponentAttributeBag(['data-limpar-busca' => true]),
@@ -153,10 +156,7 @@ final class ApresentacaoCandidatosService
             'nome' => $candidato->nome,
             'area' => $candidato->area->rotulo(),
             'experiencia' => $candidato->experiencia_na_area ? 'sim' : 'não informado',
-            'tipo' => $this->componente('badge-tipo', [
-                'tipo' => $candidato->tipo,
-                'attributes' => new ComponentAttributeBag(['class' => 'normal-case tracking-normal']),
-            ]),
+            'processos' => $candidato->participacoes->map(fn (Participacao $participacao): string => $participacao->vaga->titulo)->implode(' · '),
             'seloDesativado' => $desativado ? $this->componente('badge', [], new HtmlString('Desativado')) : new HtmlString,
             'atributosDesativado' => new ComponentAttributeBag(['hidden' => ! $desativado]),
             'seloRetencao' => $retencaoVencida ? $this->componente('badge', ['cor' => 'aviso'], new HtmlString('revisão de retenção pendente')) : new HtmlString,

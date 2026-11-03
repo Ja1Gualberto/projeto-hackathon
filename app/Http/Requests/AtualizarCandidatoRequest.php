@@ -4,7 +4,6 @@ namespace App\Http\Requests;
 
 use App\Enums\Area;
 use App\Enums\MeioConsentimento;
-use App\Enums\TipoCandidato;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -48,7 +47,6 @@ class AtualizarCandidatoRequest extends FormRequest
             'telefone' => ['nullable', 'string', 'max:30'],
             'cpf' => ['nullable', 'digits:11'],
             'data_nascimento' => ['nullable', 'date', 'before:today'],
-            'tipo' => ['required', Rule::enum(TipoCandidato::class)],
             'area' => ['required', Rule::enum(Area::class)],
             'experiencia_na_area' => ['boolean'],
             'formacoes' => ['array', 'max:20'],
@@ -80,7 +78,6 @@ class AtualizarCandidatoRequest extends FormRequest
     public function attributes(): array
     {
         return [
-            'tipo' => 'tipo de candidato',
             'experiencia_na_area' => 'experiência na área',
             'formacoes.*' => 'formação',
             'experiencias.*' => 'experiência',

@@ -12,14 +12,11 @@ class PainelService
         private PainelRepositoryInterface $painel,
     ) {}
 
-    /** @return array{totalTalentos: int, servidores: int, estagiarios: int, vagasAbertas: int, topCompetencias: Collection, retencaoPendente: int} */
+    /** @return array{totalTalentos: int, vagasAbertas: int, topCompetencias: Collection, retencaoPendente: int} */
     public function resumo(): array
     {
-        $totais = $this->candidatos->contarAtivosPorTipo();
-
         return [
-            'totalTalentos' => array_sum($totais),
-            ...$totais,
+            'totalTalentos' => $this->candidatos->contarAtivos(),
             'vagasAbertas' => $this->painel->contarVagasAbertas(),
             'topCompetencias' => $this->candidatos->topCompetencias(),
             'retencaoPendente' => $this->candidatos->contarRetencaoVencida(),

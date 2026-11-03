@@ -65,10 +65,9 @@ class CandidatoService
         ];
     }
 
-    /** @return array{servidores: int, estagiarios: int} */
-    public function contarAtivosPorTipo(): array
+    public function contarAtivos(): int
     {
-        return $this->candidatos->contarAtivosPorTipo();
+        return $this->candidatos->contarAtivos();
     }
 
     /** @return Collection<int, Competencia> */

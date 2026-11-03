@@ -21,7 +21,7 @@
         @endif
 
         @include('candidatos.partials._formulario', [
-            'valores' => $candidato->only(['nome', 'email', 'telefone', 'cpf', 'data_nascimento', 'tipo', 'area', 'experiencia_na_area', 'formacoes', 'experiencias', 'projetos', 'links', 'consentimento_meio', 'consentimento_em']),
+            'valores' => $candidato->only(['nome', 'email', 'telefone', 'cpf', 'data_nascimento', 'area', 'experiencia_na_area', 'formacoes', 'experiencias', 'projetos', 'links', 'consentimento_meio', 'consentimento_em']),
             'selecionadas' => $candidato->competencias->modelKeys(),
         ])
 

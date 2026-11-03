@@ -55,6 +55,9 @@ class TriagemAnonimaTest extends TestCase
         ]);
         $this->vagaA = $this->vaga(['Python' => 3]);
         $this->vagaB = $this->vaga(['SQL' => 3]);
+        foreach ([$this->vagaA, $this->vagaB] as $vaga) {
+            $vaga->participacoes()->create(['candidato_id' => $this->candidato->id, 'etapa' => 'triagem']);
+        }
     }
 
     private function competencia(string $nome): Competencia
@@ -88,6 +91,7 @@ class TriagemAnonimaTest extends TestCase
 
     private function mover(Vaga $vaga, Candidato $candidato, string $etapa, string $contexto = 'quadro', bool $json = false): TestResponse
     {
+        $vaga->participacoes()->firstOrCreate(['candidato_id' => $candidato->id], ['etapa' => 'triagem']);
         $rota = route('vagas.candidatos.etapa', [$vaga, $candidato->codigo]);
         $dados = ['etapa' => $etapa, 'contexto' => $contexto];
 

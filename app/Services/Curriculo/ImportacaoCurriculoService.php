@@ -3,7 +3,6 @@
 namespace App\Services\Curriculo;
 
 use App\DTOs\DadosExtraidosDTO;
-use App\Enums\TipoCandidato;
 use App\Models\Candidato;
 use App\Models\Competencia;
 use App\Services\CandidatoService;
@@ -22,7 +21,7 @@ use RuntimeException;
  *     arquivo: string,
  *     nome_original: string,
  *     tamanho: int,
- *     tipo: string,
+ *     vaga_id: int,
  *     situacao: string,
  *     texto: ?string,
  *     dados: array<string, mixed>,
@@ -43,7 +42,7 @@ class ImportacaoCurriculoService
         private Session $sessao,
     ) {}
 
-    public function importar(UploadedFile $arquivo, TipoCandidato $tipo, ?string $lote = null): string
+    public function importar(UploadedFile $arquivo, int $vagaId, ?string $lote = null): string
     {
         $uuid = (string) Str::uuid();
         $disco = Storage::disk('curriculos');
@@ -60,7 +59,7 @@ class ImportacaoCurriculoService
             'arquivo' => $caminho,
             'nome_original' => Str::limit($arquivo->getClientOriginalName(), 200, ''),
             'tamanho' => (int) $arquivo->getSize(),
-            'tipo' => $tipo->value,
+            'vaga_id' => $vagaId,
             'situacao' => $leitura->situacao,
             'texto' => $leitura->texto === null ? null : mb_substr($leitura->texto, 0, self::LIMITE_TEXTO),
             'dados' => $dados->toArray(),
@@ -153,7 +152,6 @@ class ImportacaoCurriculoService
                 'telefone' => $dados->telefone,
                 'cpf' => $dados->cpf,
                 'data_nascimento' => $dados->data_nascimento,
-                'tipo' => $importacao['tipo'],
                 'area' => $dados->area_sugerida,
                 'experiencia_na_area' => $dados->experiencia_na_area,
                 'formacoes' => $dados->formacoes,

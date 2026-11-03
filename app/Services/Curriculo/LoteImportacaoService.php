@@ -4,7 +4,6 @@ namespace App\Services\Curriculo;
 
 use App\DTOs\ResultadoLeituraDTO;
 use App\Enums\MeioConsentimento;
-use App\Enums\TipoCandidato;
 use App\Http\Requests\ConfirmarImportacaoRequest;
 use App\Models\Candidato;
 use App\Models\User;
@@ -51,13 +50,13 @@ class LoteImportacaoService
     /**
      * @param  list<UploadedFile>  $arquivos
      */
-    public function criar(array $arquivos, TipoCandidato $tipo): string
+    public function criar(array $arquivos, int $vagaId): string
     {
         $lote = (string) Str::uuid();
         $itens = [];
 
         foreach ($arquivos as $arquivo) {
-            $uuid = $this->importacoes->importar($arquivo, $tipo, $lote);
+            $uuid = $this->importacoes->importar($arquivo, $vagaId, $lote);
             $itens[] = [
                 'uuid' => $uuid,
                 'nome_original' => $this->importacoes->obter($uuid)['nome_original'],

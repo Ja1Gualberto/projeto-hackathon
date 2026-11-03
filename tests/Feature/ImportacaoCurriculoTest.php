@@ -6,6 +6,7 @@ use App\Enums\OrigemCompetencia;
 use App\Models\Candidato;
 use App\Models\Competencia;
 use App\Models\User;
+use App\Models\Vaga;
 use Database\Seeders\CompetenciaSeeder;
 use Database\Seeders\Support\GeradorPdfCurriculo;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -56,7 +57,7 @@ class ImportacaoCurriculoTest extends TestCase
 
     private function importar(?UploadedFile $arquivo = null, string $tipo = 'estagiario'): string
     {
-        $resposta = $this->post(route('importacoes.store'), ['arquivos' => [$arquivo ?? $this->pdf()], 'tipo' => $tipo]);
+        $resposta = $this->post(route('importacoes.store'), ['arquivos' => [$arquivo ?? $this->pdf()], 'vaga_id' => Vaga::factory()->create()->id]);
         $resposta->assertRedirect();
         $uuid = Str::afterLast(parse_url($resposta->headers->get('Location'), PHP_URL_PATH), '/');
         $this->assertTrue(Str::isUuid($uuid));
@@ -98,14 +99,14 @@ class ImportacaoCurriculoTest extends TestCase
         return $this->post(route('importacoes.confirmar', $uuid), $dados, $json ? ['Accept' => 'application/json'] : []);
     }
 
-    public function test_tela_de_envio_pede_pdf_e_tipo(): void
+    public function test_tela_de_envio_pede_pdf_e_processo_seletivo(): void
     {
         $this->get(route('importacoes.create'))
             ->assertOk()
             ->assertSee('Ler currículo')
             ->assertSee('PDF com texto selecionável, até 10 MB')
-            ->assertSee('Servidor')
-            ->assertSee('Estagiário');
+            ->assertSee('Processo seletivo')
+            ->assertDontSee('name="tipo"', false);
     }
 
     public function test_upload_valido_redireciona_para_revisao_pre_preenchida(): void
@@ -233,10 +234,10 @@ class ImportacaoCurriculoTest extends TestCase
             ->assertSessionHasErrors(['arquivos.0' => 'Envie um arquivo PDF de até 10 MB.']);
     }
 
-    public function test_tipo_e_obrigatorio(): void
+    public function test_processo_seletivo_e_obrigatorio(): void
     {
         $this->post(route('importacoes.store'), ['arquivos' => [$this->pdf()]])
-            ->assertSessionHasErrors('tipo');
+            ->assertSessionHasErrors('vaga_id');
     }
 
     public function test_pdf_sem_texto_mantem_o_arquivo_e_oferece_preenchimento_manual(): void
@@ -436,7 +437,7 @@ class ImportacaoCurriculoTest extends TestCase
 
     public function test_upload_json_devolve_redirect_para_a_revisao(): void
     {
-        $resposta = $this->post(route('importacoes.store'), ['arquivos' => [$this->pdf()], 'tipo' => 'estagiario'], ['Accept' => 'application/json']);
+        $resposta = $this->post(route('importacoes.store'), ['arquivos' => [$this->pdf()], 'vaga_id' => Vaga::factory()->create()->id], ['Accept' => 'application/json']);
 
         $resposta->assertOk()->assertJsonPath('fragments', [])->assertHeader('Cache-Control', 'no-store, private');
         $uuid = Str::afterLast($resposta->json('redirect'), '/');
@@ -551,7 +552,7 @@ class ImportacaoCurriculoTest extends TestCase
 
         $this->followRedirects($this->post(route('importacoes.store'), [
             'arquivos' => [new UploadedFile("{$diretorio}/demo-escaneado.pdf", 'demo-escaneado.pdf', 'application/pdf', null, true)],
-            'tipo' => 'servidor',
+            'vaga_id' => Vaga::factory()->create()->id,
         ]))->assertSee('parece digitalizado');
 
         array_map('unlink', glob("{$diretorio}/*.pdf"));
