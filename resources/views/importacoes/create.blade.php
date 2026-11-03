@@ -34,7 +34,11 @@
             <p id="arquivos-erro" data-erro-campo="arquivos" @if (! $erroArquivos) hidden @endif class="text-sm font-medium text-red-700">{{ $erroArquivos }}</p>
         </div>
 
-        <x-campo nome="vaga_id" rotulo="Processo seletivo" tipo="select" :valor="$vagaSelecionada" vazio="Selecione a vaga" :opcoes="$vagas->pluck('titulo', 'id')->all()" obrigatorio ajuda="Todos os currículos enviados serão vinculados à triagem desta vaga após a confirmação. O mesmo candidato pode participar de outros processos." />
+        {{-- Campo desabilitado não é enviado: o campo oculto mantém a vaga de onde a importação partiu. --}}
+        @if ($vagaFixa)
+            <input type="hidden" name="vaga_id" value="{{ $vagaSelecionada }}">
+        @endif
+        <x-campo nome="vaga_id" rotulo="Processo seletivo" tipo="select" :valor="$vagaSelecionada" vazio="Selecione a vaga" :opcoes="$vagas->pluck('titulo', 'id')->all()" :disabled="$vagaFixa" obrigatorio ajuda="Todos os currículos enviados serão vinculados à triagem desta vaga após a confirmação. O mesmo candidato pode participar de outros processos." />
 
         @if ($vagas->isEmpty())
             <x-alerta tipo="aviso">Não há vagas abertas. <a href="{{ route('vagas.create') }}" class="font-semibold underline">Crie um processo seletivo</a> antes de importar os currículos.</x-alerta>

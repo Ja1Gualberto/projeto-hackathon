@@ -20,7 +20,7 @@
     $temErro = isset($errors) && ($errors->has($chaveErro) || $errors->has($chaveErro.'.*'));
     $mensagemErro = $temErro ? ($errors->first($chaveErro) ?: $errors->first($chaveErro.'.*')) : '';
 
-    $classesCampo = 'block w-full rounded-lg border bg-superficie px-3 py-2 text-texto shadow-xs transition-colors focus:border-primaria-600 focus:ring-2 focus:ring-primaria-400 focus:outline-none motion-reduce:transition-none '
+    $classesCampo = 'block w-full rounded-lg border bg-superficie px-3 py-2 text-texto shadow-xs transition-colors focus:border-primaria-600 focus:ring-2 focus:ring-primaria-400 focus:outline-none motion-reduce:transition-none disabled:cursor-not-allowed disabled:bg-fundo disabled:opacity-100 '
         .($temErro ? 'border-red-600' : 'border-borda-campo');
 
     $atributosCampo = $attributes->except('id')->merge(['class' => $classesCampo]);

@@ -25,9 +25,13 @@ class ImportacaoCurriculoController extends Controller
 
     public function create(Request $request): View
     {
+        $vagas = $this->vagas->listarAbertas();
+        $vagaSelecionada = $request->integer('vaga_id');
+
         return view('importacoes.create', [
-            'vagas' => $this->vagas->listarAbertas(),
-            'vagaSelecionada' => $request->integer('vaga_id'),
+            'vagas' => $vagas,
+            'vagaSelecionada' => $vagaSelecionada,
+            'vagaFixa' => $vagas->contains('id', $vagaSelecionada),
         ]);
     }
 

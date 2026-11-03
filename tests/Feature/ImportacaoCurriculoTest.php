@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\OrigemCompetencia;
+use App\Enums\StatusVaga;
 use App\Models\Candidato;
 use App\Models\Competencia;
 use App\Models\User;
@@ -19,6 +20,8 @@ use Tests\TestCase;
 class ImportacaoCurriculoTest extends TestCase
 {
     use RefreshDatabase;
+
+    private const SELECT_VAGA_DESABILITADO = '/<select[^>]*name="vaga_id"[^>]*\sdisabled="disabled"/';
 
     private const MENSAGEM_CONSENTIMENTO = 'Registre como e quando o candidato consentiu com o uso dos dados.';
 
@@ -107,6 +110,39 @@ class ImportacaoCurriculoTest extends TestCase
             ->assertSee('PDF com texto selecionável, até 10 MB')
             ->assertSee('Processo seletivo')
             ->assertDontSee('name="tipo"', false);
+    }
+
+    public function test_importacao_a_partir_da_vaga_fixa_o_processo_seletivo(): void
+    {
+        $vaga = Vaga::factory()->create();
+        Vaga::factory()->create();
+
+        $resposta = $this->get(route('importacoes.create', ['vaga_id' => $vaga->id]))->assertOk();
+
+        $this->assertMatchesRegularExpression(self::SELECT_VAGA_DESABILITADO, $resposta->getContent());
+        $resposta->assertSee('<input type="hidden" name="vaga_id" value="'.$vaga->id.'">', false)
+            ->assertSee('<option value="'.$vaga->id.'" selected', false);
+    }
+
+    public function test_importacao_pelo_menu_permite_escolher_o_processo_seletivo(): void
+    {
+        Vaga::factory()->create();
+
+        $resposta = $this->get(route('importacoes.create'))->assertOk();
+
+        $this->assertDoesNotMatchRegularExpression(self::SELECT_VAGA_DESABILITADO, $resposta->getContent());
+        $resposta->assertDontSee('type="hidden" name="vaga_id"', false);
+    }
+
+    public function test_vaga_encerrada_na_url_nao_fixa_o_processo_seletivo(): void
+    {
+        $encerrada = Vaga::factory()->create(['status' => StatusVaga::Encerrada]);
+        Vaga::factory()->create();
+
+        $resposta = $this->get(route('importacoes.create', ['vaga_id' => $encerrada->id]))->assertOk();
+
+        $this->assertDoesNotMatchRegularExpression(self::SELECT_VAGA_DESABILITADO, $resposta->getContent());
+        $resposta->assertDontSee('type="hidden" name="vaga_id"', false);
     }
 
     public function test_upload_valido_redireciona_para_revisao_pre_preenchida(): void
