@@ -1,7 +1,13 @@
 # Banco de Talentos SETIC
 
-Sistema para encontrar talentos por competência e conduzir seleções com triagem anônima. Laravel 13
-com estrutura MVC + Services + Repositories, DTOs e Laravel Boost instalado.
+Desenvolvido para o **hackathon do Tech.RO**, o sistema ajuda os recrutadores da **SETIC** a encontrar talentos por competência e conduzir processos seletivos com **triagem anônima**.
+
+- **Tecnologia:** Laravel 13.
+- **Arquitetura:** MVC + Services + Repositories, com DTOs.
+- **Ferramentas de desenvolvimento:** Laravel Boost instalado.
+
+> [!NOTE]
+> Devido ao prazo reduzido do hackathon, foram utilizadas ferramentas de **inteligência artificial** como apoio ao desenvolvimento.
 
 ## Demonstração
 
